@@ -4692,6 +4692,7 @@ enum weaponnum {
 #define WEAPONFLAG_HASGUNSCRIPT      0x00002000
 #define WEAPONFLAG_00004000          0x00004000
 #define WEAPONFLAG_BRIGHTER          0x00008000 // Use extra light to illuminate weapon
+#define WEAPONFLAG_HOLDGUNUP         0x00010000
 #define WEAPONFLAG_HASHANDS          0x00020000
 #define WEAPONFLAG_HIDEMENUMODEL     0x00040000 // Don't display the rotating model in the inventory menu
 #define WEAPONFLAG_GANGSTA           0x00080000 // Allow turning the gun sideways at close range

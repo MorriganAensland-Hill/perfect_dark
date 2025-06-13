@@ -2298,6 +2298,7 @@ struct hand {
 	/*0x0dd0*/ s32 *compiledhandmodelcmds;
 	/*0x0dd4*/ s32 unk0dd4;
 	/*0x0dd8*/ Mtxf *unk0dd8;
+	/*0x0ddc*/ f32 gunupwardsrot;
 };
 
 struct texpool {
@@ -2361,6 +2362,7 @@ struct gunctrl {
 	/*0x15f0*/ u8 guntypefader;
 	/*0x15f2*/ u16 curgunstr;
 	/*0x15f4*/ u8 paddingashdown;
+	/*0x15f5*/ u8 holdgunupwards;
 };
 
 struct player {
