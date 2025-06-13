@@ -1128,6 +1128,7 @@ void bmove_process_input(bool allowc1x, bool allowc1y, bool allowc1buttons, bool
 					movedata.canmanualaim = g_Vars.currentplayer->insightaimmode;
 					movedata.canautoaim = !g_Vars.currentplayer->insightaimmode;
 
+
 					if (controlmode == CONTROLMODE_12 || controlmode == CONTROLMODE_14) {
 						// Handle side stepping
 						if (g_Vars.currentplayer->insightaimmode == false) {

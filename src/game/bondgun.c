@@ -6405,6 +6405,90 @@ void bgun_start_detonate_animation(s32 playernum)
 	set_current_player_num(prevplayernum);
 }
 
+void bgun_update_upwards(struct hand *hand, s32 handnum, struct coord *arg2, struct funcdef *funcdef, Mtxf *arg4, Mtxf *arg5)
+{
+	f32 tmp;
+	struct coord sp38 = {0, 0, 0};
+
+	if (g_Vars.currentplayer->gunctrl.holdgunupwards
+			&& funcdef
+			&& (funcdef->type & 0xff) == INVENTORYFUNCTYPE_SHOOT
+			&& (hand->state == HANDSTATE_IDLE
+				|| hand->state == HANDSTATE_2
+				|| hand->state == HANDSTATE_ATTACKEMPTY
+				|| hand->state == HANDSTATE_ATTACK)) {
+		if (hand->gunupwardsrot < 1.0f) {
+			// Rotate upwards
+			hand->ispare1 += g_Vars.lvupdate240;
+
+			if (hand->ispare1 > TICKS(60)) {
+				hand->gunupwardsrot += LVUPDATE60FREAL() / 30.0f;
+
+				if (hand->gunupwardsrot > 1.0f) {
+					hand->gunupwardsrot = 1.0f;
+				}
+			}
+		} else {
+			// Already upwards
+			hand->ispare1 = 0;
+		}
+	} else {
+		// At this point we don't want the gun to be in the upward position.
+		// However we don't want it to revert immediately, so a timer is used.
+		f32 inversespeed = 30.0f;
+
+		if (hand->animmode == HANDANIMMODE_BUSY) {
+			// Revert faster
+			inversespeed = 15.0f;
+		}
+
+		if (hand->gunupwardsrot > 0.0f) {
+			bool revert = false;
+
+			hand->ispare1 += g_Vars.lvupdate240;
+
+			if (hand->gunupwardsrot < 1.0f) {
+				hand->ispare1 = TICKS(244);
+			}
+
+			if (hand->ispare1 > TICKS(120)) {
+				revert = true;
+			}
+
+			if (hand->animmode == HANDANIMMODE_BUSY && funcdef && (funcdef->type & 0xff) != INVENTORYFUNCTYPE_SHOOT) {
+				revert = true;
+			}
+
+			if (hand->state != HANDSTATE_IDLE
+					&& hand->state != HANDSTATE_2
+					&& hand->state != HANDSTATE_ATTACKEMPTY
+					&& hand->state != HANDSTATE_ATTACK) {
+				revert = true;
+			}
+
+			if (revert) {
+				hand->gunupwardsrot -= LVUPDATE60FREAL() / inversespeed;
+			}
+
+			if (hand->gunupwardsrot < 0.0f) {
+				hand->gunupwardsrot = 0.0f;
+			}
+		} else {
+			// Not rotated
+			hand->ispare1 = 0;
+		}
+	}
+
+	tmp = -cosf(hand->gunupwardsrot * DTOR(180)) * 0.5f + 0.50f;
+	sp38.z = (tmp * 66.6f * 0.017453292f) * (handnum != HAND_RIGHT ? 1.0f : -1.0f);
+
+	mtx4_load_rotation(&sp38, arg4);
+	mtx00015be0(arg4, arg5);
+
+	arg2->y += 4.0f * hand->gunupwardsrot;
+	arg2->x += 2.0f * hand->gunupwardsrot * (handnum != HAND_RIGHT ? 1.0f : -1.0f);
+}
+
 /**
  * Update the gangsta-style rotation of the player's gun.
  *
@@ -7479,6 +7563,60 @@ void bgun0f0a5550(s32 handnum)
 			bgun_tick_anim(hand, modeldef);
 		}
 	}
+
+	mtx4_load_identity(&sp234);
+
+	if (PLAYERCOUNT() == 1 && IS8MB() && gset_has_weapon_flag(weaponnum, WEAPONFLAG_HOLDGUNUP)) {
+		bgun_update_gangsta(hand, handnum, &sp274, funcdef, &sp284, &sp234);
+	}
+
+	if (hand->useposrot) {
+		sp274.f[0] += hand->posrotmtx.m[3][0];
+		sp274.f[1] += hand->posrotmtx.m[3][1];
+		sp274.f[2] += hand->posrotmtx.m[3][2];
+
+		mtx00015be0(&hand->posrotmtx, &sp234);
+
+		sp234.m[3][0] = 0.0f;
+		sp234.m[3][1] = 0.0f;
+		sp234.m[3][2] = 0.0f;
+	} else {
+		hand->rotxoffset = 0.0f;
+		hand->posoffset.x = 0.0f;
+		hand->posoffset.y = 0.0f;
+		hand->posoffset.z = 0.0f;
+	}
+
+	mtx00016d58(&sp284, 0.0f, 0.0f, 0.0f,
+			hand->damplook.x, hand->damplook.y, hand->damplook.z,
+			hand->dampup.x, hand->dampup.y, hand->dampup.z);
+
+	mtx00015be0(&sp284, &sp234);
+
+	sp1a4.x = DTOR(-180);
+	sp1a4.y = 0.0f;
+	sp1a4.z = 0.0f;
+
+	mtx4_load_rotation(&sp1a4, &sp164);
+
+	sp1a4.y = 0.0f;
+
+	bgun0f0a24f0(&sp118, handnum);
+
+	sp1a4.y = -bgun0f0a2498(sp118.x, sp118.z, sp274.f[0], sp274.f[2]);
+	sp1a4.x = bgun0f0a2498(sp118.y, sp118.z, sp274.f[1], sp274.f[2]);
+
+	hand->lastrotangx = sp1a4.f[0];
+	hand->lastrotangy = sp1a4.f[1];
+
+	mtx4_load_rotation(&sp1a4, &sp124);
+	mtx4_mult_mtx4(&sp124, &sp164, &sp284);
+	mtx4_mult_mtx4_in_place(&sp284, &sp234);
+	mtx4_copy(&sp234, &rendermtx);
+	mtx4_set_translation(&sp274, &rendermtx);
+
+	mtx4_copy(&rendermtx, &hand->cammtx);
+	mtx4_copy(&hand->posmtx, &hand->prevmtx);
 
 	mtx4_load_identity(&sp234);
 

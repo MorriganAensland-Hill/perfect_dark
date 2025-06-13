@@ -148,6 +148,7 @@ void bgun_reset(void)
 	}
 
 	g_Vars.currentplayer->gunctrl.gunmem = memp_alloc(i, MEMPOOL_STAGE);
+	g_Vars.currentplayer->gunctrl.holdgunupwards = 0;
 	g_Vars.currentplayer->gunctrl.handfilenum = 0;
 	g_Vars.currentplayer->gunctrl.handmemloadptr = 0;
 	g_Vars.currentplayer->gunctrl.handmemloadremaining = 0;
