@@ -4,6 +4,11 @@
 #include "data.h"
 #include "types.h"
 
-void fmb_reset(void);
+void fmbReset(void);
+MenuItemHandlerResult fmbHandleDropOut(s32 operation, struct menuitem *item, union handlerdata *data);
+MenuItemHandlerResult fmdHandleAbortGame(s32 operation, struct menuitem *item, union handlerdata *data);
+MenuItemHandlerResult fmbHandleAdvancedSetup(s32 operation, struct menuitem *item, union handlerdata *data);
+MenuItemHandlerResult fmbHandleAcceptChallenge(s32 operation, struct menuitem *item, union handlerdata *data);
+MenuDialogHandlerResult fmbHandleMainMenu(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data);
 
 #endif

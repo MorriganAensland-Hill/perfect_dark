@@ -4,16 +4,23 @@
 #include "data.h"
 #include "types.h"
 
-void explosions_reset(void);
+void explosionsReset(void);
 
-void explosions_stop(void);
+void explosionsStop(void);
 
-bool explosion_create_simple(struct prop *prop, struct coord *pos, RoomNum *rooms, s16 type, s32 playernum);
-bool explosion_create_complex(struct prop *prop, struct coord *pos, RoomNum *rooms, s16 type, s32 playernum);
-bool explosion_create(struct prop *prop, struct coord *pos, RoomNum *rooms, s16 type, s32 playernum, bool makescorch, struct coord *arg6, RoomNum room, struct coord *arg8);
-void explosions_update_shake(struct coord *pos, struct coord *look, struct coord *arg2);
-u32 explosion_tick(struct prop *prop);
-u32 explosion_tick_player(struct prop *prop);
-Gfx *explosion_render(struct prop *prop, Gfx *gdl, bool xlupass);
+bool explosionCreateSimple(struct prop *prop, struct coord *pos, RoomNum *rooms, s16 type, s32 playernum);
+bool explosionCreateComplex(struct prop *prop, struct coord *pos, RoomNum *rooms, s16 type, s32 playernum);
+f32 explosionGetHorizontalRangeAtFrame(struct explosion *exp, s32 frame);
+f32 explosionGetVerticalRangeAtFrame(struct explosion *exp, s32 frame);
+void explosionGetBboxAtFrame(struct coord *lower, struct coord *upper, s32 frame, struct prop *prop);
+void explosionAlertChrs(f32 *radius, struct coord *noisepos);
+bool explosionCreate(struct prop *prop, struct coord *pos, RoomNum *rooms, s16 type, s32 playernum, bool makescorch, struct coord *arg6, RoomNum room, struct coord *arg8);
+void explosionsUpdateShake(struct coord *arg0, struct coord *arg1, struct coord *arg2);
+bool explosionOverlapsProp(struct explosion *exp, struct prop *prop, struct coord *pos1, struct coord *pos2);
+void explosionInflictDamage(struct prop *prop);
+u32 explosionTick(struct prop *prop);
+u32 explosionTickPlayer(struct prop *prop);
+Gfx *explosionRender(struct prop *prop, Gfx *gdl, bool xlupass);
+Gfx *explosionRenderPart(struct explosion *exp, struct explosionpart *part, Gfx *gdl, struct coord *coord, s32 arg4);
 
 #endif

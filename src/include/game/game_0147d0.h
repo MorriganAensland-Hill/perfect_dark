@@ -4,7 +4,7 @@
 #include "data.h"
 #include "types.h"
 
-void boltbeams_reset(void);
-void lasersights_reset(void);
+void boltbeamsReset(void);
+void lasersightsReset(void);
 
 #endif
