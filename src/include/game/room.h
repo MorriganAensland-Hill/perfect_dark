@@ -4,15 +4,19 @@
 #include "data.h"
 #include "types.h"
 
-void rooms_reset(void);
+void roomsReset(void);
 
-void rooms_tick(void);
+void roomsTick(void);
 
-void room_set_last_for_offset(s32 room);
-void room_free_mtx(s32 index);
-void room_populate_mtx(Mtxf *matrix, s32 roomnum);
-Gfx *room_apply_mtx(Gfx *gdl, s32 roomnum);
-struct coord *room_get_pos_ptr(s32 room);
-void room_get_pos(s32 room, struct coord *pos);
+void roomSetLastForOffset(s32 room);
+void roomLinkMtx(s32 index, s32 roomnum);
+void roomUnlinkMtx(s32 index, s32 roomnum);
+void roomFreeMtx(s32 index);
+s32 roomAllocateMtx(void);
+void roomPopulateMtx(Mtxf *matrix, s32 roomnum);
+s32 roomTouchMtx(s32 roomnum);
+Gfx *roomApplyMtx(Gfx *gdl, s32 roomnum);
+struct coord *roomGetPosPtr(s32 room);
+void roomGetPos(s32 room, struct coord *pos);
 
 #endif

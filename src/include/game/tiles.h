@@ -4,6 +4,6 @@
 #include "data.h"
 #include "types.h"
 
-void tiles_reset(void);
+void tilesReset(void);
 
 #endif

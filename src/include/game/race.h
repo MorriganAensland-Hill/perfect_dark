@@ -4,8 +4,14 @@
 #include "data.h"
 #include "types.h"
 
-void races_init(void);
+void racesInit(void);
 
-void race_init_anims(void);
+u16 raceGetAnimSumAngleAsInt(s16 animnum, s32 frame, s32 endframe);
+s32 raceGetAnimSumForwardAsInt(s16 animnum, s32 startframe, s32 endframe);
+s32 raceInitAnimGroup(struct attackanimconfig *configs);
+void raceInitAnimGroups(struct attackanimgroup **groups);
+s32 raceCountAnims(struct animtablerow *rows);
+f32 race0f0005c0(s16 animnum);
+void raceInitAnims(void);
 
 #endif

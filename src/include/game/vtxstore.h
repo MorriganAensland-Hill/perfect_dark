@@ -4,10 +4,11 @@
 #include "data.h"
 #include "types.h"
 
-void vtxstore_reset(void);
+void vtxstoreReset(void);
 
-void vtxstore_tick(void);
-void *vtxstore_allocate(s32 count, s32 type, struct modelnode *node, s32 level);
-void vtxstore_free(s32 type, void *allocation);
+void vtxstoreFixRefs(void *find, void *replacement);
+void vtxstoreTick(void);
+void *vtxstoreAllocate(s32 count, s32 index, struct modelnode *node, s32 level);
+void vtxstoreFree(s32 type, void *arg1);
 
 #endif

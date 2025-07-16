@@ -4,16 +4,23 @@
 #include "data.h"
 #include "types.h"
 
-void weather_reset(void);
+void weatherReset(void);
 
-void weather_tick(void);
+void weatherTick(void);
 
-Gfx *weather_render(Gfx *gdl);
-struct weatherparticledata *weather_allocate_particles(void);
-void weather_tick_rain(struct weatherdata *weather);
-void weather_tick_snow(struct weatherdata *weather);
-void weather_configure_rain(u32 intensity);
-void weather_configure_snow(u32 intensity);
-void weather_stop(void);
+Gfx *weatherRender(Gfx *gdl);
+void weatherSetBoundaries(struct weatherparticledata *data, s32 index, f32 min, f32 max);
+struct weatherparticledata *weatherAllocateParticles(void);
+void func0f131610(struct weatherdata *weather);
+void func0f131678(s32 arg0);
+void weatherSetIntensity(s32 intensity);
+void weatherTickRain(struct weatherdata *weather);
+void weatherTickSnow(struct weatherdata *weather);
+void weatherConfigureRain(u32 intensity);
+void weatherConfigureSnow(u32 intensity);
+bool weatherIsRoomWeatherProof(s32 room);
+Gfx *weatherRenderRain(Gfx *gdl, struct weatherdata *weather, s32 arg2);
+Gfx *weatherRenderSnow(Gfx *gdl, struct weatherdata *weather, s32 arg2);
+void weatherStop(void);
 
 #endif
