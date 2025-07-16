@@ -15,7 +15,7 @@ struct covercandidate *g_CoverCandidates;
 u16 g_NumSpecialCovers;
 u16 *g_SpecialCoverNums;
 
-void pad_unpack(s32 padnum, u32 fields, struct pad *pad)
+void padUnpack(s32 padnum, u32 fields, struct pad *pad)
 {
 	s32 offset;
 	u32 *header;
@@ -145,7 +145,7 @@ void pad_unpack(s32 padnum, u32 fields, struct pad *pad)
 	}
 }
 
-bool pad_has_bbox_data(s32 padnum)
+bool padHasBboxData(s32 padnum)
 {
 	u32 offset = g_PadOffsets[padnum];
 	u32 *header = (u32 *)&g_StageSetup.padfiledata[offset];
@@ -153,11 +153,11 @@ bool pad_has_bbox_data(s32 padnum)
 	return ((*header >> 14) & PADFLAG_HASBBOXDATA) != 0;
 }
 
-void pad_get_centre(s32 padnum, struct coord *coord)
+void padGetCentre(s32 padnum, struct coord *coord)
 {
 	struct pad pad;
 
-	pad_unpack(padnum, PADFIELD_POS | PADFIELD_LOOK | PADFIELD_UP | PADFIELD_NORMAL | PADFIELD_BBOX, &pad);
+	padUnpack(padnum, PADFIELD_POS | PADFIELD_LOOK | PADFIELD_UP | PADFIELD_NORMAL | PADFIELD_BBOX, &pad);
 
 	coord->x = pad.pos.f[0] + (
 			(pad.bbox.xmin + pad.bbox.xmax) * pad.normal.f[0] +
@@ -183,7 +183,7 @@ void pad_get_centre(s32 padnum, struct coord *coord)
  * When such a door is placed on a pad, this function is called. It adjusts the
  * pad's orientation to compensate for the model.
  */
-void pad_rotate_for_door(s32 padnum)
+void padRotateForDoor(s32 padnum)
 {
 	u32 stack;
 	u32 *ptr;
@@ -230,7 +230,7 @@ void pad_rotate_for_door(s32 padnum)
 	}
 }
 
-void pad_copy_bbox_from_pad(s32 padnum, struct pad *src)
+void padCopyBboxFromPad(s32 padnum, struct pad *src)
 {
 	u32 offset = g_PadOffsets[padnum];
 	f32 *fbuffer = (f32 *)&g_StageSetup.padfiledata[offset];
@@ -262,7 +262,7 @@ void pad_copy_bbox_from_pad(s32 padnum, struct pad *src)
 	}
 }
 
-void pad_set_flag(s32 padnum, u32 flag)
+void padSetFlag(s32 padnum, u32 flag)
 {
 	u32 offset = g_PadOffsets[padnum];
 	u32 *header = (u32 *)&g_StageSetup.padfiledata[offset];
@@ -270,7 +270,7 @@ void pad_set_flag(s32 padnum, u32 flag)
 	*header = *header ^ ((*header >> 14) ^ ((*header >> 14) | flag)) << 14;
 }
 
-void pad_unset_flag(s32 padnum, u32 flag)
+void padUnsetFlag(s32 padnum, u32 flag)
 {
 	u32 offset = g_PadOffsets[padnum];
 	u32 *header = (u32 *)&g_StageSetup.padfiledata[offset];
@@ -283,12 +283,12 @@ bool func0f1162c4(s32 padnum, s32 arg1)
 	return padnum;
 }
 
-s32 cover_get_count(void)
+s32 coverGetCount(void)
 {
 	return g_PadsFile->numcovers;
 }
 
-bool cover_unpack(s32 covernum, struct cover *cover)
+bool coverUnpack(s32 covernum, struct cover *cover)
 {
 	struct coverdefinition *def;
 
@@ -313,12 +313,12 @@ bool cover_unpack(s32 covernum, struct cover *cover)
 	return true;
 }
 
-u16 get_num_special_covers(void)
+u16 getNumSpecialCovers(void)
 {
 	return g_NumSpecialCovers;
 }
 
-bool cover_unpack_by_special_num(s32 index, struct cover *cover)
+bool coverUnpackBySpecialNum(s32 index, struct cover *cover)
 {
 	// Probable @bug: last check should be index >= g_NumSpecialCovers
 	// This function is never called though.
@@ -326,14 +326,14 @@ bool cover_unpack_by_special_num(s32 index, struct cover *cover)
 		return false;
 	}
 
-	if (cover_unpack(g_SpecialCoverNums[index], cover)) {
+	if (coverUnpack(g_SpecialCoverNums[index], cover)) {
 		return true;
 	}
 
 	return false;
 }
 
-s32 cover_get_num_by_special_num(s32 index)
+s32 coverGetNumBySpecialNum(s32 index)
 {
 	// Probable @bug: last check should be index >= g_NumSpecialCovers
 	// This function is never called though.
@@ -349,7 +349,7 @@ s32 func0f116450(s32 arg0, s32 arg1)
 	return arg0;
 }
 
-bool cover_is_in_use(s32 covernum)
+bool coverIsInUse(s32 covernum)
 {
 	// @bug: Second condition should be >=
 	if (covernum < 0 || covernum > g_PadsFile->numcovers) {
@@ -359,7 +359,7 @@ bool cover_is_in_use(s32 covernum)
 	return g_CoverFlags[covernum] & COVERFLAG_INUSE;
 }
 
-void cover_set_in_use(s32 covernum, bool enable)
+void coverSetInUse(s32 covernum, bool enable)
 {
 	if (covernum >= 0 && covernum < g_PadsFile->numcovers) {
 		if (enable) {
@@ -370,17 +370,17 @@ void cover_set_in_use(s32 covernum, bool enable)
 	}
 }
 
-void cover_set_flag(s32 covernum, u32 flag)
+void coverSetFlag(s32 covernum, u32 flag)
 {
 	g_CoverFlags[covernum] |= flag;
 }
 
-void cover_unset_flag(s32 covernum, u32 flag)
+void coverUnsetFlag(s32 covernum, u32 flag)
 {
 	g_CoverFlags[covernum] &= ~flag;
 }
 
-void cover_set_out_of_sight(s32 covernum, bool enable)
+void coverSetOutOfSight(s32 covernum, bool enable)
 {
 	if (covernum >= 0 && covernum < g_PadsFile->numcovers) {
 		if (enable) {
@@ -391,7 +391,7 @@ void cover_set_out_of_sight(s32 covernum, bool enable)
 	}
 }
 
-bool cover_is_special(struct cover *cover)
+bool coverIsSpecial(struct cover *cover)
 {
 	return (cover->flags & (COVERFLAG_SPECIAL1 | COVERFLAG_SPECIAL2 | COVERFLAG_SPECIAL3)) != 0;
 }

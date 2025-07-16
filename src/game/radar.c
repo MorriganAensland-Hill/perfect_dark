@@ -6,7 +6,7 @@
 #include "game/game_0b2150.h"
 #include "game/tex.h"
 #include "game/game_152fa0.h"
-#include "game/text.h"
+#include "game/game_1531a0.h"
 #include "game/mplayer/scenarios.h"
 #include "game/radar.h"
 #include "game/options.h"
@@ -44,14 +44,12 @@ u32 var80087ce4[] = {
 	0x8a158a15,
 };
 
-Gfx *radar_render_r_tracked_props(Gfx *gdl);
-
-void radar_set_y_indicators_enabled(bool enable)
+void radarSetYIndicatorsEnabled(bool enable)
 {
 	g_RadarYIndicatorsEnabled = enable;
 }
 
-Gfx *radar_render_background(Gfx *gdl, struct textureconfig *tconfig, s32 arg2, s32 arg3, s32 arg4)
+Gfx *radarRenderBackground(Gfx *gdl, struct textureconfig *tconfig, s32 arg2, s32 arg3, s32 arg4)
 {
 	f32 spb0[2];
 	f32 spa8[2];
@@ -70,19 +68,19 @@ Gfx *radar_render_background(Gfx *gdl, struct textureconfig *tconfig, s32 arg2, 
 	gDPSetPrimColorViaWord(gdl++, 0, 0, 0x00000000);
 
 	gDPFillRectangle(gdl++,
-			arg2 * g_UiScaleX,
+			arg2 * g_ScaleX,
 			arg3,
-			(arg2 + tconfig->width) * g_UiScaleX,
+			(arg2 + tconfig->width) * g_ScaleX,
 			arg3 + tconfig->width);
 
-	spb0[0] = arg2 * g_UiScaleX;
+	spb0[0] = arg2 * g_ScaleX;
 	spb0[1] = arg3;
-	spa8[0] = arg4 * g_UiScaleX;
+	spa8[0] = arg4 * g_ScaleX;
 	spa8[1] = arg4;
 
-	tex_select(&gdl, tconfig, 2, 0, 0, 1, NULL);
+	texSelect(&gdl, tconfig, 2, 0, 0, 1, NULL);
 	func0f0b278c(&gdl, spb0, spa8, tconfig->width, tconfig->height,
-			0, 0, 1, 0, 0xff, 0, 40, tconfig->level > 0, 0);
+			0, 0, 0, 0, 0xff, 0, 40, tconfig->level > 0, 0);
 
 	gDPPipeSync(gdl++);
 	gDPSetColorDither(gdl++, G_CD_BAYER);
@@ -96,7 +94,7 @@ Gfx *radar_render_background(Gfx *gdl, struct textureconfig *tconfig, s32 arg2, 
 	return gdl;
 }
 
-s32 radar_get_team_index(s32 team)
+s32 radarGetTeamIndex(s32 team)
 {
 	s32 index = 0;
 
@@ -121,7 +119,7 @@ s32 radar_get_team_index(s32 team)
 	return index;
 }
 
-Gfx *radar_draw_dot(Gfx *gdl, struct prop *prop, struct coord *dist, u32 colour1, u32 colour2, bool swapcolours)
+Gfx *radarDrawDot(Gfx *gdl, struct prop *prop, struct coord *dist, u32 colour1, u32 colour2, bool swapcolours)
 {
 	s32 x;
 	s32 y;
@@ -131,7 +129,7 @@ Gfx *radar_draw_dot(Gfx *gdl, struct prop *prop, struct coord *dist, u32 colour1
 
 	osSyncPrintf("RadarDrawDot : Prop=%x", prop);
 
-	spcc = (atan2f(dist->x, dist->z) * 180.0f) / DTOR(180) + g_Vars.currentplayer->vv_theta + 180.0f;
+	spcc = (atan2f(dist->x, dist->z) * 180.0f) / M_PI + g_Vars.currentplayer->vv_theta + 180.0f;
 	sqdist = sqrtf(dist->z * dist->z + dist->x * dist->x) * (1.0f / 250.0f);
 
 	if (sqdist < 16.0f) {
@@ -147,101 +145,101 @@ Gfx *radar_draw_dot(Gfx *gdl, struct prop *prop, struct coord *dist, u32 colour1
 	if (swapcolours) {
 		if (prop == g_Vars.currentplayer->prop) {
 			// Box
-			gdl = text_begin_boxmode(gdl, (0xff >> shiftamount) + colour1);
+			gdl = textSetPrimColour(gdl, (0xff >> shiftamount) + colour1);
 			gDPFillRectangleScaled(gdl++, x - 2, y + 2, x + 1, y + 3);
 			gDPFillRectangleScaled(gdl++, x - 3, y - 1, x + 2, y + 2);
 			gDPFillRectangleScaled(gdl++, x - 2, y - 2, x + 1, y - 1);
-			gdl = text_end_boxmode(gdl);
+			gdl = text0f153838(gdl);
 
-			gdl = text_begin_boxmode(gdl, (0xff >> shiftamount) + colour2);
+			gdl = textSetPrimColour(gdl, (0xff >> shiftamount) + colour2);
 			gDPFillRectangleScaled(gdl++, x - 1, y + 1, x + 0, y + 2);
 			gDPFillRectangleScaled(gdl++, x - 2, y + 0, x + 1, y + 1);
 			gDPFillRectangleScaled(gdl++, x - 1, y - 1, x + 0, y + 0);
-			gdl = text_end_boxmode(gdl);
+			gdl = text0f153838(gdl);
 		} else if (g_RadarYIndicatorsEnabled && dist->y > 250) {
 			// Up triangle
-			gdl = text_begin_boxmode(gdl, (0xff >> shiftamount) + colour1);
+			gdl = textSetPrimColour(gdl, (0xff >> shiftamount) + colour1);
 			gDPFillRectangleScaled(gdl++, x - 3, y - 1, x + 2, y + 2);
 			gDPFillRectangleScaled(gdl++, x - 2, y - 2, x + 1, y - 1);
-			gdl = text_end_boxmode(gdl);
+			gdl = text0f153838(gdl);
 
-			gdl = text_begin_boxmode(gdl, (0xff >> shiftamount) + colour2);
+			gdl = textSetPrimColour(gdl, (0xff >> shiftamount) + colour2);
 			gDPFillRectangleScaled(gdl++, x - 2, y + 0, x + 1, y + 1);
 			gDPFillRectangleScaled(gdl++, x - 1, y - 1, x + 0, y + 0);
-			gdl = text_end_boxmode(gdl);
+			gdl = text0f153838(gdl);
 		} else if (g_RadarYIndicatorsEnabled && dist->y < -250) {
 			// Down triangle
-			gdl = text_begin_boxmode(gdl, (0xff >> shiftamount) + colour1);
+			gdl = textSetPrimColour(gdl, (0xff >> shiftamount) + colour1);
 			gDPFillRectangleScaled(gdl++, x - 3, y - 2, x + 2, y + 1);
 			gDPFillRectangleScaled(gdl++, x - 2, y + 1, x + 1, y + 2);
-			gdl = text_end_boxmode(gdl);
+			gdl = text0f153838(gdl);
 
-			gdl = text_begin_boxmode(gdl, (0xff >> shiftamount) + colour2);
+			gdl = textSetPrimColour(gdl, (0xff >> shiftamount) + colour2);
 			gDPFillRectangleScaled(gdl++, x - 2, y - 1, x + 1, y + 0);
 			gDPFillRectangleScaled(gdl++, x - 1, y + 0, x + 0, y + 1);
-			gdl = text_end_boxmode(gdl);
+			gdl = text0f153838(gdl);
 		} else {
 			// Dot
-			gdl = text_begin_boxmode(gdl, (0xff >> shiftamount) + colour1);
+			gdl = textSetPrimColour(gdl, (0xff >> shiftamount) + colour1);
 			gDPFillRectangleScaled(gdl++, x - 2, y - 2, x + 2, y + 2);
-			gdl = text_end_boxmode(gdl);
+			gdl = text0f153838(gdl);
 
-			gdl = text_begin_boxmode(gdl, (0xff >> shiftamount) + colour2);
+			gdl = textSetPrimColour(gdl, (0xff >> shiftamount) + colour2);
 			gDPFillRectangleScaled(gdl++, x - 1, y - 1, x + 1, y + 1);
-			gdl = text_end_boxmode(gdl);
+			gdl = text0f153838(gdl);
 		}
 	} else {
 		if (prop == g_Vars.currentplayer->prop) {
 			// Box
-			gdl = text_begin_boxmode(gdl, (0xff >> shiftamount) + colour2);
+			gdl = textSetPrimColour(gdl, (0xff >> shiftamount) + colour2);
 			gDPFillRectangleScaled(gdl++, x - 2, y + 2, x + 1, y + 3);
 			gDPFillRectangleScaled(gdl++, x - 3, y - 1, x + 2, y + 2);
 			gDPFillRectangleScaled(gdl++, x - 2, y - 2, x + 1, y - 1);
-			gdl = text_end_boxmode(gdl);
+			gdl = text0f153838(gdl);
 
-			gdl = text_begin_boxmode(gdl, (0xff >> shiftamount) + colour1);
+			gdl = textSetPrimColour(gdl, (0xff >> shiftamount) + colour1);
 			gDPFillRectangleScaled(gdl++, x - 1, y + 1, x + 0, y + 2);
 			gDPFillRectangleScaled(gdl++, x - 2, y + 0, x + 1, y + 1);
 			gDPFillRectangleScaled(gdl++, x - 1, y - 1, x + 0, y + 0);
-			gdl = text_end_boxmode(gdl);
+			gdl = text0f153838(gdl);
 		} else if (g_RadarYIndicatorsEnabled && dist->y > 250) {
 			// Up triangle
-			gdl = text_begin_boxmode(gdl, (0xff >> shiftamount) + colour2);
+			gdl = textSetPrimColour(gdl, (0xff >> shiftamount) + colour2);
 			gDPFillRectangleScaled(gdl++, x - 3, y - 1, x + 2, y + 2);
 			gDPFillRectangleScaled(gdl++, x - 2, y - 2, x + 1, y - 1);
-			gdl = text_end_boxmode(gdl);
+			gdl = text0f153838(gdl);
 
-			gdl = text_begin_boxmode(gdl, (0xff >> shiftamount) + colour1);
+			gdl = textSetPrimColour(gdl, (0xff >> shiftamount) + colour1);
 			gDPFillRectangleScaled(gdl++, x - 2, y + 0, x + 1, y + 1);
 			gDPFillRectangleScaled(gdl++, x - 1, y - 1, x + 0, y + 0);
-			gdl = text_end_boxmode(gdl);
+			gdl = text0f153838(gdl);
 		} else if (g_RadarYIndicatorsEnabled && dist->y < -250) {
 			// Down triangle
-			gdl = text_begin_boxmode(gdl, (0xff >> shiftamount) + colour2);
+			gdl = textSetPrimColour(gdl, (0xff >> shiftamount) + colour2);
 			gDPFillRectangleScaled(gdl++, x - 3, y - 2, x + 2, y + 1);
 			gDPFillRectangleScaled(gdl++, x - 2, y + 1, x + 1, y + 2);
-			gdl = text_end_boxmode(gdl);
+			gdl = text0f153838(gdl);
 
-			gdl = text_begin_boxmode(gdl, (0xff >> shiftamount) + colour1);
+			gdl = textSetPrimColour(gdl, (0xff >> shiftamount) + colour1);
 			gDPFillRectangleScaled(gdl++, x - 2, y - 1, x + 1, y + 0);
 			gDPFillRectangleScaled(gdl++, x - 1, y + 0, x + 0, y + 1);
-			gdl = text_end_boxmode(gdl);
+			gdl = text0f153838(gdl);
 		} else {
 			// Dot
-			gdl = text_begin_boxmode(gdl, (0xff >> shiftamount) + colour2);
+			gdl = textSetPrimColour(gdl, (0xff >> shiftamount) + colour2);
 			gDPFillRectangleScaled(gdl++, x - 2, y - 2, x + 2, y + 2);
-			gdl = text_end_boxmode(gdl);
+			gdl = text0f153838(gdl);
 
-			gdl = text_begin_boxmode(gdl, (0xff >> shiftamount) + colour1);
+			gdl = textSetPrimColour(gdl, (0xff >> shiftamount) + colour1);
 			gDPFillRectangleScaled(gdl++, x - 1, y - 1, x + 1, y + 1);
-			gdl = text_end_boxmode(gdl);
+			gdl = text0f153838(gdl);
 		}
 	}
 
 	return gdl;
 }
 
-Gfx *radar_render(Gfx *gdl)
+Gfx *radarRender(Gfx *gdl)
 {
 	s32 stack;
 	s32 stack2;
@@ -252,7 +250,7 @@ Gfx *radar_render(Gfx *gdl)
 	u32 colour;
 	s32 i;
 
-	tconfig = &g_TexRadarConfigs[TEX_RADAR_BG];
+	tconfig = g_TexRadarConfigs;
 	playernum = g_Vars.currentplayernum;
 	playercount = PLAYERCOUNT();
 
@@ -275,19 +273,19 @@ Gfx *radar_render(Gfx *gdl)
 	}
 
 #if PAL
-	g_UiScaleX = 1;
+	g_ScaleX = 1;
 #else
 	if (g_ViRes == VIRES_HI) {
-		g_UiScaleX = 2;
+		g_ScaleX = 2;
 	} else {
-		g_UiScaleX = 1;
+		g_ScaleX = 1;
 	}
 #endif
 
-	g_RadarX = (vi_get_view_left() + vi_get_view_width()) / g_UiScaleX - 41;
+	g_RadarX = (viGetViewLeft() + viGetViewWidth()) / g_ScaleX - 41;
 
 	if (playercount == 2) {
-		if (IS4MB() || options_get_screen_split() == SCREENSPLIT_VERTICAL) {
+		if (IS4MB() || optionsGetScreenSplit() == SCREENSPLIT_VERTICAL) {
 			if (playernum == 0) {
 				g_RadarX += 16;
 			}
@@ -306,14 +304,19 @@ Gfx *radar_render(Gfx *gdl)
 		}
 	}
 
-	g_RadarY = vi_get_view_top() + (PAL ? 29 : 26);
+	g_RadarY = viGetViewTop() + (PAL ? 29 : 26);
 
 	if (playercount == 2) {
 		if (IS4MB()) {
 			g_RadarY -= 6;
-		} else if (options_get_screen_split() != SCREENSPLIT_VERTICAL && playernum == 1) {
+		} else if (optionsGetScreenSplit() != SCREENSPLIT_VERTICAL && playernum == 1) {
 			g_RadarY -= 8;
 		}
+#ifndef PLATFORM_N64
+		if (optionsGetScreenSplit() == SCREENSPLIT_HORIZONTAL) {
+			gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, g_HudAlignModeR);
+		}
+#endif
 	} else if (playercount >= 3) {
 		if (playernum >= 2) {
 			g_RadarY -= 8;
@@ -321,20 +324,28 @@ Gfx *radar_render(Gfx *gdl)
 			g_RadarY -= 2;
 		}
 	} else {
-		if (options_get_effective_screen_size() != SCREENSIZE_FULL) {
+		if (optionsGetEffectiveScreenSize() != SCREENSIZE_FULL) {
 			g_RadarY -= 6;
 		}
+#ifndef PLATFORM_N64
+		gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, g_HudAlignModeR);
+		gDPSetSubpixelOffsetEXT(gdl++, -2, 2);
+#endif
 	}
 
-	gdl = radar_render_background(gdl, tconfig, g_RadarX, g_RadarY, 0x10);
+	gdl = radarRenderBackground(gdl, tconfig, g_RadarX, g_RadarY, 0x10);
 	gdl = func0f153134(gdl);
 
 	// Draw dots for human players
+#ifndef PLATFORM_N64
+	gDPSetSubpixelOffsetEXT(gdl++, 0, 0);
+	if (!(g_MpSetup.options & MPOPTION_NOPLAYERONRADAR)) {
+#endif
 	for (i = 0; i < playercount; i++) {
 		if (i != playernum) {
 			if (g_Vars.players[i]->isdead == false
 					&& (g_Vars.players[i]->prop->chr->hidden & CHRHFLAG_CLOAKED) == 0
-					&& scenario_radar_chr(&gdl, g_Vars.players[i]->prop) == false) {
+					&& scenarioRadarChr(&gdl, g_Vars.players[i]->prop) == false) {
 				pos.x = g_Vars.players[i]->prop->pos.x - g_Vars.currentplayer->prop->pos.x;
 				pos.y = g_Vars.players[i]->prop->pos.y - g_Vars.currentplayer->prop->pos.y;
 				pos.z = g_Vars.players[i]->prop->pos.z - g_Vars.currentplayer->prop->pos.z;
@@ -346,10 +357,13 @@ Gfx *radar_render(Gfx *gdl)
 					colour = 0x00ff0000;
 				}
 
-				gdl = radar_draw_dot(gdl, g_Vars.players[i]->prop, &pos, colour, 0, 0);
+				gdl = radarDrawDot(gdl, g_Vars.players[i]->prop, &pos, colour, 0, 0);
 			}
 		}
 	}
+#ifndef PLATFORM_N64
+	}
+#endif
 
 	// Draw dots for coop AI buddies
 	if (!g_Vars.normmplayerisrunning && g_MissionConfig.iscoop) {
@@ -365,41 +379,45 @@ Gfx *radar_render(Gfx *gdl)
 				pos.y = prop->pos.y - g_Vars.currentplayer->prop->pos.y;
 				pos.z = prop->pos.z - g_Vars.currentplayer->prop->pos.z;
 
-				gdl = radar_draw_dot(gdl, prop, &pos, 0x00ff0000, 0, 0);
+				gdl = radarDrawDot(gdl, prop, &pos, 0x00ff0000, 0, 0);
 			}
 		}
 	}
 
 	// Draw dots for MP simulants
+#ifdef PLATFORM_N64
 	if (g_Vars.normmplayerisrunning) {
+#else
+	if (g_Vars.normmplayerisrunning && !(g_MpSetup.options & MPOPTION_NOPLAYERONRADAR)) {
+#endif
 		for (i = 0; i < g_BotCount; i++) {
-			if (!chr_is_dead(g_MpBotChrPtrs[i])
+			if (!chrIsDead(g_MpBotChrPtrs[i])
 					&& (g_MpBotChrPtrs[i]->hidden & CHRHFLAG_CLOAKED) == 0
-					&& scenario_radar_chr(&gdl, g_MpBotChrPtrs[i]->prop) == false) {
+					&& scenarioRadarChr(&gdl, g_MpBotChrPtrs[i]->prop) == false) {
 				pos.x = g_MpBotChrPtrs[i]->prop->pos.x - g_Vars.currentplayer->prop->pos.x;
 				pos.y = g_MpBotChrPtrs[i]->prop->pos.y - g_Vars.currentplayer->prop->pos.y;
 				pos.z = g_MpBotChrPtrs[i]->prop->pos.z - g_Vars.currentplayer->prop->pos.z;
 
 				if (g_Vars.normmplayerisrunning && (g_MpSetup.options & MPOPTION_TEAMSENABLED)) {
-					colour = g_TeamColours[radar_get_team_index(g_MpBotChrPtrs[i]->team)];
+					colour = g_TeamColours[radarGetTeamIndex(g_MpBotChrPtrs[i]->team)];
 				} else {
 					colour = 0x00ff0000;
 				}
 
-				gdl = radar_draw_dot(gdl, g_MpBotChrPtrs[i]->prop, &pos, colour, 0, 0);
+				gdl = radarDrawDot(gdl, g_MpBotChrPtrs[i]->prop, &pos, colour, 0, 0);
 			}
 		}
 	}
 
-	gdl = scenario_radar_extra(gdl);
+	gdl = scenarioRadarExtra(gdl);
 
 	// Draw dots for r-tracked props
 	if (g_Vars.currentplayer->devicesactive & ~g_Vars.currentplayer->devicesinhibit & DEVICE_RTRACKER) {
-		gdl = radar_render_r_tracked_props(gdl);
+		gdl = radarRenderRTrackedProps(gdl);
 	}
 
 	// Draw dot for the current player
-	if (scenario_radar_chr(&gdl, g_Vars.currentplayer->prop) == false) {
+	if (scenarioRadarChr(&gdl, g_Vars.currentplayer->prop) == false) {
 		pos.x = 0;
 		pos.y = 0;
 		pos.z = 0;
@@ -411,15 +429,19 @@ Gfx *radar_render(Gfx *gdl)
 			colour = 0x00ff0000;
 		}
 
-		gdl = radar_draw_dot(gdl, g_Vars.currentplayer->prop, &pos, colour, 0, 0);
+		gdl = radarDrawDot(gdl, g_Vars.currentplayer->prop, &pos, colour, 0, 0);
 	}
 
-	g_UiScaleX = 1;
+#ifndef PLATFORM_N64
+	gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT);
+#endif
+
+	g_ScaleX = 1;
 
 	return gdl;
 }
 
-Gfx *radar_render_r_tracked_props(Gfx *gdl)
+Gfx *radarRenderRTrackedProps(Gfx *gdl)
 {
 	struct prop *prop = g_Vars.activeprops;
 	struct coord *playerpos = &g_Vars.currentplayer->prop->pos;
@@ -438,12 +460,12 @@ Gfx *radar_render_r_tracked_props(Gfx *gdl)
 			obj = prop->obj;
 
 			if ((obj->flags3 & OBJFLAG3_RTRACKED_YELLOW) ||
-					(cheat_is_active(CHEAT_RTRACKER) && (obj->flags3 & OBJFLAG3_RTRACKED_BLUE))) {
+					(cheatIsActive(CHEAT_RTRACKER) && (obj->flags3 & OBJFLAG3_RTRACKED_BLUE))) {
 				dist1.x = prop->pos.x - playerpos->x;
 				dist1.y = prop->pos.y - playerpos->y;
 				dist1.z = prop->pos.z - playerpos->z;
 
-				gdl = radar_draw_dot(gdl, prop, &dist1,
+				gdl = radarDrawDot(gdl, prop, &dist1,
 						(obj->flags3 & OBJFLAG3_RTRACKED_YELLOW) ? 0xffff0000 : 0x0000ff00,
 						0, 0);
 			}
@@ -458,7 +480,7 @@ Gfx *radar_render_r_tracked_props(Gfx *gdl)
 				dist2.x = prop->pos.x - playerpos->x;
 				dist2.y = prop->pos.y - playerpos->y;
 				dist2.z = prop->pos.z - playerpos->z;
-				gdl = radar_draw_dot(gdl, prop, &dist2, 0xff000000, 0, 0);
+				gdl = radarDrawDot(gdl, prop, &dist2, 0xff000000, 0, 0);
 			}
 			break;
 		}

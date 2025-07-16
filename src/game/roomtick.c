@@ -5,7 +5,7 @@
 #include "data.h"
 #include "types.h"
 
-void rooms_tick(void)
+void roomsTick(void)
 {
 	s32 i;
 
@@ -14,7 +14,7 @@ void rooms_tick(void)
 			g_RoomMtxAges[i]++;
 
 			if (g_RoomMtxAges[i] >= NUM_GFXTASKS) {
-				room_free_mtx(i);
+				roomFreeMtx(i);
 			}
 		}
 	}

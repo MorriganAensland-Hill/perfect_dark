@@ -6,13 +6,13 @@
 #include "data.h"
 #include "types.h"
 
-void objs_stop(void)
+void objsStop(void)
 {
 	u32 *ptr = g_StageSetup.props;
 
 	if (ptr) {
-		while ((u8)ptr[0] != OBJTYPE_END) {
-			switch ((u8)ptr[0]) {
+		while ((u8)PD_BE32(ptr[0]) != OBJTYPE_END) {
+			switch ((u8)PD_BE32(ptr[0])) {
 			case OBJTYPE_DOOR:
 			case OBJTYPE_BASIC:
 			case OBJTYPE_KEY:
@@ -42,7 +42,7 @@ void objs_stop(void)
 			case OBJTYPE_HOVERCAR:
 			case OBJTYPE_CHOPPER:
 			case OBJTYPE_ESCASTEP:
-				obj_free_permanently((struct defaultobj *) ptr, true);
+				objFreePermanently((struct defaultobj *) ptr, true);
 				break;
 			case OBJTYPE_DOORSCALE:
 			case OBJTYPE_CHR:
@@ -63,12 +63,12 @@ void objs_stop(void)
 			case OBJECTIVETYPE_1F:
 			case OBJECTIVETYPE_ENTERROOM:
 			case OBJECTIVETYPE_THROWINROOM:
-			case OBJECTIVETYPE_COPYGOLDENEYE:
+			case OBJTYPE_22:
 			case OBJTYPE_BRIEFING:
 			case OBJTYPE_RENAMEOBJ:
 			case OBJTYPE_PADLOCKEDDOOR:
 			case OBJTYPE_SAFEITEM:
-			case OBJTYPE_CAMERAPRESET:
+			case OBJTYPE_CAMERAPOS:
 			case OBJTYPE_CONDITIONALSCENERY:
 			case OBJTYPE_BLOCKEDPATH:
 			case OBJTYPE_END:
@@ -77,7 +77,7 @@ void objs_stop(void)
 				break;
 			}
 
-			ptr = ptr + setup_get_cmd_length(ptr);
+			ptr = ptr + setupGetCmdLength(ptr);
 		}
 	}
 }

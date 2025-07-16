@@ -9,10 +9,10 @@
 #include "game/prop.h"
 #include "game/propsnd.h"
 #include "game/objectives.h"
-#include "game/projectile.h"
+#include "game/game_096360.h"
 #include "game/bondgun.h"
 #include "game/gunfx.h"
-#include "game/gset.h"
+#include "game/game_0b0fd0.h"
 #include "game/modelmgr.h"
 #include "game/tex.h"
 #include "game/camera.h"
@@ -44,7 +44,7 @@
 #include "data.h"
 #include "types.h"
 
-void props_tick(void)
+void propsTick(void)
 {
 	s32 i;
 	struct prop *prop;
@@ -59,8 +59,8 @@ void props_tick(void)
 		g_Vars.players[i]->bondextrapos.z = 0;
 	}
 
-	shieldhits_tick();
-	chra_tick_bg();
+	shieldhitsTick();
+	chraTickBg();
 
 	prop = g_Vars.activeprops;
 
@@ -70,15 +70,15 @@ void props_tick(void)
 		tickop = TICKOP_NONE;
 
 		if (prop->type == PROPTYPE_CHR) {
-			tickop = chr_tick_beams(prop);
+			tickop = chrTickBeams(prop);
 		} else if (prop->type == PROPTYPE_OBJ || prop->type == PROPTYPE_WEAPON || prop->type == PROPTYPE_DOOR) {
-			tickop = obj_tick(prop);
+			tickop = objTick(prop);
 		} else if (prop->type == PROPTYPE_EXPLOSION) {
-			tickop = explosion_tick(prop);
+			tickop = explosionTick(prop);
 		} else if (prop->type == PROPTYPE_SMOKE) {
-			tickop = smoke_tick(prop);
+			tickop = smokeTick(prop);
 		} else if (prop->type == PROPTYPE_PLAYER) {
-			tickop = player_tick_beams(prop);
+			tickop = playerTickBeams(prop);
 		}
 
 		if (tickop == TICKOP_CHANGEDLIST) {
@@ -88,15 +88,15 @@ void props_tick(void)
 			done = next2 == g_Vars.pausedprops;
 
 			if (tickop == TICKOP_RETICK) {
-				prop_delist(prop);
-				prop_activate_this_frame(prop);
+				propDelist(prop);
+				propActivateThisFrame(prop);
 
 				if (done) {
 					next2 = prop;
 					done = false;
 				}
 			} else {
-				prop_execute_tick_operation(prop, tickop);
+				propExecuteTickOperation(prop, tickop);
 			}
 		}
 

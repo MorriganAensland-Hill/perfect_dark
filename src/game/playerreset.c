@@ -24,7 +24,7 @@
 #include "data.h"
 #include "types.h"
 
-void player_init_eyespy(void)
+void playerInitEyespy(void)
 {
 	struct prop *prop;
 	struct pad pad;
@@ -34,7 +34,7 @@ void player_init_eyespy(void)
 
 	if (g_Vars.currentplayer->eyespy == NULL) {
 		/**
-		 * To create the eyespy's prop, a pad must be passed to body_instantiate_eyespy.
+		 * To create the eyespy's prop, a pad must be passed to bodyAllocateEyespy.
 		 * However the eyespy doesn't have a pad because it's held by the
 		 * player, so it needs to choose one from the stage. The method used
 		 * will increment the chosen pad number each time the stage is loaded
@@ -44,11 +44,11 @@ void player_init_eyespy(void)
 		 * the camspy will start in a trigger point for the mid cutscene,
 		 * causing the mid cutscene to play instead of the intro.
 		 */
-		pad_unpack(nextpad++, PADFIELD_ROOM | PADFIELD_POS, &pad);
-		prop = body_instantiate_eyespy(&pad, pad.room);
+		padUnpack(nextpad++, PADFIELD_ROOM | PADFIELD_POS, &pad);
+		prop = bodyAllocateEyespy(&pad, pad.room);
 
 		if (prop) {
-			g_Vars.currentplayer->eyespy = memp_alloc(sizeof(struct eyespy), MEMPOOL_STAGE);
+			g_Vars.currentplayer->eyespy = mempAlloc(sizeof(struct eyespy), MEMPOOL_STAGE);
 
 			if (g_Vars.currentplayer->eyespy) {
 				g_Vars.currentplayer->eyespy->prop = prop;
@@ -86,11 +86,11 @@ void player_init_eyespy(void)
 				playerchr = g_Vars.currentplayer->prop->chr;
 				propchr->team = playerchr->team;
 
-				if (stage_get_index(g_Vars.stagenum) == STAGEINDEX_AIRBASE) {
+				if (stageGetIndex(g_Vars.stagenum) == STAGEINDEX_AIRBASE) {
 					g_Vars.currentplayer->eyespy->mode = EYESPYMODE_DRUGSPY;
 					g_Weapons[WEAPON_EYESPY]->name = L_GUN_061; // "DrugSpy"
 					g_Weapons[WEAPON_EYESPY]->shortname = L_GUN_061; // "DrugSpy"
-				} else if (stage_get_index(g_Vars.stagenum) == STAGEINDEX_MBR || stage_get_index(g_Vars.stagenum) == STAGEINDEX_CHICAGO) {
+				} else if (stageGetIndex(g_Vars.stagenum) == STAGEINDEX_MBR || stageGetIndex(g_Vars.stagenum) == STAGEINDEX_CHICAGO) {
 					g_Vars.currentplayer->eyespy->mode = EYESPYMODE_BOMBSPY;
 				} else {
 					g_Vars.currentplayer->eyespy->mode = EYESPYMODE_CAMSPY;
@@ -107,7 +107,7 @@ struct cmd32 {
 	s32 param3;
 };
 
-void player_reset(void)
+void playerReset(void)
 {
 	struct coord pos = {0, 0, 0};
 	RoomNum rooms[8];
@@ -124,8 +124,8 @@ void player_reset(void)
 	s32 bodynum;
 	s32 headnum;
 
-	player_reset_lo_res_if_4mb();
-	mp_reset_phead_modeldefs();
+	playerResetLoResIf4Mb();
+	func0f18e558();
 
 	g_InCutscene = false;
 
@@ -137,7 +137,7 @@ void player_reset(void)
 
 	var8007072c = 1;
 	var80070738 = 0;
-	g_GeCreditsState = 0;
+	var8007073c = 0;
 
 	g_CurrentGeCreditsData = NULL;
 	g_Vars.currentplayer->bondexploding = false;
@@ -150,7 +150,7 @@ void player_reset(void)
 	g_PlayersWithControl[3] = true;
 	g_PlayerInvincible = false;
 
-	player_set_tick_mode(TICKMODE_GE_FADEIN);
+	playerSetTickMode(TICKMODE_GE_FADEIN);
 
 	g_PlayerTriggerGeFadeIn = 0;
 	var80070748 = 0;
@@ -181,13 +181,13 @@ void player_reset(void)
 				break;
 			case INTROCMD_WEAPON:
 				if (cmd->param3 == 0 && g_Vars.currentplayer != g_Vars.anti) {
-					modelmgr_load_projectile_modeldefs(cmd->param1);
+					modelmgrLoadProjectileModeldefs(cmd->param1);
 
 					if (cmd->param2 >= 0) {
-						modelmgr_load_projectile_modeldefs(cmd->param2);
-						inv_give_double_weapon(cmd->param1, cmd->param2);
+						modelmgrLoadProjectileModeldefs(cmd->param2);
+						invGiveDoubleWeapon(cmd->param1, cmd->param2);
 					} else {
-						inv_give_single_weapon(cmd->param1);
+						invGiveSingleWeapon(cmd->param1);
 					}
 
 					if (!hasdefaultweapon) {
@@ -208,7 +208,7 @@ void player_reset(void)
 				break;
 			case INTROCMD_AMMO:
 				if (cmd->param3 == 0 && g_Vars.currentplayer != g_Vars.anti) {
-					bgun_set_ammo_quantity(cmd->param1, cmd->param2);
+					bgunSetAmmoQuantity(cmd->param1, cmd->param2);
 				}
 				cmd = (struct cmd32 *)((uintptr_t)cmd + 16);
 				break;
@@ -236,7 +236,7 @@ void player_reset(void)
 				cmd = (struct cmd32 *)((uintptr_t)cmd + 12);
 				break;
 			case INTROCMD_CREDITOFFSET:
-				thing = (struct gecreditsdata *)((s32)g_GeCreditsData + cmd->param1);
+				thing = (struct gecreditsdata *)((uintptr_t)g_GeCreditsData + cmd->param1);
 				g_CurrentGeCreditsData = thing;
 				while (thing->text1 || thing->text2) {
 					thing++;
@@ -249,131 +249,135 @@ void player_reset(void)
 		}
 	}
 
-	inv_give_single_weapon(WEAPON_UNARMED);
+	invGiveSingleWeapon(WEAPON_UNARMED);
 
-	if (cheat_is_active(CHEAT_TRENTSMAGNUM)) {
-		inv_give_single_weapon(WEAPON_DY357LX);
-		bgun_set_ammo_quantity(AMMOTYPE_MAGNUM, 80);
+	if (cheatIsActive(CHEAT_TRENTSMAGNUM)) {
+		invGiveSingleWeapon(WEAPON_DY357LX);
+		bgunSetAmmoQuantity(AMMOTYPE_MAGNUM, 80);
 	}
 
-	if (cheat_is_active(CHEAT_FARSIGHT)) {
-		inv_give_single_weapon(WEAPON_FARSIGHT);
-		bgun_set_ammo_quantity(AMMOTYPE_FARSIGHT, 80);
+	if (cheatIsActive(CHEAT_FARSIGHT)) {
+		invGiveSingleWeapon(WEAPON_FARSIGHT);
+		bgunSetAmmoQuantity(AMMOTYPE_FARSIGHT, 80);
 	}
 
-	if (cheat_is_active(CHEAT_CLOAKINGDEVICE)) {
-		inv_give_single_weapon(WEAPON_CLOAKINGDEVICE);
+	if (cheatIsActive(CHEAT_CLOAKINGDEVICE)) {
+		invGiveSingleWeapon(WEAPON_CLOAKINGDEVICE);
 #if VERSION >= VERSION_PAL_FINAL
-		bgun_set_ammo_quantity(AMMOTYPE_CLOAK, TICKS(7200));
+		bgunSetAmmoQuantity(AMMOTYPE_CLOAK, TICKS(7200));
 #else
-		bgun_set_ammo_quantity(AMMOTYPE_CLOAK, 7200);
+		bgunSetAmmoQuantity(AMMOTYPE_CLOAK, 7200);
 #endif
 	}
 
-	if (cheat_is_active(CHEAT_PERFECTDARKNESS)) {
-		inv_give_single_weapon(WEAPON_NIGHTVISION);
+	if (cheatIsActive(CHEAT_PERFECTDARKNESS)) {
+		invGiveSingleWeapon(WEAPON_NIGHTVISION);
 	}
 
-	if (cheat_is_active(CHEAT_RTRACKER)) {
-		inv_give_single_weapon(WEAPON_RTRACKER);
+	if (cheatIsActive(CHEAT_RTRACKER)) {
+		invGiveSingleWeapon(WEAPON_RTRACKER);
 	}
 
-	if (cheat_is_active(CHEAT_ROCKETLAUNCHER)) {
-		inv_give_single_weapon(WEAPON_ROCKETLAUNCHER);
-		bgun_set_ammo_quantity(AMMOTYPE_ROCKET, 10);
+	if (cheatIsActive(CHEAT_ROCKETLAUNCHER)) {
+		invGiveSingleWeapon(WEAPON_ROCKETLAUNCHER);
+		bgunSetAmmoQuantity(AMMOTYPE_ROCKET, 10);
 	}
 
-	if (cheat_is_active(CHEAT_SNIPERRIFLE)) {
-		inv_give_single_weapon(WEAPON_SNIPERRIFLE);
-		bgun_set_ammo_quantity(AMMOTYPE_RIFLE, 200);
+	if (cheatIsActive(CHEAT_SNIPERRIFLE)) {
+		invGiveSingleWeapon(WEAPON_SNIPERRIFLE);
+		bgunSetAmmoQuantity(AMMOTYPE_RIFLE, 200);
 	}
 
-	if (cheat_is_active(CHEAT_XRAYSCANNER)) {
-		inv_give_single_weapon(WEAPON_XRAYSCANNER);
+	if (cheatIsActive(CHEAT_XRAYSCANNER)) {
+		invGiveSingleWeapon(WEAPON_XRAYSCANNER);
 	}
 
-	if (cheat_is_active(CHEAT_SUPERDRAGON)) {
-		inv_give_single_weapon(WEAPON_SUPERDRAGON);
-		bgun_set_ammo_quantity(AMMOTYPE_RIFLE, 200);
-		bgun_set_ammo_quantity(AMMOTYPE_DEVASTATOR, 20);
+	if (cheatIsActive(CHEAT_SUPERDRAGON)) {
+		invGiveSingleWeapon(WEAPON_SUPERDRAGON);
+		bgunSetAmmoQuantity(AMMOTYPE_RIFLE, 200);
+		bgunSetAmmoQuantity(AMMOTYPE_DEVASTATOR, 20);
 	}
 
-	if (cheat_is_active(CHEAT_LAPTOPGUN)) {
-		inv_give_single_weapon(WEAPON_LAPTOPGUN);
-		bgun_set_ammo_quantity(AMMOTYPE_SMG, 200);
+	if (cheatIsActive(CHEAT_LAPTOPGUN)) {
+		invGiveSingleWeapon(WEAPON_LAPTOPGUN);
+		bgunSetAmmoQuantity(AMMOTYPE_SMG, 200);
 	}
 
-	if (cheat_is_active(CHEAT_PHOENIX)) {
-		inv_give_single_weapon(WEAPON_PHOENIX);
-		bgun_set_ammo_quantity(AMMOTYPE_PISTOL, 200);
+	if (cheatIsActive(CHEAT_PHOENIX)) {
+		invGiveSingleWeapon(WEAPON_PHOENIX);
+		bgunSetAmmoQuantity(AMMOTYPE_PISTOL, 200);
 	}
 
 #if VERSION >= VERSION_NTSC_1_0
-	if (cheat_is_active(CHEAT_PSYCHOSISGUN) || cheat_is_active(CHEAT_ALLGUNS)) {
-		bgun_set_ammo_quantity(AMMOTYPE_PSYCHOSIS, 4);
+	if (cheatIsActive(CHEAT_PSYCHOSISGUN) || cheatIsActive(CHEAT_ALLGUNS)) {
+		bgunSetAmmoQuantity(AMMOTYPE_PSYCHOSIS, 4);
 
-		if (cheat_is_active(CHEAT_PSYCHOSISGUN)) {
-			inv_give_single_weapon(WEAPON_PSYCHOSISGUN);
+		if (cheatIsActive(CHEAT_PSYCHOSISGUN)) {
+			invGiveSingleWeapon(WEAPON_PSYCHOSISGUN);
 		}
 	}
 #else
-	if (cheat_is_active(CHEAT_PSYCHOSISGUN)) {
-		inv_give_single_weapon(WEAPON_PSYCHOSISGUN);
-		bgun_set_ammo_quantity(AMMOTYPE_PSYCHOSIS, 4);
+	if (cheatIsActive(CHEAT_PSYCHOSISGUN)) {
+		invGiveSingleWeapon(WEAPON_PSYCHOSISGUN);
+		bgunSetAmmoQuantity(AMMOTYPE_PSYCHOSIS, 4);
 	}
 #endif
 
-	if (cheat_is_active(CHEAT_PP9I)) {
-		inv_give_single_weapon(WEAPON_PP9I);
-		bgun_set_ammo_quantity(AMMOTYPE_PISTOL, 200);
+	if (cheatIsActive(CHEAT_PP9I)) {
+		invGiveSingleWeapon(WEAPON_PP9I);
+		bgunSetAmmoQuantity(AMMOTYPE_PISTOL, 200);
 	}
 
-	if (cheat_is_active(CHEAT_CC13)) {
-		inv_give_single_weapon(WEAPON_CC13);
-		bgun_set_ammo_quantity(AMMOTYPE_RIFLE, 200);
+	if (cheatIsActive(CHEAT_CC13)) {
+		invGiveSingleWeapon(WEAPON_CC13);
+#ifndef PLATFORM_N64 // give the correct ammo for port
+		bgunSetAmmoQuantity(AMMOTYPE_PISTOL, 200);
+#else
+		bgunSetAmmoQuantity(AMMOTYPE_RIFLE, 200);
+#endif
 	}
 
-	if (cheat_is_active(CHEAT_KL01313)) {
-		inv_give_single_weapon(WEAPON_KL01313);
-		bgun_set_ammo_quantity(AMMOTYPE_SMG, 200);
+	if (cheatIsActive(CHEAT_KL01313)) {
+		invGiveSingleWeapon(WEAPON_KL01313);
+		bgunSetAmmoQuantity(AMMOTYPE_SMG, 200);
 	}
 
-	if (cheat_is_active(CHEAT_KF7SPECIAL)) {
-		inv_give_single_weapon(WEAPON_KF7SPECIAL);
-		bgun_set_ammo_quantity(AMMOTYPE_RIFLE, 200);
+	if (cheatIsActive(CHEAT_KF7SPECIAL)) {
+		invGiveSingleWeapon(WEAPON_KF7SPECIAL);
+		bgunSetAmmoQuantity(AMMOTYPE_RIFLE, 200);
 	}
 
-	if (cheat_is_active(CHEAT_ZZT)) {
-		inv_give_single_weapon(WEAPON_ZZT);
-		bgun_set_ammo_quantity(AMMOTYPE_SMG, 200);
+	if (cheatIsActive(CHEAT_ZZT)) {
+		invGiveSingleWeapon(WEAPON_ZZT);
+		bgunSetAmmoQuantity(AMMOTYPE_SMG, 200);
 	}
 
-	if (cheat_is_active(CHEAT_DMC)) {
-		inv_give_single_weapon(WEAPON_DMC);
-		bgun_set_ammo_quantity(AMMOTYPE_SMG, 200);
+	if (cheatIsActive(CHEAT_DMC)) {
+		invGiveSingleWeapon(WEAPON_DMC);
+		bgunSetAmmoQuantity(AMMOTYPE_SMG, 200);
 	}
 
-	if (cheat_is_active(CHEAT_AR53)) {
-		inv_give_single_weapon(WEAPON_AR53);
-		bgun_set_ammo_quantity(AMMOTYPE_RIFLE, 200);
+	if (cheatIsActive(CHEAT_AR53)) {
+		invGiveSingleWeapon(WEAPON_AR53);
+		bgunSetAmmoQuantity(AMMOTYPE_RIFLE, 200);
 	}
 
-	if (cheat_is_active(CHEAT_RCP45)) {
-		inv_give_single_weapon(WEAPON_RCP45);
-		bgun_set_ammo_quantity(AMMOTYPE_SMG, 200);
+	if (cheatIsActive(CHEAT_RCP45)) {
+		invGiveSingleWeapon(WEAPON_RCP45);
+		bgunSetAmmoQuantity(AMMOTYPE_SMG, 200);
 	}
 
 	if (!hasdefaultweapon) {
 		g_DefaultWeapons[HAND_RIGHT] = WEAPON_UNARMED;
 	}
 
-	g_Vars.currentplayer->prop = prop_allocate();
+	g_Vars.currentplayer->prop = propAllocate();
 	g_Vars.currentplayer->prop->chr = NULL;
 	g_Vars.currentplayer->prop->type = PROPTYPE_PLAYER;
 
-	prop_activate(g_Vars.currentplayer->prop);
-	prop_enable(g_Vars.currentplayer->prop);
-	chr_allocate(g_Vars.currentplayer->prop, NULL);
+	propActivate(g_Vars.currentplayer->prop);
+	propEnable(g_Vars.currentplayer->prop);
+	chrInit(g_Vars.currentplayer->prop, NULL);
 
 	if (g_Vars.coopplayernum >= 0) {
 		g_Vars.currentplayer->prop->chr->team = TEAM_ALLY;
@@ -392,24 +396,24 @@ void player_reset(void)
 	}
 
 	if (haseyespy) {
-		player_init_eyespy();
+		playerInitEyespy();
 	}
 
 	if (g_NumSpawnPoints > 0) {
 		if (g_Vars.coopplayernum >= 0) {
-			turnanglerad = BADDTOR(360) - scenario_choose_spawn_location(30, &pos, rooms, g_Vars.currentplayer->prop);
+			turnanglerad = M_BADTAU - scenarioChooseSpawnLocation(30, &pos, rooms, g_Vars.currentplayer->prop);
 		} else if (g_Vars.antiplayernum >= 0) {
-			turnanglerad = BADDTOR(360) - scenario_choose_spawn_location(30, &pos, rooms, g_Vars.currentplayer->prop);
+			turnanglerad = M_BADTAU - scenarioChooseSpawnLocation(30, &pos, rooms, g_Vars.currentplayer->prop);
 		} else {
 			if (g_Vars.mplayerisrunning == 0) {
 				g_NumSpawnPoints = 1;
 			}
 
-			turnanglerad = BADDTOR(360) - scenario_choose_spawn_location(30, &pos, rooms, g_Vars.currentplayer->prop);
+			turnanglerad = M_BADTAU - scenarioChooseSpawnLocation(30, &pos, rooms, g_Vars.currentplayer->prop);
 		}
 	}
 
-	groundy = cd_find_ground_at_cyl_ctfril(&pos, 30, rooms,
+	groundy = cdFindGroundInfoAtCyl(&pos, 30, rooms,
 			&g_Vars.currentplayer->floorcol,
 			&g_Vars.currentplayer->floortype,
 			&g_Vars.currentplayer->floorflags,
@@ -419,28 +423,29 @@ void player_reset(void)
 	pos.y = g_Vars.currentplayer->vv_eyeheight + groundy;
 	g_Vars.currentplayer->vv_manground = groundy;
 	g_Vars.currentplayer->vv_ground = groundy;
-	g_Vars.currentplayer->vv_theta = BADRTOD4(turnanglerad);
+	g_Vars.currentplayer->vv_theta = (turnanglerad * 360.0f) / M_BADTAU;
 
-	player_reset_bond(&g_Vars.currentplayer->bond2, &pos);
+	playerResetBond(&g_Vars.currentplayer->bond2, &pos);
 
-	g_Vars.currentplayer->bond2.theta.x = -sinf(turnanglerad);
-	g_Vars.currentplayer->bond2.theta.y = 0;
-	g_Vars.currentplayer->bond2.theta.z = cosf(turnanglerad);
+	g_Vars.currentplayer->bond2.unk00.x = -sinf(turnanglerad);
+	g_Vars.currentplayer->bond2.unk00.y = 0;
+	g_Vars.currentplayer->bond2.unk00.z = cosf(turnanglerad);
+
 
 	g_Vars.currentplayer->prop->pos.f[0] = g_Vars.currentplayer->bondprevpos.f[0] = pos.f[0];
 	g_Vars.currentplayer->prop->pos.f[1] = g_Vars.currentplayer->bondprevpos.f[1] = pos.f[1];
 	g_Vars.currentplayer->prop->pos.f[2] = g_Vars.currentplayer->bondprevpos.f[2] = pos.f[2];
 
-	prop_deregister_rooms(g_Vars.currentplayer->prop);
+	propDeregisterRooms(g_Vars.currentplayer->prop);
 
 	g_Vars.currentplayer->prop->rooms[0] = rooms[0];
 	g_Vars.currentplayer->prop->rooms[1] = -1;
 
-	player_set_cam_properties_in_bounds(&pos,
-			&g_Vars.currentplayer->bond2.up,
-			&g_Vars.currentplayer->bond2.look, rooms[0]);
+	playerSetCamPropertiesWithRoom(&pos,
+			&g_Vars.currentplayer->bond2.unk28,
+			&g_Vars.currentplayer->bond2.unk1c, rooms[0]);
 
-	numchrs = chrs_get_num_slots();
+	numchrs = chrsGetNumSlots();
 
 	for (i = 0; i < numchrs; i++) {
 		chr = &g_ChrSlots[i];
@@ -450,10 +455,10 @@ void player_reset(void)
 		}
 	}
 
-	bmove_update_rooms(g_Vars.currentplayer);
+	bmoveUpdateRooms(g_Vars.currentplayer);
 
 	if (g_Vars.normmplayerisrunning) {
-		players_begin_mp_swirl();
+		playersBeginMpSwirl();
 	} else {
 		player0f0b9a20();
 	}
@@ -471,8 +476,7 @@ void player_reset(void)
 		g_Vars.aibuddies[i] = NULL;
 	}
 
-	player_choose_body_and_head(&bodynum, &headnum, NULL);
-
+	playerChooseBodyAndHead(&bodynum, &headnum, 0);
 	g_Vars.currentplayer->prop->chr->bodynum = bodynum;
 	g_Vars.currentplayer->prop->chr->headnum = headnum;
 }

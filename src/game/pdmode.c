@@ -2,7 +2,7 @@
 #include "constants.h"
 #include "game/pdmode.h"
 #include "game/bondgun.h"
-#include "game/gset.h"
+#include "game/game_0b0fd0.h"
 #include "game/inv.h"
 #include "game/playermgr.h"
 #include "game/options.h"
@@ -10,12 +10,12 @@
 #include "data.h"
 #include "types.h"
 
-f32 pdmode_get_enemy_reaction_speed(void)
+f32 pdmodeGetEnemyReactionSpeed(void)
 {
 	return 0;
 }
 
-f32 pdmode_get_enemy_health(void)
+f32 pdmodeGetEnemyHealth(void)
 {
 	if (g_MissionConfig.pdmode) {
 		return g_MissionConfig.pdmodehealthf;
@@ -24,7 +24,7 @@ f32 pdmode_get_enemy_health(void)
 	return 1;
 }
 
-f32 pdmode_get_enemy_damage(void)
+f32 pdmodeGetEnemyDamage(void)
 {
 	if (g_MissionConfig.pdmode) {
 		return g_MissionConfig.pdmodedamagef;
@@ -33,7 +33,7 @@ f32 pdmode_get_enemy_damage(void)
 	return 1;
 }
 
-f32 pdmode_get_enemy_accuracy(void)
+f32 pdmodeGetEnemyAccuracy(void)
 {
 	if (g_MissionConfig.pdmode) {
 		return g_MissionConfig.pdmodeaccuracyf;
@@ -47,7 +47,7 @@ void func0f01b148(u32 arg0)
 	var800624e0 = arg0;
 }
 
-void title_set_next_stage(s32 stagenum)
+void titleSetNextStage(s32 stagenum)
 {
 	g_TitleNextStage = stagenum;
 }

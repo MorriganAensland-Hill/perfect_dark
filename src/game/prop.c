@@ -12,7 +12,7 @@
 #include "game/floor.h"
 #include "game/ceil.h"
 #include "game/bondgun.h"
-#include "game/gset.h"
+#include "game/game_0b0fd0.h"
 #include "game/tex.h"
 #include "game/camera.h"
 #include "game/player.h"
@@ -30,7 +30,7 @@
 #include "game/mpstats.h"
 #include "bss.h"
 #include "lib/collision.h"
-#include "lib/portal.h"
+#include "lib/lib_17ce0.h"
 #include "lib/model.h"
 #include "lib/snd.h"
 #include "lib/rng.h"
@@ -54,14 +54,11 @@ u32 var8009cdbc;
 
 f32 g_AutoAimScale = 1;
 
-void prop_find_for_uplink(void);
-void props_defrag_room_props(void);
-
 /**
  * Populate g_Vars.onscreenprops. This is an array of prop pointers, filtered by
  * props that are on screen and sorted by distance descending (furthest first).
  */
-void props_sort(void)
+void propsSort(void)
 {
 	s32 count = 0;
 	struct prop *prop = g_Vars.activeprops;
@@ -112,9 +109,9 @@ void props_sort(void)
 }
 
 /**
- * Enable a prop. This is the opposite of disabling (see prop_disable below).
+ * Enable a prop. This is the opposite of disabling (see propDisable below).
  */
-void prop_enable(struct prop *prop)
+void propEnable(struct prop *prop)
 {
 	prop->flags |= PROPFLAG_ENABLED;
 }
@@ -127,7 +124,7 @@ void prop_enable(struct prop *prop)
  * Due to a probable bug, these props can be damaged by explosives which causes
  * them to become enabled.
  */
-void prop_disable(struct prop *prop)
+void propDisable(struct prop *prop)
 {
 	struct prop **ptr;
 
@@ -144,7 +141,7 @@ void prop_disable(struct prop *prop)
  * Allocate a prop. The prop is taken from the head of the freeprops list and
  * initialised.
  */
-struct prop *prop_allocate(void)
+struct prop *propAllocate(void)
 {
 	struct prop *prop = g_Vars.freeprops;
 
@@ -190,7 +187,7 @@ struct prop *prop_allocate(void)
  *
  * The prop is inserted to the head of the freeprops list.
  */
-void prop_free(struct prop *prop)
+void propFree(struct prop *prop)
 {
 	if (prop->type == PROPTYPE_CHR) {
 		g_Vars.propstates[prop->propstateindex].chrpropcount--;
@@ -209,11 +206,11 @@ void prop_free(struct prop *prop)
  * Insert the prop to the head of activeprops. The prop must not be in any list
  * prior to calling this function.
  *
- * If this function is being called from props_tick_player (which iterates active props)
+ * If this function is being called from propsTickPlayer (which iterates active props)
  * then the prop will do its next tick on the next frame, due to it being
  * inserted at the head.
  */
-void prop_activate(struct prop *prop)
+void propActivate(struct prop *prop)
 {
 	if (g_Vars.activeprops && g_Vars.activeprops != g_Vars.pausedprops) {
 		if (prop != g_Vars.activeprops && !prop->prev) {
@@ -239,11 +236,11 @@ void prop_activate(struct prop *prop)
 }
 
 /**
- * Similar to prop_activate, but the prop inserted to the tail of the activeprops
- * list. This makes the prop tick on the current frame if called from props_tick_player,
- * because props_tick_player iterates the activeprops list from head to tail.
+ * Similar to propActivate, but the prop inserted to the tail of the activeprops
+ * list. This makes the prop tick on the current frame if called from propsTickPlayer,
+ * because propsTickPlayer iterates the activeprops list from head to tail.
  */
-void prop_activate_this_frame(struct prop *prop)
+void propActivateThisFrame(struct prop *prop)
 {
 	if (g_Vars.activepropstail && g_Vars.activepropstail != g_Vars.pausedprops) {
 		if (prop != g_Vars.activepropstail && !prop->next) {
@@ -276,7 +273,7 @@ void prop_activate_this_frame(struct prop *prop)
 /**
  * Remove the prop from its current list (activeprops or pausedprops).
  */
-void prop_delist(struct prop *prop)
+void propDelist(struct prop *prop)
 {
 	if (prop->active) {
 		if (prop == g_Vars.activeprops) {
@@ -315,7 +312,7 @@ void prop_delist(struct prop *prop)
 	prop->backgroundedframes = 0;
 }
 
-void prop_reparent(struct prop *mover, struct prop *adopter)
+void propReparent(struct prop *mover, struct prop *adopter)
 {
 	mover->parent = adopter;
 
@@ -328,7 +325,7 @@ void prop_reparent(struct prop *mover, struct prop *adopter)
 	adopter->child = mover;
 }
 
-void prop_detach(struct prop *prop)
+void propDetach(struct prop *prop)
 {
 	if (prop->parent) {
 		if (prop == prop->parent->child) {
@@ -349,7 +346,7 @@ void prop_detach(struct prop *prop)
 	}
 }
 
-Gfx *prop_render(Gfx *gdl, struct prop *prop, bool xlupass)
+Gfx *propRender(Gfx *gdl, struct prop *prop, bool xlupass)
 {
 	switch (prop->type) {
 	case 0:
@@ -357,19 +354,19 @@ Gfx *prop_render(Gfx *gdl, struct prop *prop, bool xlupass)
 	case PROPTYPE_OBJ:
 	case PROPTYPE_DOOR:
 	case PROPTYPE_WEAPON:
-		gdl = obj_render(prop, gdl, xlupass);
+		gdl = objRender(prop, gdl, xlupass);
 		break;
 	case PROPTYPE_CHR:
-		gdl = chr_render(prop, gdl, xlupass);
+		gdl = chrRender(prop, gdl, xlupass);
 		break;
 	case PROPTYPE_PLAYER:
-		gdl = player_render(prop, gdl, xlupass);
+		gdl = playerRender(prop, gdl, xlupass);
 		break;
 	case PROPTYPE_EXPLOSION:
-		gdl = explosion_render(prop, gdl, xlupass);
+		gdl = explosionRender(prop, gdl, xlupass);
 		break;
 	case PROPTYPE_SMOKE:
-		gdl = smoke_render(prop, gdl, xlupass);
+		gdl = smokeRender(prop, gdl, xlupass);
 		break;
 	}
 
@@ -394,7 +391,7 @@ Gfx *prop_render(Gfx *gdl, struct prop *prop, bool xlupass)
  * terminal in the pre-bg pass and the screen in the post-bg pass, likely to
  * avoid Z-fighting issues.
  */
-Gfx *props_render(Gfx *gdl, RoomNum renderroomnum, s32 renderpass, RoomNum *roomnumsbyprop)
+Gfx *propsRender(Gfx *gdl, RoomNum renderroomnum, s32 renderpass, RoomNum *roomnumsbyprop)
 {
 	struct prop **ptr;
 	struct prop *prop;
@@ -414,7 +411,7 @@ Gfx *props_render(Gfx *gdl, RoomNum renderroomnum, s32 renderpass, RoomNum *room
 				if (prop) {
 					if ((renderpass == RENDERPASS_OPA_PREBG && (prop->flags & (PROPFLAG_DRAWONTOP | PROPFLAG_RENDERPOSTBG)) == 0)
 							|| (renderpass == RENDERPASS_OPA_POSTBG && (prop->flags & (PROPFLAG_DRAWONTOP | PROPFLAG_RENDERPOSTBG)) == PROPFLAG_RENDERPOSTBG)) {
-						gdl = prop_render(gdl, prop, false);
+						gdl = propRender(gdl, prop, false);
 					}
 				}
 			}
@@ -433,10 +430,10 @@ Gfx *props_render(Gfx *gdl, RoomNum renderroomnum, s32 renderpass, RoomNum *room
 
 				if (prop) {
 					if (prop->flags & PROPFLAG_DRAWONTOP) {
-						gdl = prop_render(gdl, prop, false);
+						gdl = propRender(gdl, prop, false);
 					}
 
-					gdl = prop_render(gdl, prop, true);
+					gdl = propRender(gdl, prop, true);
 				}
 			}
 
@@ -445,26 +442,26 @@ Gfx *props_render(Gfx *gdl, RoomNum renderroomnum, s32 renderpass, RoomNum *room
 		}
 	}
 
-	gdl = bg_scissor_to_viewport(gdl);
+	gdl = bgScissorToViewport(gdl);
 
 	return gdl;
 }
 
-void weapon_play_melee_miss_sound(s32 weaponnum, struct prop *prop)
+void weaponPlayWhooshSound(s32 weaponnum, struct prop *prop)
 {
 	s32 soundnum = -1;
 	f32 speed = 1;
 
 	if (weaponnum == WEAPON_TRANQUILIZER) {
-		soundnum = SFXNUM_04FB_RELOAD;
+		soundnum = SFX_RELOAD_04FB;
 		speed = 2.78f;
 	} else if (weaponnum == WEAPON_REAPER) {
 		// empty
 	} else if (weaponnum == WEAPON_COMBATKNIFE) {
-		soundnum = random() % 2 == 1 ? SFXMAP_8060 : SFXMAP_8061;
+		soundnum = rngRandom() % 2 == 1 ? SFX_8060 : SFX_8061;
 		speed = 1.05f - RANDOMFRAC() * 0.2f;
 	} else {
-		soundnum = SFXNUM_0069;
+		soundnum = SFX_0069;
 		speed = 1.0f - RANDOMFRAC() * 0.2f;
 	}
 
@@ -476,22 +473,22 @@ void weapon_play_melee_miss_sound(s32 weaponnum, struct prop *prop)
 			OSPri prevpri = osGetThreadPri(0);
 			osSetThreadPri(0, osGetThreadPri(&g_AudioManager.thread) + 1);
 
-			handle = snd_start(var80095200, soundnum, NULL, -1, -1, -1, -1, -1);
+			handle = sndStart(var80095200, soundnum, NULL, -1, -1, -1, -1, -1);
 
 			if (handle) {
-				sndp_post_event(handle, AL_SNDP_PITCH_EVT, *(s32 *)&speed);
+				audioPostEvent(handle, AL_SNDP_PITCH_EVT, *(s32 *)&speed);
 			}
 
 			osSetThreadPri(0, prevpri);
 #else
-			handle = snd_start(var80095200, soundnum, NULL, -1, -1, -1, -1, -1);
+			handle = sndStart(var80095200, soundnum, NULL, -1, -1, -1, -1, -1);
 
 			if (handle) {
-				sndp_post_event(handle, AL_SNDP_PITCH_EVT, *(s32 *)&speed);
+				audioPostEvent(handle, AL_SNDP_PITCH_EVT, *(s32 *)&speed);
 			}
 #endif
 		} else {
-			ps_create(NULL, prop, soundnum, -1,
+			psCreate(NULL, prop, soundnum, -1,
 					-1, 0, 0, PSTYPE_NONE, NULL, speed, NULL, -1, -1, -1, -1);
 		}
 	}
@@ -501,32 +498,32 @@ void weapon_play_melee_miss_sound(s32 weaponnum, struct prop *prop)
  * This is similar to the above but the sound numbers seem wrong...
  * Perhaps the function was from GE and not updated for PD.
  */
-void weapon_play_melee_hit_sound(s32 weaponnum, struct prop *prop)
+void func0f060bac(s32 weaponnum, struct prop *prop)
 {
 	s32 soundnum = -1;
 	f32 speed = 1;
 	struct sndstate *handle;
 
 	if (weaponnum == WEAPON_UNARMED) {
-		soundnum = SFXMAP_808F_THUD;
+		soundnum = SFX_THUD_808F;
 
-		if ((random() % 2) == 1) {
-			soundnum = SFXMAP_8094_THUD;
+		if ((rngRandom() % 2) == 1) {
+			soundnum = SFX_THUD_8094;
 		}
 
 		speed = 1.0f - RANDOMFRAC() * 0.1f;
 	} else if (weaponnum == WEAPON_TRANQUILIZER) {
-		soundnum = SFXNUM_04FB_RELOAD;
+		soundnum = SFX_RELOAD_04FB;
 		speed = 2.78f;
 	} else {
 #if VERSION >= VERSION_NTSC_1_0
-		soundnum = SFXMAP_8079_HIT_METAL;
+		soundnum = SFX_HIT_METAL_8079;
 		speed = 1.0f - RANDOMFRAC() * 0.1f;
 #else
-		soundnum = SFXMAP_8079_HIT_METAL;
+		soundnum = SFX_HIT_METAL_8079;
 
-		if (weaponnum != WEAPON_COMBATKNIFE && (random() % 2) == 1) {
-			soundnum = SFXMAP_807C_HATHIT;
+		if (weaponnum != WEAPON_COMBATKNIFE && (rngRandom() % 2) == 1) {
+			soundnum = SFX_HATHIT_807C;
 		}
 
 		speed = 1.0f - RANDOMFRAC() * 0.1f;
@@ -539,22 +536,22 @@ void weapon_play_melee_hit_sound(s32 weaponnum, struct prop *prop)
 			OSPri prevpri = osGetThreadPri(0);
 			osSetThreadPri(0, osGetThreadPri(&g_AudioManager.thread) + 1);
 
-			handle = snd_start(var80095200, soundnum, 0, -1, -1, -1, -1, -1);
+			handle = sndStart(var80095200, soundnum, 0, -1, -1, -1, -1, -1);
 
 			if (handle) {
-				sndp_post_event(handle, AL_SNDP_PITCH_EVT, *(s32 *)&speed);
+				audioPostEvent(handle, AL_SNDP_PITCH_EVT, *(s32 *)&speed);
 			}
 
 			osSetThreadPri(0, prevpri);
 #else
-			handle = snd_start(var80095200, soundnum, 0, -1, -1, -1, -1, -1);
+			handle = sndStart(var80095200, soundnum, 0, -1, -1, -1, -1, -1);
 
 			if (handle) {
-				sndp_post_event(handle, AL_SNDP_PITCH_EVT, *(s32 *)&speed);
+				audioPostEvent(handle, AL_SNDP_PITCH_EVT, *(s32 *)&speed);
 			}
 #endif
 		} else {
-			ps_create(NULL, prop, soundnum, -1, -1, 0, 0, PSTYPE_NONE, NULL, speed, NULL, -1, -1, -1, -1);
+			psCreate(NULL, prop, soundnum, -1, -1, 0, 0, PSTYPE_NONE, NULL, speed, NULL, -1, -1, -1, -1);
 		}
 	}
 }
@@ -567,7 +564,7 @@ void weapon_play_melee_hit_sound(s32 weaponnum, struct prop *prop)
  *
  * The return value is the final prop that was hit.
  */
-struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gunpos2d, struct coord *gundir2d, struct coord *gunpos3d, struct coord *gundir3d, u32 arg6, f32 distance, bool cheap)
+struct prop *shotCalculateHits(s32 handnum, bool isshooting, struct coord *gunpos2d, struct coord *gundir2d, struct coord *gunpos3d, struct coord *gundir3d, u32 arg6, f32 distance, bool cheap)
 {
 	u32 index;
 	struct prop **propptr;
@@ -584,7 +581,7 @@ struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gun
 	struct shotdata shotdata;
 	s32 i;
 	s32 s1 = 0;
-	struct funcdef *func;
+	struct weaponfunc *func;
 	bool laserstream = false;
 	bool ismelee = false;
 	f32 range = 200;
@@ -631,8 +628,8 @@ struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gun
 	shotdata.gundir2d.y = gundir2d->y;
 	shotdata.gundir2d.z = gundir2d->z;
 
-	gset_populate(handnum, &shotdata.gset);
-	func = gset_get_funcdef_by_gset(&shotdata.gset);
+	gsetPopulateFromCurrentPlayer(handnum, &shotdata.gset);
+	func = gsetGetWeaponFunction(&shotdata.gset);
 
 	if (func) {
 		if (isshooting && (func->flags & FUNCFLAG_EXPLOSIVESHELLS)) {
@@ -650,7 +647,7 @@ struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gun
 	}
 
 	if (isshooting) {
-		shotdata.penetration = gset_get_single_penetration(&shotdata.gset);
+		shotdata.penetration = gsetGetSinglePenetration(&shotdata.gset);
 	} else {
 		shotdata.penetration = 1;
 	}
@@ -669,7 +666,7 @@ struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gun
 		hitpos.z = shotdata.gunpos3d.z + shotdata.gundir3d.z * 300;
 	} else if (ismelee) {
 		if ((func->type & 0xff) == INVENTORYFUNCTYPE_MELEE) {
-			struct funcdef_melee *meleefunc = (struct funcdef_melee *) func;
+			struct weaponfunc_melee *meleefunc = (struct weaponfunc_melee *) func;
 			range = meleefunc->range;
 		}
 
@@ -682,8 +679,8 @@ struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gun
 		hitpos.z = shotdata.gunpos3d.z + shotdata.gundir3d.z * 65536;
 	}
 
-	portal_find_rooms(&playerprop->pos, &shotdata.gunpos3d, playerprop->rooms, spc8, 0, 0);
-	portal_find_rooms(&shotdata.gunpos3d, &hitpos, spc8, spb8, rooms, 30);
+	portal00018148(&playerprop->pos, &shotdata.gunpos3d, playerprop->rooms, spc8, 0, 0);
+	portal00018148(&shotdata.gunpos3d, &hitpos, spc8, spb8, rooms, 30);
 
 	if (shotdata.gset.weaponnum != WEAPON_FARSIGHT || g_Vars.currentplayer->visionmode != VISIONMODE_XRAY) {
 		roomsptr = rooms;
@@ -693,10 +690,10 @@ struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gun
 		}
 
 		// Note this is being appended to rooms
-		bg_get_force_onscreen_rooms(roomsptr, 100);
+		bgGetForceOnscreenRooms(roomsptr, 100);
 
 		for (i = 0; rooms[i] != -1; i++) {
-			if (bg_test_hit_in_room(&shotdata.gunpos3d, &hitpos, rooms[i], &sp664)) {
+			if (bgTestHitInRoom(&shotdata.gunpos3d, &hitpos, rooms[i], &sp664)) {
 				sp664.pos.x *= 1;
 				sp664.pos.y *= 1;
 				sp664.pos.z *= 1;
@@ -722,7 +719,7 @@ struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gun
 	}
 
 	if (hitbg && shotdata.gset.weaponnum != WEAPON_FARSIGHT) {
-		mtx4_transform_vec(cam_get_world_to_screen_mtxf(), &sp694.pos, &sp658);
+		mtx4TransformVec(camGetWorldToScreenMtxf(), &sp694.pos, &sp658);
 
 		if (shotdata.distance > -sp658.z) {
 			shotdata.distance = -sp658.z;
@@ -736,12 +733,12 @@ struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gun
 
 		if (prop) {
 			if (prop->type == PROPTYPE_CHR
-					|| (prop->type == PROPTYPE_PLAYER && prop->chr && playermgr_get_player_num_by_prop(prop) != g_Vars.currentplayernum)) {
+					|| (prop->type == PROPTYPE_PLAYER && prop->chr && playermgrGetPlayerNumByProp(prop) != g_Vars.currentplayernum)) {
 				if (!ismelee) {
-					chr_test_hit(prop, &shotdata, isshooting, cheap);
+					chrTestHit(prop, &shotdata, isshooting, cheap);
 				}
 			} else if (prop->type == PROPTYPE_OBJ || prop->type == PROPTYPE_WEAPON || prop->type == PROPTYPE_DOOR) {
-				obj_test_hit(prop, &shotdata);
+				objTestHit(prop, &shotdata);
 			}
 		}
 
@@ -779,9 +776,9 @@ struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gun
 				}
 
 				if (root->type == PROPTYPE_CHR || root->type == PROPTYPE_PLAYER) {
-					chr_hit(&shotdata, &shotdata.hits[i]);
+					chrHit(&shotdata, &shotdata.hits[i]);
 				} else if (hitprop->type == PROPTYPE_OBJ || hitprop->type == PROPTYPE_WEAPON || hitprop->type == PROPTYPE_DOOR) {
-					obj_hit(&shotdata, &shotdata.hits[i]);
+					objHit(&shotdata, &shotdata.hits[i]);
 				}
 
 				if (shotdata.hits[i].bulletproof) {
@@ -808,8 +805,8 @@ struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gun
 					exppos.y = shotdata.hits[i].pos.y;
 					exppos.z = shotdata.hits[i].pos.z;
 
-					los_find_final_room_exhaustive(&root->pos, root->rooms, &exppos, exprooms);
-					explosion_create_simple(0, &exppos, exprooms, EXPLOSIONTYPE_PHOENIX, g_Vars.currentplayernum);
+					func0f065e74(&root->pos, root->rooms, &exppos, exprooms);
+					explosionCreateSimple(0, &exppos, exprooms, EXPLOSIONTYPE_PHOENIX, g_Vars.currentplayernum);
 				}
 			}
 		}
@@ -818,7 +815,7 @@ struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gun
 			rooms2[0] = room;
 			rooms2[1] = -1;
 
-			texnum = lights_handle_hit(&shotdata.gunpos3d, &hitpos, room);
+			texnum = lightsHandleHit(&shotdata.gunpos3d, &hitpos, room);
 
 			if (sp694.texturenum < 0 || sp694.texturenum >= NUM_TEXTURES) {
 				surfacetype = g_SurfaceTypes[SURFACETYPE_DEFAULT];
@@ -832,14 +829,14 @@ struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gun
 				}
 			}
 
-			bgun_set_hit_pos(&sp694.pos);
+			bgunSetHitPos(&sp694.pos);
 
 			if (surfacetype->numwallhittexes > 0 && (!func || (func->type & 0xff) != INVENTORYFUNCTYPE_MELEE)) {
 				if (shotdata.gset.weaponnum != WEAPON_UNARMED
 						&& shotdata.gset.weaponnum != WEAPON_LASER
 						&& shotdata.gset.weaponnum != WEAPON_TRANQUILIZER
 						&& shotdata.gset.weaponnum != WEAPON_FARSIGHT) {
-					texnum = random() % surfacetype->numwallhittexes;
+					texnum = rngRandom() % surfacetype->numwallhittexes;
 					texnum = surfacetype->wallhittexes[texnum];
 
 					if (texnum >= WALLHITTEX_GLASS1 && texnum <= WALLHITTEX_GLASS3) {
@@ -848,34 +845,34 @@ struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gun
 					}
 
 					if (texnum) {
-						wallhit_create(&sp694.pos, &sp694.unk0c, &shotdata.gunpos3d, 0, 0, texnum, room, 0, -1, 0, g_Vars.currentplayer->prop->chr, sp694.unk2c == 2);
+						wallhitCreate(&sp694.pos, &sp694.unk0c, &shotdata.gunpos3d, 0, 0, texnum, room, 0, -1, 0, g_Vars.currentplayer->prop->chr, sp694.unk2c == 2);
 					}
 				}
 
-				bgun_play_bg_hit_sound(&shotdata.gset, &sp694.pos, sp694.texturenum, rooms2);
+				bgunPlayBgHitSound(&shotdata.gset, &sp694.pos, sp694.texturenum, rooms2);
 
 				if (explosiveshells) {
-					explosion_create_simple(NULL, &sp694.pos, rooms2, EXPLOSIONTYPE_PHOENIX, g_Vars.currentplayernum);
+					explosionCreateSimple(NULL, &sp694.pos, rooms2, EXPLOSIONTYPE_PHOENIX, g_Vars.currentplayernum);
 				} else {
-					if (!chr_is_using_paintball(g_Vars.currentplayer->prop->chr)) {
+					if (!chrIsUsingPaintball(g_Vars.currentplayer->prop->chr)) {
 						if (PLAYERCOUNT() >= 2) {
-							if ((random() % 8) == 0) {
-								smoke_create_simple(&sp694.pos, rooms2, SMOKETYPE_BULLETIMPACT);
+							if ((rngRandom() % 8) == 0) {
+								smokeCreateSimple(&sp694.pos, rooms2, SMOKETYPE_BULLETIMPACT);
 							}
 						} else {
 							if (texnum) {
-								explosion_create_simple(NULL, &sp694.pos, rooms2, EXPLOSIONTYPE_BULLETHOLE, g_Vars.currentplayernum);
+								explosionCreateSimple(NULL, &sp694.pos, rooms2, EXPLOSIONTYPE_BULLETHOLE, g_Vars.currentplayernum);
 							}
 						}
 					}
 
-					if (PLAYERCOUNT() <= 2 || g_Vars.lvupdate240 <= 8 || (random() % 4) == 0) {
+					if (PLAYERCOUNT() <= 2 || g_Vars.lvupdate240 <= 8 || (rngRandom() % 4) == 0) {
 						if (sp694.pos.x > -32000 && sp694.pos.x < 32000
 								&& sp694.pos.y > -32000 && sp694.pos.y < 32000
 								&& sp694.pos.z > -32000 && sp694.pos.z < 32000) {
 							sparktype = SPARKTYPE_DEFAULT;
 
-							if (chr_is_using_paintball(g_Vars.currentplayer->prop->chr)) {
+							if (chrIsUsingPaintball(g_Vars.currentplayer->prop->chr)) {
 								sparktype = SPARKTYPE_PAINT;
 							} else {
 								switch (shotdata.gset.weaponnum) {
@@ -903,13 +900,13 @@ struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gun
 								}
 							}
 
-							sparks_create(room, NULL, &sp694.pos, &shotdata.gundir3d, &sp694.unk0c, sparktype);
+							sparksCreate(room, NULL, &sp694.pos, &shotdata.gundir3d, &sp694.unk0c, sparktype);
 						}
 					}
 				}
 			}
 		} else {
-			bgun_set_hit_pos(&hitpos);
+			bgunSetHitPos(&hitpos);
 		}
 	} else if (ismelee) {
 		s32 hitindex;
@@ -926,17 +923,17 @@ struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gun
 		}
 
 		if (hitaprop || hitbg) {
-			weapon_play_melee_hit_sound(shotdata.gset.weaponnum, g_Vars.currentplayer->prop);
+			func0f060bac(shotdata.gset.weaponnum, g_Vars.currentplayer->prop);
 
 			if (shotdata.gset.weaponnum != WEAPON_UNARMED && shotdata.gset.weaponnum != WEAPON_TRANQUILIZER) {
 				if (hitaprop) {
-					sparks_create(shotdata.hits[hitindex].prop->rooms[0], NULL, &shotdata.hits[hitindex].pos, &shotdata.gundir3d, &shotdata.hits[hitindex].dir, SPARKTYPE_DEFAULT);
+					sparksCreate(shotdata.hits[hitindex].prop->rooms[0], NULL, &shotdata.hits[hitindex].pos, &shotdata.gundir3d, &shotdata.hits[hitindex].dir, SPARKTYPE_DEFAULT);
 				} else {
-					sparks_create(room, NULL, &sp694.pos, &shotdata.gundir3d, &sp694.unk0c, SPARKTYPE_DEFAULT);
+					sparksCreate(room, NULL, &sp694.pos, &shotdata.gundir3d, &sp694.unk0c, SPARKTYPE_DEFAULT);
 				}
 			}
 		} else {
-			weapon_play_melee_miss_sound(shotdata.gset.weaponnum, g_Vars.currentplayer->prop);
+			weaponPlayWhooshSound(shotdata.gset.weaponnum, g_Vars.currentplayer->prop);
 		}
 	} else {
 		// The caller is querying which prop is being aimed at rather than taking a shot.
@@ -976,42 +973,153 @@ struct prop *shot_calculate_hits(s32 handnum, bool isshooting, struct coord *gun
 	return result;
 }
 
-struct prop *prop_find_aiming_at(s32 handnum, bool isshooting, u32 context)
+#ifndef PLATFORM_N64
+
+/**
+ * Checks if the specified line of sight (gunpos3d - endpos3d) intersects any props or BG,
+ * using the same process as shotCalculateHits, except with no side effects and cheap = true.
+ * Returns true if nothing was hit.
+ */
+bool shotTestLos(struct coord *gunpos2d, struct coord *gundir2d, struct coord *gunpos3d, struct coord *gundir3d, struct coord *endpos3d)
+{
+	struct prop **propptr;
+	struct hitthing sp664;
+	struct coord delta;
+	struct shotdata shotdata;
+	s32 i;
+	RoomNum rooms[131];
+	RoomNum spc8[8];
+	RoomNum spb8[8];
+	RoomNum *roomsptr;
+	struct prop *prop;
+
+	shotdata.gunpos3d.x = gunpos3d->x;
+	shotdata.gunpos3d.y = gunpos3d->y;
+	shotdata.gunpos3d.z = gunpos3d->z;
+
+	shotdata.gunpos2d.x = gunpos2d->x;
+	shotdata.gunpos2d.y = gunpos2d->y;
+	shotdata.gunpos2d.z = gunpos2d->z;
+
+	shotdata.gundir3d.x = gundir3d->x;
+	shotdata.gundir3d.y = gundir3d->y;
+	shotdata.gundir3d.z = gundir3d->z;
+
+	shotdata.gundir2d.x = gundir2d->x;
+	shotdata.gundir2d.y = gundir2d->y;
+	shotdata.gundir2d.z = gundir2d->z;
+
+	// use falcon2 as a dummy weapon
+	shotdata.gset.weaponnum = WEAPON_FALCON2;
+	shotdata.gset.weaponfunc = 0;
+	shotdata.gset.unk063a = 0;
+	shotdata.gset.unk0639 = 0;
+
+	shotdata.penetration = 1;
+	shotdata.distance = 999999999.f;
+
+	for (i = 0; i < ARRAYCOUNT(shotdata.hits); i++) {
+		shotdata.hits[i].prop = NULL;
+		shotdata.hits[i].hitpart = 0;
+		shotdata.hits[i].bboxnode = NULL;
+	}
+
+	rooms[0] = rooms[130] = -1;
+	spc8[0] = g_Vars.currentplayer->cam_room;
+	spc8[1] = -1;
+	portal00018148(&shotdata.gunpos3d, endpos3d, spc8, spb8, rooms, 30);
+
+	roomsptr = rooms;
+
+	while (*roomsptr != -1) {
+		roomsptr++;
+	}
+
+	// Note this is being appended to rooms
+	bgGetForceOnscreenRooms(roomsptr, 100);
+
+	// Check for BG hits first
+	for (i = 0; rooms[i] != -1; i++) {
+		if (bgTestHitInRoom(&shotdata.gunpos3d, endpos3d, rooms[i], &sp664)) {
+			// check if it's far enough away from the end point
+			if (fabsf(sp664.pos.x - endpos3d->x) >= 0.1f ||
+					fabsf(sp664.pos.y - endpos3d->y) >= 0.1f ||
+					fabsf(sp664.pos.z - endpos3d->z) >= 0.1f) {
+				return false;
+			}
+		}
+	}
+
+	// didn't hit any bg, shrink distance to the line size
+	delta.x = endpos3d->x - gunpos3d->x;
+	delta.y = endpos3d->y - gunpos3d->y;
+	delta.z = endpos3d->z - gunpos3d->z;
+	shotdata.distance = sqrtf(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+
+	// and check props
+	propptr = g_Vars.endonscreenprops - 1;
+	while (propptr >= g_Vars.onscreenprops) {
+		prop = *propptr;
+		if (prop) {
+			if (prop->type == PROPTYPE_CHR
+					|| (prop->type == PROPTYPE_PLAYER && prop->chr && (g_Vars.in_cutscene || playermgrGetPlayerNumByProp(prop) != g_Vars.currentplayernum))) {
+				chrTestHit(prop, &shotdata, false, true);
+			} else if (prop->type == PROPTYPE_WEAPON || prop->type == PROPTYPE_DOOR
+					|| (prop->type == PROPTYPE_OBJ && prop->obj->type != OBJTYPE_GLASS && prop->obj->type != OBJTYPE_TINTEDGLASS)) {
+				objTestHit(prop, &shotdata);
+			}
+			if (shotdata.hits[0].prop) {
+				// ignore some glass parts and shields
+				if (shotdata.hits[0].slowsbullet && shotdata.hits[0].hitthing.texturenum != 10000) {
+					return false;
+				}
+			}
+		}
+		propptr--;
+	}
+
+	// did not hit anything
+	return true;
+}
+
+#endif
+
+struct prop *propFindAimingAt(s32 handnum, bool isshooting, u32 context)
 {
 	struct coord gundir2d;
 	struct coord gunpos2d;
 	struct coord gundir3d;
 	struct coord gunpos3d;
 
-	bgun_calculate_player_shot_spread(&gunpos2d, &gundir2d, handnum, context);
+	bgunCalculatePlayerShotSpread(&gunpos2d, &gundir2d, handnum, context);
 
-	if (context == FINDPROPCONTEXT_SHOOT && bgun_get_weapon_num(HAND_RIGHT) == WEAPON_REAPER) {
+	if (context == FINDPROPCONTEXT_SHOOT && bgunGetWeaponNum(HAND_RIGHT) == WEAPON_REAPER) {
 		gunpos2d.y -= 15 * RANDOMFRAC();
 	}
 
-	mtx4_transform_vec(cam_get_projection_mtxf(), &gunpos2d, &gunpos3d);
-	mtx4_rotate_vec(cam_get_projection_mtxf(), &gundir2d, &gundir3d);
+	mtx4TransformVec(camGetProjectionMtxF(), &gunpos2d, &gunpos3d);
+	mtx4RotateVec(camGetProjectionMtxF(), &gundir2d, &gundir3d);
 
-	return shot_calculate_hits(handnum, isshooting, &gunpos2d, &gundir2d, &gunpos3d, &gundir3d, 0, 4294836224, PLAYERCOUNT() >= 2);
+	return shotCalculateHits(handnum, isshooting, &gunpos2d, &gundir2d, &gunpos3d, &gundir3d, 0, 4294836224, PLAYERCOUNT() >= 2);
 }
 
-void shot_create(s32 handnum, bool isshooting, bool dorandom, s32 numshots, bool cheap)
+void shotCreate(s32 handnum, bool isshooting, bool dorandom, s32 numshots, bool cheap)
 {
 	struct coord gundir3d;
 	struct coord gunpos3d;
 	struct coord gundir2d;
 	struct coord gunpos2d;
 
-	bgun_calculate_player_shot_spread(&gunpos2d, &gundir2d, handnum, dorandom);
+	bgunCalculatePlayerShotSpread(&gunpos2d, &gundir2d, handnum, dorandom);
 
 	if (numshots > 0) {
-		mtx4_transform_vec(cam_get_projection_mtxf(), &gunpos2d, &gunpos3d);
-		mtx4_rotate_vec(cam_get_projection_mtxf(), &gundir2d, &gundir3d);
+		mtx4TransformVec(camGetProjectionMtxF(), &gunpos2d, &gunpos3d);
+		mtx4RotateVec(camGetProjectionMtxF(), &gundir2d, &gundir3d);
 
-		shot_calculate_hits(handnum, isshooting, &gunpos2d, &gundir2d, &gunpos3d, &gundir3d, 0, 4294836224, cheap);
+		shotCalculateHits(handnum, isshooting, &gunpos2d, &gundir2d, &gunpos3d, &gundir3d, 0, 4294836224, cheap);
 
 		if (numshots <= 1) {
-			bgun_set_last_shoot_info(&gunpos3d, &gundir3d, handnum);
+			bgunSetLastShootInfo(&gunpos3d, &gundir3d, handnum);
 		}
 	}
 }
@@ -1024,7 +1132,7 @@ void shot_create(s32 handnum, bool isshooting, bool dorandom, s32 numshots, bool
  * hits are added in the order of furtherest to closest. I'm unsure if this is
  * true though.
  */
-void hit_create(struct shotdata *shotdata, struct prop *prop, f32 hitdistance, s32 hitpart,
+void hitCreate(struct shotdata *shotdata, struct prop *prop, f32 hitdistance, s32 hitpart,
 		struct modelnode *bboxnode, struct hitthing *hitthing, s32 mtxindex, struct modelnode *dlnode,
 		struct model *model, bool slowsbullet, bool bulletproof, struct coord *arg11, struct coord *arg12)
 {
@@ -1127,7 +1235,7 @@ void hit_create(struct shotdata *shotdata, struct prop *prop, f32 hitdistance, s
 	}
 }
 
-void hand_inflict_melee_damage(s32 handnum, struct gset *gset, bool arg2)
+void handInflictMeleeDamage(s32 handnum, struct gset *gset, bool arg2)
 {
 	s32 cdtypes;
 	struct prop **ptr;
@@ -1173,7 +1281,11 @@ void hand_inflict_melee_damage(s32 handnum, struct gset *gset, bool arg2)
 			bool isglass = false;
 
 			if (obj && gset->weaponnum != WEAPON_TRANQUILIZER) {
-				isglass = obj->type == OBJTYPE_GLASS || obj->type == OBJTYPE_TINTEDGLASS;
+				isglass =
+#ifdef AVOID_UB
+					(prop->type == PROPTYPE_OBJ) &&
+#endif
+					(obj->type == OBJTYPE_GLASS || obj->type == OBJTYPE_TINTEDGLASS);
 			}
 
 			if (arg2) {
@@ -1181,7 +1293,7 @@ void hand_inflict_melee_damage(s32 handnum, struct gset *gset, bool arg2)
 			}
 
 			if (prop->type == PROPTYPE_CHR
-					|| (prop->type == PROPTYPE_PLAYER && prop->chr && playermgr_get_player_num_by_prop(prop) != g_Vars.currentplayernum)
+					|| (prop->type == PROPTYPE_PLAYER && prop->chr && playermgrGetPlayerNumByProp(prop) != g_Vars.currentplayernum)
 					|| isglass) {
 				f32 rangelimit = 60;
 				f32 distance;
@@ -1192,19 +1304,23 @@ void hand_inflict_melee_damage(s32 handnum, struct gset *gset, bool arg2)
 				f32 spfc[2];
 				f32 spf4[2];
 				struct model *model;
-				struct funcdef *func = gset_get_funcdef_by_gset(gset);
+				struct weaponfunc *func = gsetGetWeaponFunction(gset);
 
+#ifdef AVOID_UB
+				if (func && (func->type & 0xff) == INVENTORYFUNCTYPE_MELEE) {
+#else
 				if ((func->type & 0xff) == INVENTORYFUNCTYPE_MELEE) {
-					struct funcdef_melee *meleefunc = (struct funcdef_melee *)func;
+#endif
+					struct weaponfunc_melee *meleefunc = (struct weaponfunc_melee *)func;
 					rangelimit = meleefunc->range;
 				}
 
-				bgun_get_cross_pos(&x, &y);
+				bgunGetCrossPos(&x, &y);
 
-				spfc[0] = (x - cam_get_screen_left()) / (cam_get_screen_width() * 0.5f) - 1.0f;
-				spfc[1] = (y - cam_get_screen_top()) / (cam_get_screen_height() * 0.5f) - 1.0f;
-				spf4[0] = cam_get_screen_height() * 0.16666667163372f;
-				spf4[1] = cam_get_screen_height() * 0.125f;
+				spfc[0] = (x - camGetScreenLeft()) / (camGetScreenWidth() * 0.5f) - 1.0f;
+				spfc[1] = (y - camGetScreenTop()) / (camGetScreenHeight() * 0.5f) - 1.0f;
+				spf4[0] = camGetScreenHeight() * 0.16666667163372f;
+				spf4[1] = camGetScreenHeight() * 0.125f;
 
 				if (isglass) {
 					model = obj->model;
@@ -1212,7 +1328,7 @@ void hand_inflict_melee_damage(s32 handnum, struct gset *gset, bool arg2)
 					model = chr->model;
 				}
 
-				if (obj_is_any_node_in_range(model, &distance, &sp110, spfc, spf4)
+				if (func0f0679ac(model, &distance, &sp110, spfc, spf4)
 						&& sp110 <= 0
 						&& distance >= -rangelimit) {
 					cdtypes = CDTYPE_OBJS | CDTYPE_DOORS | CDTYPE_PATHBLOCKER | CDTYPE_BG;
@@ -1221,21 +1337,21 @@ void hand_inflict_melee_damage(s32 handnum, struct gset *gset, bool arg2)
 						cdtypes = 0;
 					}
 
-					if (cd_test_los_oobok_autoflags(&playerprop->pos, playerprop->rooms, &prop->pos, cdtypes)) {
+					if (cdTestLos04(&playerprop->pos, playerprop->rooms, &prop->pos, cdtypes)) {
 						if (isglass) {
 							struct model *model = obj->model;
 							struct coord gunpos2d;
 							struct coord gundir2d;
 							struct modelnode *node = NULL;
 
-							bgun_calculate_player_shot_spread(&gunpos2d, &gundir2d, handnum, true);
+							bgunCalculatePlayerShotSpread(&gunpos2d, &gundir2d, handnum, true);
 
-							if (model_test_for_hit(model, &gunpos2d, &gundir2d, &node) > 0) {
-								f32 damage = gset_get_damage(gset) * 2.5f;
+							if (modelTestForHit(model, &gunpos2d, &gundir2d, &node) > 0) {
+								f32 damage = gsetGetDamage(gset) * 2.5f;
 								skipthething = true;
-								bgun_play_glass_hit_sound(&playerprop->pos, playerprop->rooms, -1);
-								obj_damage_by_gunfire(obj, damage, &prop->pos, gset->weaponnum, g_Vars.currentplayernum);
-								obj_drop_recursively(prop, false);
+								bgunPlayGlassHitSound(&playerprop->pos, playerprop->rooms, -1);
+								objTakeGunfire(obj, damage, &prop->pos, gset->weaponnum, g_Vars.currentplayernum);
+								objDropRecursively(prop, false);
 							}
 						} else if (arg2) {
 							chr->chrflags |= CHRCFLAG_AVOIDING;
@@ -1247,26 +1363,26 @@ void hand_inflict_melee_damage(s32 handnum, struct gset *gset, bool arg2)
 							s32 side = -1;
 							s32 hitpart = HITPART_TORSO;
 
-							if (!chr_is_avoiding(chr)) {
-								bgun_calculate_player_shot_spread(&gunpos2d, &gundir2d, handnum, true);
+							if (!chrIsAvoiding(chr)) {
+								bgunCalculatePlayerShotSpread(&gunpos2d, &gundir2d, handnum, true);
 								skipthething = true;
-								mtx4_rotate_vec_in_place(cam_get_projection_mtxf(), &gundir2d);
-								bgun_play_prop_hit_sound(gset, prop, -1);
+								mtx4RotateVecInPlace(camGetProjectionMtxF(), &gundir2d);
+								bgunPlayPropHitSound(gset, prop, -1);
 
-								if (chr->model && chr_get_shield(chr) > 0) {
-									chr_calculate_shield_hit(chr, &playerprop->pos, &gundir2d, &node, &hitpart, &model, &side);
+								if (chr->model && chrGetShield(chr) > 0) {
+									chrCalculateShieldHit(chr, &playerprop->pos, &gundir2d, &node, &hitpart, &model, &side);
 								}
 
-								if (bmove_get_crouch_pos() == CROUCHPOS_DUCK) {
+								if (bmoveGetCrouchPos() == CROUCHPOS_DUCK) {
 									hitpart = HITPART_GENERAL;
-								} else if (bmove_get_crouch_pos() == CROUCHPOS_SQUAT) {
+								} else if (bmoveGetCrouchPos() == CROUCHPOS_SQUAT) {
 									hitpart = HITPART_GENERALHALF;
 								} else {
 									hitpart = HITPART_TORSO;
 								}
 
-								chr_damage_by_impact(chr, gset_get_damage(gset), &gundir2d, gset,
-										g_Vars.currentplayer->prop, hitpart, chr->prop, node, model, side, NULL);
+								func0f0341dc(chr, gsetGetDamage(gset), &gundir2d, gset,
+										g_Vars.currentplayer->prop, hitpart, chr->prop, node, model, side, 0);
 							}
 						}
 					}
@@ -1282,87 +1398,87 @@ void hand_inflict_melee_damage(s32 handnum, struct gset *gset, bool arg2)
 	}
 }
 
-void hand_tick_attack(s32 handnum)
+void handTickAttack(s32 handnum)
 {
 	if (g_Vars.currentplayer->hands[handnum].unk0d0f_02) {
 		s32 doit = true;
 
-		if (bgun_get_weapon_num(handnum) == WEAPON_REAPER
+		if (bgunGetWeaponNum(handnum) == WEAPON_REAPER
 				&& (g_Vars.currentplayer->hands[handnum].burstbullets % 3) != 1) {
 			doit = false;
 		}
 
 		if (doit) {
-			prop_find_aiming_at(handnum, true, FINDPROPCONTEXT_SHOOT);
+			propFindAimingAt(handnum, true, FINDPROPCONTEXT_SHOOT);
 		}
 
 		g_Vars.currentplayer->hands[handnum].unk0d0f_02 = false;
 	}
 
-	if (bgun_is_firing(handnum)) {
-		s32 type = bgun_get_attack_type(handnum);
-		s32 weaponnum = bgun_get_weapon_num(handnum);
+	if (bgunIsFiring(handnum)) {
+		s32 type = bgunGetAttackType(handnum);
+		s32 weaponnum = bgunGetWeaponNum(handnum);
 		struct gset gset;
 		bool cloaked;
 
 		g_Vars.currentplayer->hands[handnum].activatesecondary = false;
 
-		gset_populate(handnum, &gset);
-		fr_increment_num_shots();
+		gsetPopulateFromCurrentPlayer(handnum, &gset);
+		frIncrementNumShots();
 
 		switch (type) {
 		case HANDATTACKTYPE_SHOOT:
 			// Always execute if right hand, but if left hand then execute if
 			// right hand is not (ie. prevent firing both guns on the same tick)
-			if (handnum == HAND_RIGHT || !bgun_is_firing(HAND_RIGHT)) {
-				chr_uncloak_temporarily(g_Vars.currentplayer->prop->chr);
-				mpstats_increment_player_shotcount(&gset, SHOTREGION_TOTAL);
+			if (handnum == HAND_RIGHT || !bgunIsFiring(HAND_RIGHT)) {
+				chrUncloakTemporarily(g_Vars.currentplayer->prop->chr);
+				mpstatsIncrementPlayerShotCount2(&gset, 0);
 
 				if (weaponnum == WEAPON_SHOTGUN) {
-					shot_create(handnum, true, true, 1, true);
-					shot_create(handnum, true, true, 1, true);
-					shot_create(handnum, true, true, 1, true);
-					shot_create(handnum, true, true, 1, true);
-					shot_create(handnum, true, true, 1, true);
-					shot_create(handnum, true, true, 1, true);
+					shotCreate(handnum, true, true, 1, true);
+					shotCreate(handnum, true, true, 1, true);
+					shotCreate(handnum, true, true, 1, true);
+					shotCreate(handnum, true, true, 1, true);
+					shotCreate(handnum, true, true, 1, true);
+					shotCreate(handnum, true, true, 1, true);
 				} else {
-					shot_create(handnum, true, true, bgun_get_shots_to_take(handnum), g_Vars.mplayerisrunning);
+					shotCreate(handnum, true, true, bgunGetShotsToTake(handnum), g_Vars.mplayerisrunning);
 				}
 
-				mpstats_end_shot();
+				mpstats0f0b0520();
 			}
 			break;
 		case HANDATTACKTYPE_MELEE:
-			chr_uncloak_temporarily(g_Vars.currentplayer->prop->chr);
-			hand_inflict_melee_damage(handnum, &gset, false);
+			chrUncloakTemporarily(g_Vars.currentplayer->prop->chr);
+			handInflictMeleeDamage(handnum, &gset, false);
 			break;
 		case HANDATTACKTYPE_MELEENOUNCLOAK:
-			hand_inflict_melee_damage(handnum, &gset, true);
+			handInflictMeleeDamage(handnum, &gset, true);
 			break;
 		case HANDATTACKTYPE_DETONATE:
-			player_activate_remote_mine_detonator(g_Vars.currentplayernum);
+			playerActivateRemoteMineDetonator(g_Vars.currentplayernum);
 			break;
 		case HANDATTACKTYPE_UPLINK:
-			prop_find_for_uplink();
+			propFindForUplink();
 			break;
 		case HANDATTACKTYPE_BOOST:
-			bgun_apply_boost();
+			bgunApplyBoost();
 			break;
 		case HANDATTACKTYPE_REVERTBOOST:
-			bgun_revert_boost();
+			bgunRevertBoost();
 			break;
 		case HANDATTACKTYPE_SHOOTPROJECTILE:
-			bgun_create_fired_projectile(handnum);
+			bgunCreateFiredProjectile(handnum);
 			break;
 		case HANDATTACKTYPE_CROUCH:
 			if (g_Vars.currentplayer->crouchpos == CROUCHPOS_SQUAT) {
-				bwalk_adjust_crouch_pos(2);
+				bwalkAdjustCrouchPos(2);
 			} else {
-				bwalk_adjust_crouch_pos(-2);
+				bwalkAdjustCrouchPos(-2);
 			}
 			break;
 		case HANDATTACKTYPE_THROWPROJECTILE:
-			bgun_create_thrown_projectile(handnum, &gset);
+			bgunCreateThrownProjectile(handnum, &gset);
 			break;
 		case HANDATTACKTYPE_RCP120CLOAK:
 			cloaked = (g_Vars.currentplayer->devicesactive & DEVICE_CLOAKRCP120) != 0;
@@ -1379,15 +1495,15 @@ void hand_tick_attack(s32 handnum)
 	}
 }
 
-void hands_tick_attack(void)
+void handsTickAttack(void)
 {
 	if (g_Vars.lvupdate240 > 0) {
-		hand_tick_attack(HAND_RIGHT);
-		hand_tick_attack(HAND_LEFT);
+		handTickAttack(HAND_RIGHT);
+		handTickAttack(HAND_LEFT);
 	}
 }
 
-void prop_execute_tick_operation(struct prop *prop, s32 op)
+void propExecuteTickOperation(struct prop *prop, s32 op)
 {
 	if (op == TICKOP_FREE) {
 		if ((prop->type == PROPTYPE_WEAPON || prop->type == PROPTYPE_OBJ)
@@ -1402,34 +1518,34 @@ void prop_execute_tick_operation(struct prop *prop, s32 op)
 			obj->hidden &= ~OBJHFLAG_DELETING;
 			obj->hidden2 &= ~OBJH2FLAG_DESTROYED;
 
-			prop_deregister_rooms(prop);
-			prop_disable(prop);
+			propDeregisterRooms(prop);
+			propDisable(prop);
 
 			if (!prop->active) {
-				prop_unpause(prop);
+				propUnpause(prop);
 			}
 		} else {
 			// Prop doesn't regen, so free it
-			prop_deregister_rooms(prop);
-			prop_delist(prop);
-			prop_disable(prop);
-			prop_free(prop);
+			propDeregisterRooms(prop);
+			propDelist(prop);
+			propDisable(prop);
+			propFree(prop);
 		}
 	} else if (op == TICKOP_DISABLE) {
-		prop_deregister_rooms(prop);
-		prop_delist(prop);
-		prop_disable(prop);
+		propDeregisterRooms(prop);
+		propDelist(prop);
+		propDisable(prop);
 	} else if (op == TICKOP_GIVETOPLAYER) {
-		prop_deregister_rooms(prop);
-		prop_delist(prop);
-		prop_disable(prop);
-		obj_detach(prop);
-		obj_free_embedment_or_projectile(prop);
-		prop_reparent(prop, g_Vars.currentplayer->prop);
+		propDeregisterRooms(prop);
+		propDelist(prop);
+		propDisable(prop);
+		objDetach(prop);
+		objFreeEmbedmentOrProjectile(prop);
+		propReparent(prop, g_Vars.currentplayer->prop);
 	}
 }
 
-struct prop *prop_find_for_interact(bool usingeyespy)
+struct prop *propFindForInteract(bool usingeyespy)
 {
 	struct prop **ptr;
 	bool checkmore = true;
@@ -1445,10 +1561,10 @@ struct prop *prop_find_for_interact(bool usingeyespy)
 				// empty
 			} else if (prop->type == PROPTYPE_OBJ || prop->type == PROPTYPE_WEAPON) {
 				if (!usingeyespy) {
-					checkmore = obj_test_for_interact(prop);
+					checkmore = objTestForInteract(prop);
 				}
 			} else if (prop->type == PROPTYPE_DOOR) {
-				checkmore = door_test_for_interact(prop);
+				checkmore = doorTestForInteract(prop);
 			} else if (prop->type == PROPTYPE_EXPLOSION) {
 				// empty
 			} else if (prop->type == PROPTYPE_SMOKE) {
@@ -1468,7 +1584,7 @@ struct prop *prop_find_for_interact(bool usingeyespy)
  * While this function is called, it doesn't return anything and doesn't appear
  * to be useful. Uplinking still works when this function is empty.
  */
-void prop_find_for_uplink(void)
+void propFindForUplink(void)
 {
 	struct prop **ptr = g_Vars.endonscreenprops - 1;
 	bool checkmore = true;
@@ -1479,7 +1595,7 @@ void prop_find_for_uplink(void)
 
 		if (prop) {
 			if (prop->type == PROPTYPE_OBJ || prop->type == PROPTYPE_WEAPON) {
-				checkmore = obj_test_for_interact(prop);
+				checkmore = objTestForInteract(prop);
 			}
 
 			if (!checkmore) {
@@ -1491,21 +1607,21 @@ void prop_find_for_uplink(void)
 	}
 }
 
-bool current_player_interact(bool eyespy)
+bool currentPlayerInteract(bool eyespy)
 {
 	struct prop *prop;
 	bool op = TICKOP_NONE;
 
-	prop = prop_find_for_interact(eyespy);
+	prop = propFindForInteract(eyespy);
 
 	if (prop) {
 		switch (prop->type) {
 		case PROPTYPE_OBJ:
 		case PROPTYPE_WEAPON:
-			op = propobj_interact(prop);
+			op = propobjInteract(prop);
 			break;
 		case PROPTYPE_DOOR:
-			op = propdoor_interact(prop);
+			op = propdoorInteract(prop);
 			break;
 		case PROPTYPE_CHR:
 		case PROPTYPE_EYESPY:
@@ -1515,7 +1631,7 @@ bool current_player_interact(bool eyespy)
 			break;
 		}
 
-		prop_execute_tick_operation(prop, op);
+		propExecuteTickOperation(prop, op);
 
 		return false;
 	}
@@ -1530,10 +1646,10 @@ bool current_player_interact(bool eyespy)
  * The prop is removed from its current list (activeprops or pausedprops)
  * if any, and is then inserted to the head of pausedprops.
  */
-void prop_pause(struct prop *prop)
+void propPause(struct prop *prop)
 {
 	if ((prop->flags & PROPFLAG_DONTPAUSE) == 0) {
-		prop_delist(prop);
+		propDelist(prop);
 
 		if (g_Vars.pausedprops) {
 			prop->prev = g_Vars.pausedprops->prev;
@@ -1572,11 +1688,11 @@ void prop_pause(struct prop *prop)
  * The prop is removed from its current list (activeprops or pausedprops)
  * if any, and is then inserted to the head of activeprops.
  *
- * If this function is being called from props_tick_player (which iterates active props)
+ * If this function is being called from propsTickPlayer (which iterates active props)
  * then the prop will do its next tick on the next frame, due to it being
  * inserted at the head.
  */
-void prop_unpause(struct prop *prop)
+void propUnpause(struct prop *prop)
 {
 	if (prop == g_Vars.pausedprops) {
 		if (g_Vars.activeprops == g_Vars.pausedprops) {
@@ -1597,7 +1713,7 @@ void prop_unpause(struct prop *prop)
 	prop->next = NULL;
 	prop->prev = NULL;
 
-	prop_activate(prop);
+	propActivate(prop);
 }
 
 // 0 = will tick when backgrounded
@@ -1637,7 +1753,7 @@ u8 g_PausableObjs[] = {
 	0, // OBJECTIVETYPE_1F
 	0, // OBJECTIVETYPE_ENTERROOM
 	0, // OBJECTIVETYPE_THROWINROOM
-	0, // OBJECTIVETYPE_COPYGOLDENEYE
+	0, // OBJTYPE_22
 	0, // OBJTYPE_BRIEFING
 	1, // OBJTYPE_GASBOTTLE
 	1, // OBJTYPE_RENAMEOBJ
@@ -1649,7 +1765,7 @@ u8 g_PausableObjs[] = {
 	1, // OBJTYPE_SAFE
 	1, // OBJTYPE_SAFEITEM
 	0, // OBJTYPE_TANK
-	1, // OBJTYPE_CAMERAPRESET
+	1, // OBJTYPE_CAMERAPOS
 	1, // OBJTYPE_TINTEDGLASS
 	0, // OBJTYPE_LIFT
 	0, // OBJTYPE_CONDITIONALSCENERY
@@ -1698,7 +1814,7 @@ u8 g_PausableObjs[] = {
  * ensures that there aren't an uneven amount of props being updated on any
  * given frame, which helps give a consistent frame rate.
  */
-void props_tick_player(bool islastplayer)
+void propsTickPlayer(bool islastplayer)
 {
 	struct prop *prop;
 	struct prop *end;
@@ -1779,7 +1895,7 @@ void props_tick_player(bool islastplayer)
 
 	// Update the onscreen flags for all props
 	if (g_Vars.currentplayerindex == 0) {
-		// This is the first time props_tick_player has been called on this frame
+		// This is the first time propsTickPlayer has been called on this frame
 		prop = g_Vars.props;
 		end = &g_Vars.props[g_Vars.maxprops];
 
@@ -1802,7 +1918,7 @@ void props_tick_player(bool islastplayer)
 			prop->flags = flags;
 		}
 	} else {
-		// This is a subsequent call of props_tick_player on this frame
+		// This is a subsequent call of propsTickPlayer on this frame
 		prop = g_Vars.props;
 		end = &g_Vars.props[g_Vars.maxprops];
 
@@ -1916,12 +2032,12 @@ void props_tick_player(bool islastplayer)
 			if (prop->type == PROPTYPE_CHR) {
 				chr1 = prop->chr;
 
-				splat_tick_chr(prop);
+				splatTickChr(prop);
 
 				if (chr1 && chr1->aibot) {
-					op = bot_tick(prop);
+					op = botTick(prop);
 				} else {
-					op = chr_tick(prop);
+					op = chrTick(prop);
 				}
 
 				g_Vars.propstates[prop->propstateindex].foregroundchrpropcount++;
@@ -1929,14 +2045,14 @@ void props_tick_player(bool islastplayer)
 				g_Vars.propstates[prop->propstateindex].foregroundpropcount++;
 
 				if (prop->type == PROPTYPE_OBJ || prop->type == PROPTYPE_WEAPON || prop->type == PROPTYPE_DOOR) {
-					op = obj_tick_player(prop);
+					op = objTickPlayer(prop);
 				} else if (prop->type == PROPTYPE_EXPLOSION) {
-					op = explosion_tick_player(prop);
+					op = explosionTickPlayer(prop);
 				} else if (prop->type == PROPTYPE_SMOKE) {
-					op = smoke_tick_player(prop);
+					op = smokeTickPlayer(prop);
 				} else if (prop->type == PROPTYPE_PLAYER) {
-					splat_tick_chr(prop);
-					op = player_tick_third_person(prop);
+					splatTickChr(prop);
+					op = playerTickThirdPerson(prop);
 				}
 			}
 
@@ -1978,18 +2094,18 @@ void props_tick_player(bool islastplayer)
 				if (prop->type == PROPTYPE_CHR) {
 					chr2 = prop->chr;
 
-					splat_tick_chr(prop);
+					splatTickChr(prop);
 
 					if (chr2 && chr2->aibot) {
-						op = bot_tick(prop);
+						op = botTick(prop);
 					} else {
-						op = chr_tick(prop);
+						op = chrTick(prop);
 					}
 				} else if (prop->type == PROPTYPE_OBJ || prop->type == PROPTYPE_WEAPON || prop->type == PROPTYPE_DOOR) {
 					obj = prop->obj;
 
 					if (!g_PausableObjs[obj->type]) {
-						op = obj_tick_player(prop);
+						op = objTickPlayer(prop);
 					} else if (prop->timetoregen <= 0) {
 						// The prop does not regenerate. If we've done a full
 						// cycle of propstates while backgrounded and the prop
@@ -1997,17 +2113,17 @@ void props_tick_player(bool islastplayer)
 						prop->backgroundedframes++;
 
 						if (prop->backgroundedframes > g_Vars.numpropstates - 1) {
-							prop_pause(prop);
+							propPause(prop);
 							op = TICKOP_CHANGEDLIST;
 						}
 					}
 				} else if (prop->type == PROPTYPE_EXPLOSION) {
-					op = explosion_tick_player(prop);
+					op = explosionTickPlayer(prop);
 				} else if (prop->type == PROPTYPE_SMOKE) {
-					op = smoke_tick_player(prop);
+					op = smokeTickPlayer(prop);
 				} else if (prop->type == PROPTYPE_PLAYER) {
-					splat_tick_chr(prop);
-					op = player_tick_third_person(prop);
+					splatTickChr(prop);
+					op = playerTickThirdPerson(prop);
 				}
 
 				if (prop->lastupdateframe != g_Vars.propstates[runstateindex].lastupdateframe) {
@@ -2044,22 +2160,22 @@ void props_tick_player(bool islastplayer)
 
 				// Delisting and activating it again appends it to the active
 				// props list, which means it'll get ticked again on this frame.
-				prop_delist(prop);
-				prop_activate_this_frame(prop);
+				propDelist(prop);
+				propActivateThisFrame(prop);
 
 				if (done) {
 					next = prop;
 					done = false;
 				}
 			} else {
-				prop_execute_tick_operation(prop, op);
+				propExecuteTickOperation(prop, op);
 			}
 		}
 
 		prop = next;
 	}
 
-	// If this is the first time props_tick_player is being called on this frame,
+	// If this is the first time propsTickPlayer is being called on this frame,
 	// and we've completed a full cycle of the propstates, redistribute them.
 	// For each combination of background/foreground and chr/nonchr, take the
 	// propstates with the highest quantity of these props and move some to the
@@ -2223,15 +2339,15 @@ void props_tick_player(bool islastplayer)
 	g_Vars.propstates[runstateindex].lastupdateframe = g_Vars.updateframe;
 
 	if (islastplayer) {
-		alarm_tick();
-		ps_tick();
-		props_defrag_room_props();
+		alarmTick();
+		psTick();
+		propsDefragRoomProps();
 	}
 
-	chrs_reset_onscreen_doors();
+	chr0f02472c();
 }
 
-void props_tick_pad_effects(void)
+void propsTickPadEffects(void)
 {
 	s32 i;
 	struct pad pad;
@@ -2245,40 +2361,40 @@ void props_tick_pad_effects(void)
 		for (i = 0; i <= g_LastPadEffectIndex; i++) {
 			struct padeffectobj *effect = &g_PadEffects[i];
 
-			pad_unpack(effect->pad, PADFIELD_ROOM, &pad);
+			padUnpack(effect->pad, PADFIELD_ROOM, &pad);
 
-			if (bg_room_is_onscreen(pad.room)) {
+			if (bgRoomIsOnscreen(pad.room)) {
 				switch (effect->effect) {
 				case PADEFFECT_SPARKS:
 				case PADEFFECT_SPARKS2:
 					rooms[0] = pad.room;
 					rooms[1] = -1;
 
-					pad_unpack(effect->pad, PADFIELD_POS | PADFIELD_UP, &pad);
+					padUnpack(effect->pad, PADFIELD_POS | PADFIELD_UP, &pad);
 
 					up.x = -pad.up.x;
 					up.y = -pad.up.y;
 					up.z = -pad.up.z;
 
-					if ((random() % 2048) <= 50) {
-						sparks_create(rooms[0], NULL, &pad.pos, &up, &pad.up, SPARKTYPE_ENVIRONMENTAL1);
-						ps_create(NULL, NULL, ps_get_random_spark_sound(), -1, -1, 0, 0, PSTYPE_NONE, &pad.pos, -1, rooms, -1, -1, -1, -1);
+					if ((rngRandom() % 2048) <= 50) {
+						sparksCreate(rooms[0], NULL, &pad.pos, &up, &pad.up, SPARKTYPE_ENVIRONMENTAL1);
+						psCreate(NULL, NULL, psGetRandomSparkSound(), -1, -1, 0, 0, PSTYPE_NONE, &pad.pos, -1, rooms, -1, -1, -1, -1);
 					}
 
-					if ((random() % 2048) <= 15) {
-						sparks_create(rooms[0], NULL, &pad.pos, &up, &pad.up, SPARKTYPE_ENVIRONMENTAL1);
-						sparks_create(rooms[0], NULL, &pad.pos, &up, &pad.up, SPARKTYPE_ENVIRONMENTAL2);
-						ps_create(NULL, NULL, ps_get_random_spark_sound(), -1, -1, 0, 0, PSTYPE_NONE, &pad.pos, -1, rooms, -1, -1, -1, -1);
+					if ((rngRandom() % 2048) <= 15) {
+						sparksCreate(rooms[0], NULL, &pad.pos, &up, &pad.up, SPARKTYPE_ENVIRONMENTAL1);
+						sparksCreate(rooms[0], NULL, &pad.pos, &up, &pad.up, SPARKTYPE_ENVIRONMENTAL2);
+						psCreate(NULL, NULL, psGetRandomSparkSound(), -1, -1, 0, 0, PSTYPE_NONE, &pad.pos, -1, rooms, -1, -1, -1, -1);
 					}
 
-					if ((random() % 2048) <= 5) {
-						sparks_create(rooms[0], NULL, &pad.pos, &up, &pad.up, SPARKTYPE_ENVIRONMENTAL1);
-						sparks_create(rooms[0], NULL, &pad.pos, &up, &pad.up, SPARKTYPE_ENVIRONMENTAL3);
-						ps_create(NULL, NULL, ps_get_random_spark_sound(), -1, -1, 0, 0, PSTYPE_NONE, &pad.pos, -1, rooms, -1, -1, -1, -1);
+					if ((rngRandom() % 2048) <= 5) {
+						sparksCreate(rooms[0], NULL, &pad.pos, &up, &pad.up, SPARKTYPE_ENVIRONMENTAL1);
+						sparksCreate(rooms[0], NULL, &pad.pos, &up, &pad.up, SPARKTYPE_ENVIRONMENTAL3);
+						psCreate(NULL, NULL, psGetRandomSparkSound(), -1, -1, 0, 0, PSTYPE_NONE, &pad.pos, -1, rooms, -1, -1, -1, -1);
 					}
 					break;
 				case PADEFFECT_OUTROSMOKE:
-					if (g_Vars.tickmode != TICKMODE_CUTSCENE || !objective_is_all_complete()) {
+					if (g_Vars.tickmode != TICKMODE_CUTSCENE || !objectiveIsAllComplete()) {
 						// @bug: This should be a break rather than a return.
 						// Because of this, subsequent pad effects won't tick.
 						return;
@@ -2301,8 +2417,8 @@ void props_tick_pad_effects(void)
 					rooms2[0] = pad.room;
 					rooms2[1] = -1;
 
-					pad_unpack(effect->pad, PADFIELD_POS | PADFIELD_UP, &pad);
-					smoke_create_at_pad_effect(effect, &pad.pos, rooms2, type);
+					padUnpack(effect->pad, PADFIELD_POS | PADFIELD_UP, &pad);
+					smokeCreateAtPadEffect(effect, &pad.pos, rooms2, type);
 					break;
 				case PADEFFECT_01:
 					break;
@@ -2312,18 +2428,18 @@ void props_tick_pad_effects(void)
 	}
 }
 
-void prop_set_perim_enabled(struct prop *prop, s32 enable)
+void propSetPerimEnabled(struct prop *prop, s32 enable)
 {
 	if (prop->type == PROPTYPE_CHR) {
-		chr_set_perim_enabled(prop->chr, enable);
+		chrSetPerimEnabled(prop->chr, enable);
 	} else if (prop->type == PROPTYPE_PLAYER) {
-		player_set_perim_enabled(prop, enable);
+		playerSetPerimEnabled(prop, enable);
 	} else if (prop->type == PROPTYPE_OBJ || prop->type == PROPTYPE_DOOR || prop->type == PROPTYPE_WEAPON) {
-		obj_set_perim_enabled(prop, enable);
+		objSetPerimEnabled(prop, enable);
 	}
 }
 
-void props_test_for_pickup(void)
+void propsTestForPickup(void)
 {
 	s16 *propnumptr;
 	s32 i;
@@ -2334,14 +2450,14 @@ void props_test_for_pickup(void)
 	if (g_Vars.currentplayer->bondmovemode != MOVEMODE_CUTSCENE
 			&& !g_PlayerInvincible
 			&& g_Vars.currentplayer != g_Vars.anti) {
-		rooms_copy(g_Vars.currentplayer->prop->rooms, allrooms);
+		roomsCopy(g_Vars.currentplayer->prop->rooms, allrooms);
 
 		for (i = 0; g_Vars.currentplayer->prop->rooms[i] != -1; i++) {
-			bg_room_get_neighbours(g_Vars.currentplayer->prop->rooms[i], tmp, 10);
-			rooms_append(tmp, allrooms, 20);
+			bgRoomGetNeighbours(g_Vars.currentplayer->prop->rooms[i], tmp, 10);
+			roomsAppend(tmp, allrooms, 20);
 		}
 
-		room_get_props(allrooms, propnums, 256);
+		roomGetProps(allrooms, propnums, 256);
 		propnumptr = propnums;
 
 		while (*propnumptr >= 0) {
@@ -2356,10 +2472,10 @@ void props_test_for_pickup(void)
 			{
 				switch (prop->type) {
 				case PROPTYPE_OBJ:
-					op = obj_test_for_pickup(prop);
+					op = objTestForPickup(prop);
 					break;
 				case PROPTYPE_WEAPON:
-					op = weapon_test_for_pickup(prop);
+					op = weaponTestForPickup(prop);
 					break;
 				case PROPTYPE_DOOR:
 				case PROPTYPE_CHR:
@@ -2371,14 +2487,14 @@ void props_test_for_pickup(void)
 				}
 			}
 
-			prop_execute_tick_operation(prop, op);
+			propExecuteTickOperation(prop, op);
 
 			propnumptr++;
 		}
 	}
 }
 
-f32 prop_calculate_autoaim_score(struct prop *prop, struct coord *screenpos, f32 *xrange, f32 *yrange, f32 *aimpos, bool throughobjects, bool cangangsta, bool forcefullscreen)
+f32 func0f06438c(struct prop *prop, struct coord *arg1, f32 *arg2, f32 *arg3, f32 *arg4, bool throughobjects, bool cangangsta, s32 arg7)
 {
 	f32 spa0[2];
 	struct coord sp94;
@@ -2393,58 +2509,58 @@ f32 prop_calculate_autoaim_score(struct prop *prop, struct coord *screenpos, f32
 	f32 left;
 	f32 right;
 	f32 result = -2;
-	struct funcdef *func = gset_get_current_funcdef(HAND_RIGHT);
-	bool usefullscreen = forcefullscreen;
+	struct weaponfunc *func = currentPlayerGetWeaponFunction(HAND_RIGHT);
+	bool sp50 = arg7;
 	bool sp4c;
 	f32 sp48;
 	struct prop *playerprop;
 	s32 ok;
 
-	if (func && bgun_allows_fullscreen_autoaim()) {
-		usefullscreen = true;
+	if (func && bgun0f0a27c8()) {
+		sp50 = true;
 	}
 
-	if (usefullscreen) {
-		top = cam_get_screen_top();
-		bottom = cam_get_screen_top() + cam_get_screen_height();
-		left = cam_get_screen_left();
-		right = cam_get_screen_left() + cam_get_screen_width();
+	if (sp50) {
+		top = camGetScreenTop();
+		bottom = camGetScreenTop() + camGetScreenHeight();
+		left = camGetScreenLeft();
+		right = camGetScreenLeft() + camGetScreenWidth();
 	} else {
-		top = cam_get_screen_top() + cam_get_screen_height() * 0.175f;
-		bottom = cam_get_screen_top() + cam_get_screen_height() * 0.825f;
-		left = cam_get_screen_left() + cam_get_screen_width() * 0.25f;
-		right = cam_get_screen_left() + cam_get_screen_width() * 0.75f;
+		top = camGetScreenTop() + camGetScreenHeight() * 0.175f;
+		bottom = camGetScreenTop() + camGetScreenHeight() * 0.825f;
+		left = camGetScreenLeft() + camGetScreenWidth() * 0.25f;
+		right = camGetScreenLeft() + camGetScreenWidth() * 0.75f;
 	}
 
-	if (screenpos->z > -2.5f) {
+	if (arg1->z > -2.5f) {
 		return -1;
 	}
 
-	cam0f0b4d04(screenpos, spa0);
-	sp94.x = xrange[0];
-	sp94.y = screenpos->y;
-	sp94.z = screenpos->z;
+	cam0f0b4d04(arg1, spa0);
+	sp94.x = arg2[0];
+	sp94.y = arg1->y;
+	sp94.z = arg1->z;
 	cam0f0b4d04(&sp94, sp8c);
-	sp94.x = xrange[1];
-	sp94.y = screenpos->y;
-	sp94.z = screenpos->z;
+	sp94.x = arg2[1];
+	sp94.y = arg1->y;
+	sp94.z = arg1->z;
 	cam0f0b4d04(&sp94, sp84);
-	sp94.x = screenpos->x;
-	sp94.y = yrange[1];
-	sp94.z = screenpos->z;
+	sp94.x = arg1->x;
+	sp94.y = arg3[1];
+	sp94.z = arg1->z;
 	cam0f0b4d04(&sp94, sp7c);
-	sp94.x = screenpos->x;
-	sp94.y = yrange[0];
-	sp94.z = screenpos->z;
+	sp94.x = arg1->x;
+	sp94.y = arg3[0];
+	sp94.z = arg1->z;
 	cam0f0b4d04(&sp94, sp74);
 
 	if (sp74[1] >= top && bottom >= sp7c[1]) {
 		sp4c = false;
-		bgun_get_cross_pos(&sp70, &sp6c);
+		bgunGetCrossPos(&sp70, &sp6c);
 		sp8c[0] = floorf(sp8c[0]);
 		sp84[0] = ceilf(sp84[0]);
 
-		if (bmove_is_autoaim_x_enabled_for_current_weapon() || cangangsta) {
+		if (bmoveIsAutoAimXEnabledForCurrentWeapon() || cangangsta) {
 			if (sp8c[0] <= right && left <= sp84[0]) {
 				sp48 = (sp84[0] - sp8c[0]) * 1.5f;
 
@@ -2452,8 +2568,8 @@ f32 prop_calculate_autoaim_score(struct prop *prop, struct coord *screenpos, f32
 					sp48 = sp48 * g_AutoAimScale;
 				}
 
-				sp4c = cam_get_screen_left() + 0.5f * cam_get_screen_width() >= (sp8c[0] + sp84[0]) * 0.5f - sp48
-					&& cam_get_screen_left() + 0.5f * cam_get_screen_width() <= (sp8c[0] + sp84[0]) * 0.5f + sp48
+				sp4c = camGetScreenLeft() + 0.5f * camGetScreenWidth() >= (sp8c[0] + sp84[0]) * 0.5f - sp48
+					&& camGetScreenLeft() + 0.5f * camGetScreenWidth() <= (sp8c[0] + sp84[0]) * 0.5f + sp48
 					&& left <= spa0[0]
 					&& right >= spa0[0];
 			}
@@ -2464,14 +2580,14 @@ f32 prop_calculate_autoaim_score(struct prop *prop, struct coord *screenpos, f32
 		if (sp4c) {
 			playerprop = g_Vars.currentplayer->prop;
 
-			player_set_perim_enabled(playerprop, false);
+			playerSetPerimEnabled(playerprop, false);
 
 			if (throughobjects) {
-				ok = cd_test_los_oobok(&playerprop->pos, playerprop->rooms, &prop->pos,
+				ok = cdTestLos03(&playerprop->pos, playerprop->rooms, &prop->pos,
 						CDTYPE_DOORS | CDTYPE_PATHBLOCKER | CDTYPE_BG,
 						GEOFLAG_BLOCK_SHOOT);
 			} else {
-				ok = cd_test_los_oobok(&playerprop->pos, playerprop->rooms, &prop->pos,
+				ok = cdTestLos03(&playerprop->pos, playerprop->rooms, &prop->pos,
 						CDTYPE_OBJS | CDTYPE_DOORS | CDTYPE_PATHBLOCKER | CDTYPE_BG,
 						GEOFLAG_BLOCK_SHOOT);
 			}
@@ -2485,9 +2601,9 @@ f32 prop_calculate_autoaim_score(struct prop *prop, struct coord *screenpos, f32
 					value = bottom;
 				}
 
-				aimpos[1] = value;
+				arg4[1] = value;
 
-				if (bmove_is_autoaim_x_enabled_for_current_weapon() || cangangsta) {
+				if (bmoveIsAutoAimXEnabledForCurrentWeapon() || cangangsta) {
 					f32 value = spa0[0];
 
 					if (value < left) {
@@ -2496,63 +2612,63 @@ f32 prop_calculate_autoaim_score(struct prop *prop, struct coord *screenpos, f32
 						value = right;
 					}
 
-					aimpos[0] = value;
+					arg4[0] = value;
 				}
 
-				if (cam_get_screen_left() + 0.5f * cam_get_screen_width() >= sp8c[0]
-						&& cam_get_screen_left() + 0.5f * cam_get_screen_width() <= sp84[0]) {
+				if (camGetScreenLeft() + 0.5f * camGetScreenWidth() >= sp8c[0]
+						&& camGetScreenLeft() + 0.5f * camGetScreenWidth() <= sp84[0]) {
 					result = 1;
-				} else if (cam_get_screen_left() + 0.5f * cam_get_screen_width() >= sp8c[0]) {
-					result = 1 - ((cam_get_screen_left() + 0.5f * cam_get_screen_width()) - sp84[0]) / sp48;
+				} else if (camGetScreenLeft() + 0.5f * camGetScreenWidth() >= sp8c[0]) {
+					result = 1 - ((camGetScreenLeft() + 0.5f * camGetScreenWidth()) - sp84[0]) / sp48;
 				} else {
-					result = 1 - (sp8c[0] - (cam_get_screen_left() + 0.5f * cam_get_screen_width())) / sp48;
+					result = 1 - (sp8c[0] - (camGetScreenLeft() + 0.5f * camGetScreenWidth())) / sp48;
 				}
 			}
 
-			player_set_perim_enabled(playerprop, true);
+			playerSetPerimEnabled(playerprop, true);
 		}
 	}
 
 	return result;
 }
 
-void farsight_choose_target(void)
+void farsightChooseTarget(void)
 {
 	struct prop *besttarget = NULL;
 	f32 bestthing = 1;
 	f32 bestdist = -1;
-	s32 weaponnum = bgun_get_weapon_num(HAND_RIGHT);
+	s32 weaponnum = bgunGetWeaponNum(HAND_RIGHT);
 	s32 i;
 
 	if (weaponnum == WEAPON_FARSIGHT) {
-		s32 numchrs = chrs_get_num_slots();
+		s32 numchrs = chrsGetNumSlots();
 
 		for (i = numchrs - 1; i >= 0; i--) {
 			struct prop *prop = g_ChrSlots[i].prop;
 
 			if (prop && prop->chr) {
 				if ((prop->type == PROPTYPE_CHR && (prop->flags & PROPFLAG_ENABLED))
-						|| (prop->type == PROPTYPE_PLAYER && playermgr_get_player_num_by_prop(prop) != g_Vars.currentplayernum)) {
+						|| (prop->type == PROPTYPE_PLAYER && playermgrGetPlayerNumByProp(prop) != g_Vars.currentplayernum)) {
 					struct chrdata *chr = prop->chr;
 
 					if ((chr->chrflags & CHRCFLAG_UNEXPLODABLE) == 0
-							&& !chr_compare_teams(g_Vars.currentplayer->prop->chr, chr, COMPARE_FRIENDS)
+							&& !chrCompareTeams(g_Vars.currentplayer->prop->chr, chr, COMPARE_FRIENDS)
 							&& chr->actiontype != ACT_DIE
 							&& chr->actiontype != ACT_DRUGGEDDROP
 							&& chr->actiontype != ACT_DRUGGEDKO
 							&& chr->actiontype != ACT_DEAD
 							&& (chr->hidden & CHRHFLAG_CLOAKED) == 0
-							&& (prop->type != PROPTYPE_PLAYER || !g_Vars.players[playermgr_get_player_num_by_prop(prop)]->isdead)) {
-						f32 xdist = g_Vars.currentplayer->bond2.pos.x - prop->pos.x;
-						f32 ydist = g_Vars.currentplayer->bond2.pos.y - prop->pos.y;
-						f32 zdist = g_Vars.currentplayer->bond2.pos.z - prop->pos.z;
+							&& (prop->type != PROPTYPE_PLAYER || !g_Vars.players[playermgrGetPlayerNumByProp(prop)]->isdead)) {
+						f32 xdist = g_Vars.currentplayer->bond2.unk10.x - prop->pos.x;
+						f32 ydist = g_Vars.currentplayer->bond2.unk10.y - prop->pos.y;
+						f32 zdist = g_Vars.currentplayer->bond2.unk10.z - prop->pos.z;
 
 						f32 dist = sqrtf(xdist * xdist + ydist * ydist + zdist * zdist);
 
 						if (dist > 0) {
-							f32 thing = (xdist * g_Vars.currentplayer->bond2.look.f[0]
-									+ ydist * g_Vars.currentplayer->bond2.look.f[1]
-									+ zdist * g_Vars.currentplayer->bond2.look.f[2]) / dist;
+							f32 thing = (xdist * g_Vars.currentplayer->bond2.unk1c.f[0]
+									+ ydist * g_Vars.currentplayer->bond2.unk1c.f[1]
+									+ zdist * g_Vars.currentplayer->bond2.unk1c.f[2]) / dist;
 
 							if (thing < 0 && thing < bestthing) {
 								bestthing = thing;
@@ -2570,29 +2686,29 @@ void farsight_choose_target(void)
 	g_Vars.currentplayer->autoerasertarget = besttarget;
 }
 
-void autoaim_tick(void)
+void autoaimTick(void)
 {
 	struct prop *bestprop = NULL;
 	f32 aimpos[2] = {0, 0};
 	bool ismelee = false;
-	bool cangangsta = gset_has_weapon_flag(bgun_get_weapon_num(HAND_RIGHT), WEAPONFLAG_GANGSTA);
+	bool cangangsta = weaponHasFlag(bgunGetWeaponNum(HAND_RIGHT), WEAPONFLAG_GANGSTA);
 	bool iscmpsec = false;
-	struct funcdef *func = gset_get_current_funcdef(HAND_RIGHT);
+	struct weaponfunc *func = currentPlayerGetWeaponFunction(HAND_RIGHT);
 	s32 i;
 
 	if (func && (func->type & 0xff) == INVENTORYFUNCTYPE_MELEE) {
 		ismelee = true;
 	}
 
-	if (fr_is_in_training()) {
-		if (!fr_choose_farsight_target()) {
-			farsight_choose_target();
+	if (frIsInTraining()) {
+		if (!frChooseFarsightTarget()) {
+			farsightChooseTarget();
 		}
 	} else {
-		farsight_choose_target();
+		farsightChooseTarget();
 	}
 
-	if (bgun_get_weapon_num(HAND_RIGHT) == WEAPON_CMP150
+	if (bgunGetWeaponNum(HAND_RIGHT) == WEAPON_CMP150
 			&& g_Vars.currentplayer->hands[HAND_RIGHT].gset.weaponfunc == FUNC_SECONDARY) {
 		iscmpsec = true;
 	}
@@ -2606,10 +2722,10 @@ void autoaim_tick(void)
 					&& (trackedprop->x1 >= 0 || trackedprop->x2 >= 0)
 					&& (trackedprop->y1 >= 0 || trackedprop->y2 >= 0)) {
 				// Define the aim limits
-				f32 top = cam_get_screen_top() + cam_get_screen_height() * 0.125f;
-				f32 bottom = cam_get_screen_top() + cam_get_screen_height() * 0.875f;
-				f32 left = cam_get_screen_left() + cam_get_screen_width() * 0.125f;
-				f32 right = cam_get_screen_left() + cam_get_screen_width() * 0.875f;
+				f32 top = camGetScreenTop() + camGetScreenHeight() * 0.125f;
+				f32 bottom = camGetScreenTop() + camGetScreenHeight() * 0.875f;
+				f32 left = camGetScreenLeft() + camGetScreenWidth() * 0.125f;
+				f32 right = camGetScreenLeft() + camGetScreenWidth() * 0.875f;
 				struct chrdata *chr = NULL;
 
 				bestprop = trackedprop->prop;
@@ -2623,7 +2739,7 @@ void autoaim_tick(void)
 
 					if (bestprop->flags & PROPFLAG_ONTHISSCREENTHISTICK) {
 						struct defaultobj *obj = bestprop->obj;
-						Mtxf *mtx = model_get_root_mtx(obj->model);
+						Mtxf *mtx = modelGetRootMtx(obj->model);
 						struct coord spac;
 						spac.z = mtx->m[3][2];
 
@@ -2666,7 +2782,7 @@ void autoaim_tick(void)
 				// Don't use this prop if it's an undeployed eyespy, or if
 				// the trackedprop is outside of the aim limits
 				if (chr && chr->race == RACE_EYESPY) {
-					struct eyespy *eyespy = chr_to_eyespy(chr);
+					struct eyespy *eyespy = chrToEyespy(chr);
 
 					if (eyespy == NULL || !eyespy->deployed) {
 						bestprop = NULL;
@@ -2685,17 +2801,17 @@ void autoaim_tick(void)
 				break;
 			}
 		}
-	} else if ((bmove_is_autoaim_y_enabled_for_current_weapon()
-				|| bmove_is_autoaim_x_enabled_for_current_weapon()
+	} else if ((bmoveIsAutoAimYEnabledForCurrentWeapon()
+				|| bmoveIsAutoAimXEnabledForCurrentWeapon()
 				|| cangangsta) && !ismelee) {
 		// Standard auto aim
-		f32 bestscore = -1;
+		f32 bestthing = -1;
 		struct prop *prop;
-		struct coord screenpos;
-		f32 xrange[2];
-		f32 yrange[2];
+		struct coord sp94;
+		f32 sp8c[2];
+		f32 sp84[2];
 		struct chrdata *chr;
-		f32 thisaimpos[2];
+		f32 sp78[2];
 		struct prop **ptr = g_Vars.endonscreenprops - 1;
 
 		// Iterate onscreen props near to far
@@ -2704,24 +2820,24 @@ void autoaim_tick(void)
 
 			if (prop && prop->chr) {
 				if (prop->type == PROPTYPE_CHR
-						|| (prop->type == PROPTYPE_PLAYER && playermgr_get_player_num_by_prop(prop) != g_Vars.currentplayernum)) {
+						|| (prop->type == PROPTYPE_PLAYER && playermgrGetPlayerNumByProp(prop) != g_Vars.currentplayernum)) {
 					chr = prop->chr;
 
-					if (!chr_compare_teams(g_Vars.currentplayer->prop->chr, chr, COMPARE_FRIENDS)
-							&& (chr_get_held_prop(chr, HAND_RIGHT)
-								|| chr_get_held_prop(chr, HAND_LEFT)
+					if (!chrCompareTeams(g_Vars.currentplayer->prop->chr, chr, COMPARE_FRIENDS)
+							&& (chrGetHeldProp(chr, HAND_RIGHT)
+								|| chrGetHeldProp(chr, HAND_LEFT)
 								|| (chr->chrflags & CHRCFLAG_FORCEAUTOAIM)
 								|| chr->gunprop)
-							&& chr_calculate_autoaim(prop, &screenpos, xrange, yrange)) {
-						f32 score = prop_calculate_autoaim_score(prop, &screenpos, xrange, yrange, thisaimpos, false, cangangsta, 0);
+							&& chrCalculateAutoAim(prop, &sp94, sp8c, sp84)) {
+						f32 thing = func0f06438c(prop, &sp94, sp8c, sp84, sp78, false, cangangsta, 0);
 
-						if (score > bestscore) {
-							bestscore = score;
-							aimpos[0] = thisaimpos[0];
-							aimpos[1] = thisaimpos[1];
+						if (thing > bestthing) {
+							bestthing = thing;
+							aimpos[0] = sp78[0];
+							aimpos[1] = sp78[1];
 							bestprop = prop;
 
-							if (score >= 1) {
+							if (thing >= 1) {
 								break;
 							}
 						}
@@ -2734,18 +2850,18 @@ void autoaim_tick(void)
 	}
 
 	if (bestprop) {
-		if (bmove_is_autoaim_y_enabled_for_current_weapon() || iscmpsec) {
-			bmove_update_autoaim_y_prop(bestprop, (aimpos[1] - cam_get_screen_top()) / (cam_get_screen_height() * 0.5f) - 1);
+		if (bmoveIsAutoAimYEnabledForCurrentWeapon() || iscmpsec) {
+			bmoveUpdateAutoAimYProp(bestprop, (aimpos[1] - camGetScreenTop()) / (camGetScreenHeight() * 0.5f) - 1);
 		}
 
-		if (bmove_is_autoaim_x_enabled_for_current_weapon() || iscmpsec) {
-			bmove_update_autoaim_x_prop(bestprop, (aimpos[0] - cam_get_screen_left()) / (cam_get_screen_width() * 0.5f) - 1);
+		if (bmoveIsAutoAimXEnabledForCurrentWeapon() || iscmpsec) {
+			bmoveUpdateAutoAimXProp(bestprop, (aimpos[0] - camGetScreenLeft()) / (camGetScreenWidth() * 0.5f) - 1);
 		}
 
 		if (cangangsta) {
-			f32 xdist = g_Vars.currentplayer->bond2.pos.x - bestprop->pos.x;
-			f32 ydist = g_Vars.currentplayer->bond2.pos.y - bestprop->pos.y;
-			f32 zdist = g_Vars.currentplayer->bond2.pos.z - bestprop->pos.z;
+			f32 xdist = g_Vars.currentplayer->bond2.unk10.x - bestprop->pos.x;
+			f32 ydist = g_Vars.currentplayer->bond2.unk10.y - bestprop->pos.y;
+			f32 zdist = g_Vars.currentplayer->bond2.unk10.z - bestprop->pos.z;
 			f32 dist = sqrtf(xdist * xdist + ydist * ydist + zdist * zdist);
 
 			if (dist < 200) {
@@ -2758,14 +2874,14 @@ void autoaim_tick(void)
 		}
 	} else {
 		u32 stack;
-		bmove_update_autoaim_y_prop(NULL, 0);
-		bmove_update_autoaim_x_prop(NULL, 0);
+		bmoveUpdateAutoAimYProp(NULL, 0);
+		bmoveUpdateAutoAimXProp(NULL, 0);
 
 		g_Vars.currentplayer->gunctrl.gangsta = false;
 	}
 }
 
-u32 prop_door_get_cd_types(struct prop *prop)
+u32 propDoorGetCdTypes(struct prop *prop)
 {
 	struct doorobj *door = prop->door;
 	u32 types;
@@ -2785,7 +2901,7 @@ u32 prop_door_get_cd_types(struct prop *prop)
 	return types;
 }
 
-bool prop_is_of_cd_type(struct prop *prop, u32 types)
+bool propIsOfCdType(struct prop *prop, u32 types)
 {
 	bool result = true;
 
@@ -2807,7 +2923,7 @@ bool prop_is_of_cd_type(struct prop *prop, u32 types)
 		}
 
 		if ((types & CDTYPE_DOORS) == 0) {
-			if ((prop_door_get_cd_types(prop) & types) == 0) {
+			if ((propDoorGetCdTypes(prop) & types) == 0) {
 				result = false;
 			}
 		}
@@ -2815,7 +2931,7 @@ bool prop_is_of_cd_type(struct prop *prop, u32 types)
 		if ((types & CDTYPE_PLAYERS) == 0) {
 			result = false;
 		} else {
-			struct player *player = g_Vars.players[playermgr_get_player_num_by_prop(prop)];
+			struct player *player = g_Vars.players[playermgrGetPlayerNumByProp(prop)];
 
 			if (!player->bondperimenabled || (g_Vars.mplayerisrunning && player->isdead)) {
 				result = false;
@@ -2836,7 +2952,7 @@ bool prop_is_of_cd_type(struct prop *prop, u32 types)
 	} else if (prop->type == PROPTYPE_OBJ || prop->type == PROPTYPE_WEAPON) {
 		struct defaultobj *obj = prop->obj;
 
-		if (obj->geo == NULL) {
+		if (obj->unkgeo == NULL) {
 			result = false;
 		} else {
 			if ((types & CDTYPE_AIOPAQUE) && (obj->flags & OBJFLAG_AISEETHROUGH)) {
@@ -2875,7 +2991,7 @@ bool prop_is_of_cd_type(struct prop *prop, u32 types)
 	return result;
 }
 
-void rooms_copy(RoomNum *src, RoomNum *dst)
+void roomsCopy(RoomNum *src, RoomNum *dst)
 {
 	RoomNum *srcptr = src;
 	RoomNum *dstptr = dst;
@@ -2893,7 +3009,7 @@ void rooms_copy(RoomNum *src, RoomNum *dst)
 /**
  * Append newrooms to dstrooms without duplicates.
  */
-void rooms_append(RoomNum *newrooms, RoomNum *dstrooms, s32 maxlen)
+void roomsAppend(RoomNum *newrooms, RoomNum *dstrooms, s32 maxlen)
 {
 	s32 i;
 
@@ -2909,7 +3025,7 @@ void rooms_append(RoomNum *newrooms, RoomNum *dstrooms, s32 maxlen)
 	}
 }
 
-bool array_intersects(RoomNum *a, RoomNum *b)
+bool arrayIntersects(RoomNum *a, RoomNum *b)
 {
 	RoomNum *aptr = a;
 	RoomNum aval = *aptr;
@@ -2935,7 +3051,7 @@ bool array_intersects(RoomNum *a, RoomNum *b)
 	return false;
 }
 
-bool prop_try_add_to_chunk(s16 propnum, s32 chunkindex)
+bool propTryAddToChunk(s16 propnum, s32 chunkindex)
 {
 	s32 i;
 
@@ -2949,7 +3065,7 @@ bool prop_try_add_to_chunk(s16 propnum, s32 chunkindex)
 	return false;
 }
 
-s32 room_allocate_prop_list_chunk(s32 room, s32 prevchunkindex)
+s32 roomAllocatePropListChunk(s32 room, s32 prevchunkindex)
 {
 	s32 i;
 	s32 j;
@@ -2973,7 +3089,7 @@ s32 room_allocate_prop_list_chunk(s32 room, s32 prevchunkindex)
 	return -1;
 }
 
-void prop_register_room(struct prop *prop, RoomNum room)
+void propRegisterRoom(struct prop *prop, RoomNum room)
 {
 	s32 prev = -1;
 	s32 i;
@@ -2984,7 +3100,7 @@ void prop_register_room(struct prop *prop, RoomNum room)
 		s16 propnum = prop - g_Vars.props;
 
 		for (i = 0; chunkindex >= 0; i++) {
-			if (prop_try_add_to_chunk(propnum, chunkindex)) {
+			if (propTryAddToChunk(propnum, chunkindex)) {
 				return;
 			}
 
@@ -2993,15 +3109,15 @@ void prop_register_room(struct prop *prop, RoomNum room)
 		}
 
 		// Allocate a new chunk
-		chunkindex = room_allocate_prop_list_chunk(room, prev);
+		chunkindex = roomAllocatePropListChunk(room, prev);
 
 		if (chunkindex >= 0) {
-			prop_try_add_to_chunk(propnum, chunkindex);
+			propTryAddToChunk(propnum, chunkindex);
 		}
 	}
 }
 
-void prop_deregister_room(struct prop *prop, RoomNum room)
+void propDeregisterRoom(struct prop *prop, RoomNum room)
 {
 	bool removed = false;
 	s32 prev = -1;
@@ -3053,13 +3169,13 @@ void prop_deregister_room(struct prop *prop, RoomNum room)
  *
  * Room registration is used to look up props by room number.
  */
-void prop_deregister_rooms(struct prop *prop)
+void propDeregisterRooms(struct prop *prop)
 {
 	RoomNum *rooms = prop->rooms;
 	RoomNum room = *rooms;
 
 	while (room != -1) {
-		prop_deregister_room(prop, room);
+		propDeregisterRoom(prop, room);
 		rooms++;
 		room = *rooms;
 	}
@@ -3070,101 +3186,69 @@ void prop_deregister_rooms(struct prop *prop)
  *
  * Room registration is used to look up props by room number.
  */
-void prop_register_rooms(struct prop *prop)
+void propRegisterRooms(struct prop *prop)
 {
 	RoomNum *rooms = prop->rooms;
 	RoomNum room = *rooms;
 
 	while (room != -1) {
-		prop_register_room(prop, room);
+		propRegisterRoom(prop, room);
 		rooms++;
 		room = *rooms;
 	}
 }
 
-/**
- * Given a line from frompos to pos, use portals to get all rooms the line
- * intersects as well as the final room.
- *
- * If the line goes out of bounds, the intersecting list up until that point
- * will be returned.
- */
-void los_find_intersecting_rooms_properly(struct coord *frompos, RoomNum *fromrooms, struct coord *topos, RoomNum *finalroomsptr, RoomNum *intersecting, s32 maxintersecting)
+void func0f065d1c(struct coord *pos, RoomNum *rooms, struct coord *newpos, RoomNum *newrooms, RoomNum *morerooms, u32 arg5)
 {
-	RoomNum finalrooms[8];
-	s32 len;
+	RoomNum stackrooms[8];
+	s32 index;
 	s32 i;
 
-	portal_find_rooms(frompos, topos, fromrooms, finalrooms, intersecting, maxintersecting);
+	portal00018148(pos, newpos, rooms, stackrooms, morerooms, arg5);
 
-	len = 0;
+	index = 0;
 
-	for (i = 0; finalrooms[i] != -1; i++) {
-		if (bg_room_contains_coord(topos, finalrooms[i])) {
-			finalroomsptr[len] = finalrooms[i];
-			len++;
+	for (i = 0; stackrooms[i] != -1; i++) {
+		if (bgRoomContainsCoord(newpos, stackrooms[i])) {
+			newrooms[index] = stackrooms[i];
+			index++;
 		}
 	}
 
-	finalroomsptr[len] = -1;
+	newrooms[index] = -1;
 }
 
-/**
- * Given a line from frompos to topos, use portals to get the final room if both
- * pos coords are in bounds and there is visibility between the two.
- */
-void los_find_final_room_properly(struct coord *frompos, RoomNum *fromrooms, struct coord *topos, RoomNum *finalrooms)
+void func0f065dd8(struct coord *pos, RoomNum *rooms, struct coord *newpos, RoomNum *newrooms)
 {
-	los_find_intersecting_rooms_properly(frompos, fromrooms, topos, finalrooms, NULL, 0);
+	func0f065d1c(pos, rooms, newpos, newrooms, NULL, 0);
 }
 
-/**
- * Given a line from frompos to topos, use portals to get all rooms the line
- * intersects as well as the final room.
- *
- * If the line goes out of bounds, run the fast test to try and find the room
- * that topos is above and add it to both room lists.
- */
-void los_find_intersecting_rooms_exhaustive(struct coord *frompos, RoomNum *fromrooms, struct coord *topos, RoomNum *finalrooms, RoomNum *intersecting, s32 maxintersecting)
+void func0f065dfc(struct coord *pos, RoomNum *rooms, struct coord *newpos, RoomNum *newrooms, RoomNum *morerooms, u32 arg5)
 {
-	los_find_intersecting_rooms_properly(frompos, fromrooms, topos, finalrooms, intersecting, maxintersecting);
+	func0f065d1c(pos, rooms, newpos, newrooms, morerooms, arg5);
 
-	if (finalrooms[0] == -1) {
-		los_find_final_room_fast(frompos, fromrooms, topos, finalrooms);
+	if (newrooms[0] == -1) {
+		func0f065e98(pos, rooms, newpos, newrooms);
 
-		if (intersecting) {
-			rooms_append(finalrooms, intersecting, maxintersecting);
+		if (morerooms) {
+			roomsAppend(newrooms, morerooms, arg5);
 		}
 	}
 }
 
-/**
- * Given a line from frompos to topos, use portals to find the final room.
- *
- * If this fails (eg. because either pos is out of bounds)
- * then fall back to the fast single point test.
- */
-void los_find_final_room_exhaustive(struct coord *frompos, RoomNum *fromrooms, struct coord *topos, RoomNum *finalrooms)
+void func0f065e74(struct coord *pos, RoomNum *rooms, struct coord *newpos, RoomNum *newrooms)
 {
-	los_find_intersecting_rooms_exhaustive(frompos, fromrooms, topos, finalrooms, NULL, 0);
+	func0f065dfc(pos, rooms, newpos, newrooms, NULL, 0);
 }
 
-/**
- * Find a room for the given topos without taking any consideration into portals
- * or overlapping rooms.
- *
- * Populate finalrooms with the room that topos is in, if any.
- * Otherwise, populate finalrooms with the room that topos is above.
- * Otherwise, populate finalrooms with fromrooms.
- */
-void los_find_final_room_fast(struct coord *frompos, RoomNum *fromrooms, struct coord *topos, RoomNum *finalrooms)
+void func0f065e98(struct coord *pos, RoomNum *rooms, struct coord *pos2, RoomNum *dstrooms)
 {
 	RoomNum inrooms[21];
 	RoomNum aboverooms[21];
 	RoomNum *ptr = NULL;
 	s32 i;
 
-	bg_find_rooms_by_pos(topos, inrooms, aboverooms, 20, NULL);
+	bgFindRoomsByPos(pos2, inrooms, aboverooms, 20, NULL);
 
 	if (inrooms[0] != -1) {
 		ptr = inrooms;
@@ -3173,21 +3257,21 @@ void los_find_final_room_fast(struct coord *frompos, RoomNum *fromrooms, struct 
 	}
 
 	if (ptr) {
-		s32 room = cd_find_room_at_pos(topos, ptr);
+		s32 room = cdFindFloorRoomAtPos(pos2, ptr);
 
 		if (room > 0) {
-			finalrooms[0] = room;
-			finalrooms[1] = -1;
+			dstrooms[0] = room;
+			dstrooms[1] = -1;
 		} else {
-			finalrooms[0] = *ptr;
-			finalrooms[1] = -1;
+			dstrooms[0] = *ptr;
+			dstrooms[1] = -1;
 		}
 	} else {
-		for (i = 0; fromrooms[i] != -1; i++) {
-			finalrooms[i] = fromrooms[i];
+		for (i = 0; rooms[i] != -1; i++) {
+			dstrooms[i] = rooms[i];
 		}
 
-		finalrooms[i] = -1;
+		dstrooms[i] = -1;
 	}
 }
 
@@ -3202,7 +3286,7 @@ void los_find_final_room_fast(struct coord *frompos, RoomNum *fromrooms, struct 
  * to get 256 props in a small space without exhausing the memory of the
  * console, you could potentially achieve arbitrary code execution.
  */
-void room_get_props(RoomNum *rooms, s16 *propnums, s32 len)
+void roomGetProps(RoomNum *rooms, s16 *propnums, s32 len)
 {
 	s16 *writeptr = propnums;
 	RoomNum room;
@@ -3252,7 +3336,7 @@ void room_get_props(RoomNum *rooms, s16 *propnums, s32 len)
 	*writeptr = -1;
 }
 
-void props_defrag_room_props(void)
+void propsDefragRoomProps(void)
 {
 	s32 i;
 	s32 j;
@@ -3311,19 +3395,19 @@ void props_defrag_room_props(void)
 	}
 }
 
-void prop_debug_roomblocks(void)
+void func0f0661fc(void)
 {
 	// empty
 }
 
-void prop_get_bbox(struct prop *prop, f32 *radius, f32 *ymax, f32 *ymin)
+void propGetBbox(struct prop *prop, f32 *radius, f32 *ymax, f32 *ymin)
 {
 	if (prop->type == PROPTYPE_CHR) {
-		chr_get_bbox(prop, radius, ymax, ymin);
+		chrGetBbox(prop, radius, ymax, ymin);
 	} else if (prop->type == PROPTYPE_PLAYER) {
-		player_get_bbox(prop, radius, ymax, ymin);
+		playerGetBbox(prop, radius, ymax, ymin);
 	} else if (prop->type == PROPTYPE_OBJ || prop->type == PROPTYPE_DOOR) {
-		obj_get_bbox(prop, radius, ymax, ymin);
+		objGetBbox(prop, radius, ymax, ymin);
 	} else {
 		*radius = 0;
 		*ymin = 0;
@@ -3331,16 +3415,16 @@ void prop_get_bbox(struct prop *prop, f32 *radius, f32 *ymax, f32 *ymin)
 	}
 }
 
-bool prop_get_geometry(struct prop *prop, u8 **start, u8 **end)
+bool propUpdateGeometry(struct prop *prop, u8 **start, u8 **end)
 {
 	bool result = false;
 
 	if (prop->type == PROPTYPE_PLAYER) {
-		result = player_get_geometry(prop, start, end);
+		result = playerUpdateGeometry(prop, start, end);
 	} else if (prop->type == PROPTYPE_CHR) {
-		result = chr_get_geometry(prop, start, end);
+		result = chrUpdateGeometry(prop, start, end);
 	} else if (prop->type == PROPTYPE_OBJ || prop->type == PROPTYPE_DOOR) {
-		result = obj_get_geometry(prop, start, end);
+		result = objUpdateGeometry(prop, start, end);
 	}
 
 	return result;

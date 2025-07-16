@@ -10,14 +10,14 @@ glabel var7f1b76d0
 
 .text
 
-glabel portal_convert_coordinates
+glabel portalConvertCoordinates
 	mfc1   $t7, $f20
 	lui    $a3, %hi(g_Vars)
 	addiu  $a3, $a3, %lo(g_Vars)
 	lw     $a3, 0x284($a3)
 	lw     $a3, 0x1740($a3)
-	lui    $t0, %hi(g_BgQueue)
-	addiu  $t0, $t0, %lo(g_BgQueue)
+	lui    $t0, %hi(g_BgSnake)
+	addiu  $t0, $t0, %lo(g_BgSnake)
 	lui    $at, %hi(var7f1b76d0)
 	lwc1   $f13, %lo(var7f1b76d0)($at)
 	lwc1   $f12, 0xc($t0)
