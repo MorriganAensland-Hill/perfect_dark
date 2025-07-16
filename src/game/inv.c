@@ -2,7 +2,7 @@
 #include "constants.h"
 #include "game/cheats.h"
 #include "game/bondgun.h"
-#include "game/gset.h"
+#include "game/game_0b0fd0.h"
 #include "game/inv.h"
 #include "game/training.h"
 #include "game/lang.h"
@@ -11,7 +11,7 @@
 #include "data.h"
 #include "types.h"
 
-void inv_clear(void)
+void invClear(void)
 {
 	s32 i;
 
@@ -29,7 +29,7 @@ void inv_clear(void)
  * Subject is expected to initially be at the head of the list. It works by
  * swapping the subject with the item to its right as many times as needed.
  */
-void inv_sort_item(struct invitem *subject)
+void invSortItem(struct invitem *subject)
 {
 	struct invitem *candidate;
 	s32 subjweapon1 = -1;
@@ -93,13 +93,13 @@ void inv_sort_item(struct invitem *subject)
 	}
 }
 
-void inv_insert_item(struct invitem *item)
+void invInsertItem(struct invitem *item)
 {
 	if (item->type == INVITEMTYPE_PROP) {
 		struct prop *prop = item->type_prop.prop;
 
 		if (prop && prop->obj) {
-			struct textoverride *override = inv_get_text_override_for_obj(prop->obj);
+			struct textoverride *override = invGetTextOverrideForObj(prop->obj);
 			bool setflag = true;
 
 			if (override) {
@@ -137,11 +137,11 @@ void inv_insert_item(struct invitem *item)
 
 	g_Vars.currentplayer->weapons = item;
 
-	inv_sort_item(item);
-	inv_calculate_current_index();
+	invSortItem(item);
+	invCalculateCurrentIndex();
 }
 
-void inv_remove_item(struct invitem *item)
+void invRemoveItem(struct invitem *item)
 {
 	struct invitem *next = item->next;
 	struct invitem *prev = item->prev;
@@ -158,10 +158,10 @@ void inv_remove_item(struct invitem *item)
 	prev->next = next;
 	item->type = -1;
 
-	inv_calculate_current_index();
+	invCalculateCurrentIndex();
 }
 
-struct invitem *inv_find_unused_slot(void)
+struct invitem *invFindUnusedSlot(void)
 {
 	s32 i;
 
@@ -174,22 +174,22 @@ struct invitem *inv_find_unused_slot(void)
 	return NULL;
 }
 
-void inv_set_all_guns(bool enable)
+void invSetAllGuns(bool enable)
 {
 	s32 weaponnum;
 
 	g_Vars.currentplayer->equipallguns = enable;
-	inv_calculate_current_index();
-	weaponnum = inv_get_weapon_num_by_index(g_Vars.currentplayer->equipcuritem);
-	bgun_equip_weapon(weaponnum);
+	invCalculateCurrentIndex();
+	weaponnum = invGetWeaponNumByIndex(g_Vars.currentplayer->equipcuritem);
+	bgunEquipWeapon(weaponnum);
 }
 
-bool inv_has_all_guns(void)
+bool invHasAllGuns(void)
 {
 	return g_Vars.currentplayer->equipallguns;
 }
 
-struct invitem *inv_find_single_weapon(s32 weaponnum)
+struct invitem *invFindSingleWeapon(s32 weaponnum)
 {
 	struct invitem *first = g_Vars.currentplayer->weapons;
 	struct invitem *item = first;
@@ -209,12 +209,12 @@ struct invitem *inv_find_single_weapon(s32 weaponnum)
 	return NULL;
 }
 
-bool inv_has_single_weapon_exc_all_guns(s32 weaponnum)
+bool invHasSingleWeaponExcAllGuns(s32 weaponnum)
 {
-	return inv_find_single_weapon(weaponnum) != NULL;
+	return invFindSingleWeapon(weaponnum) != NULL;
 }
 
-struct invitem *inv_find_double_weapon(s32 weapon1, s32 weapon2)
+struct invitem *invFindDoubleWeapon(s32 weapon1, s32 weapon2)
 {
 	struct invitem *first = g_Vars.currentplayer->weapons;
 	struct invitem *item = first;
@@ -236,12 +236,12 @@ struct invitem *inv_find_double_weapon(s32 weapon1, s32 weapon2)
 	return NULL;
 }
 
-bool inv_has_double_weapon_exc_all_guns(s32 weapon1, s32 weapon2)
+bool invHasDoubleWeaponExcAllGuns(s32 weapon1, s32 weapon2)
 {
-	return inv_find_double_weapon(weapon1, weapon2) != NULL;
+	return invFindDoubleWeapon(weapon1, weapon2) != NULL;
 }
 
-bool inv_has_single_weapon_or_prop(s32 weaponnum)
+bool invHasSingleWeaponOrProp(s32 weaponnum)
 {
 	struct invitem *item = g_Vars.currentplayer->weapons;
 
@@ -276,17 +276,17 @@ bool inv_has_single_weapon_or_prop(s32 weaponnum)
 	return false;
 }
 
-s32 inv_add_one_if_cant_have_slayer(s32 index)
+s32 invAddOneIfCantHaveSlayer(s32 index)
 {
-	if (main_get_stage_num());
+	if (mainGetStageNum());
 
-	if (main_get_stage_num() != STAGE_ATTACKSHIP
-			&& main_get_stage_num() != STAGE_SKEDARRUINS
+	if (mainGetStageNum() != STAGE_ATTACKSHIP
+			&& mainGetStageNum() != STAGE_SKEDARRUINS
 			&& index >= WEAPON_SLAYER) {
 		index++;
 	}
 
-#if VERSION >= VERSION_JPN_FINAL
+#if (VERSION >= VERSION_JPN_FINAL) && defined(PLATFORM_N64)
 	if (index >= 26) {
 		index++;
 	}
@@ -295,22 +295,22 @@ s32 inv_add_one_if_cant_have_slayer(s32 index)
 	return index;
 }
 
-s32 current_stage_forbids_slayer(void)
+s32 currentStageForbidsSlayer(void)
 {
 	bool value = VERSION >= VERSION_JPN_FINAL ? 1 : 0;
 
-	if (main_get_stage_num() != STAGE_ATTACKSHIP && main_get_stage_num() != STAGE_SKEDARRUINS) {
+	if (mainGetStageNum() != STAGE_ATTACKSHIP && mainGetStageNum() != STAGE_SKEDARRUINS) {
 		value++;
 	}
 
 	return value;
 }
 
-bool inv_can_have_all_guns_weapon(s32 weaponnum)
+bool invCanHaveAllGunsWeapon(s32 weaponnum)
 {
 	bool canhave = true;
 
-#if VERSION == VERSION_JPN_FINAL
+#if (VERSION == VERSION_JPN_FINAL) && defined(PLATFORM_N64)
 	if (weaponnum == WEAPON_COMBATKNIFE) {
 		canhave = false;
 	}
@@ -321,7 +321,7 @@ bool inv_can_have_all_guns_weapon(s32 weaponnum)
 	}
 
 	// @bug: The stage conditions need an OR. This condition can never pass.
-	if ((main_get_stage_num() == STAGE_ATTACKSHIP && main_get_stage_num() == STAGE_SKEDARRUINS)
+	if ((mainGetStageNum() == STAGE_ATTACKSHIP && mainGetStageNum() == STAGE_SKEDARRUINS)
 			&& weaponnum == WEAPON_SLAYER) {
 		canhave = true;
 	}
@@ -329,18 +329,18 @@ bool inv_can_have_all_guns_weapon(s32 weaponnum)
 	return canhave;
 }
 
-bool inv_has_single_weapon_inc_all_guns(s32 weaponnum)
+bool invHasSingleWeaponIncAllGuns(s32 weaponnum)
 {
 	if (g_Vars.currentplayer->equipallguns &&
 			weaponnum && weaponnum <= WEAPON_PSYCHOSISGUN &&
-			inv_can_have_all_guns_weapon(weaponnum)) {
+			invCanHaveAllGunsWeapon(weaponnum)) {
 		return true;
 	}
 
-	return inv_has_single_weapon_exc_all_guns(weaponnum);
+	return invHasSingleWeaponExcAllGuns(weaponnum);
 }
 
-bool inv_has_double_weapon_inc_all_guns(s32 weapon1, s32 weapon2)
+bool invHasDoubleWeaponIncAllGuns(s32 weapon1, s32 weapon2)
 {
 	if (weapon2 == WEAPON_NONE) {
 		return true;
@@ -349,34 +349,34 @@ bool inv_has_double_weapon_inc_all_guns(s32 weapon1, s32 weapon2)
 	if (g_Vars.currentplayer->equipallguns &&
 			weapon1 <= WEAPON_PSYCHOSISGUN &&
 			weapon1 == weapon2 &&
-			gset_has_weapon_flag(weapon1, WEAPONFLAG_DUALWIELD) &&
-			inv_can_have_all_guns_weapon(weapon1)) {
+			weaponHasFlag(weapon1, WEAPONFLAG_DUALWIELD) &&
+			invCanHaveAllGunsWeapon(weapon1)) {
 		return true;
 	}
 
-	return inv_has_double_weapon_exc_all_guns(weapon1, weapon2);
+	return invHasDoubleWeaponExcAllGuns(weapon1, weapon2);
 }
 
-bool inv_give_single_weapon(s32 weaponnum)
+bool invGiveSingleWeapon(s32 weaponnum)
 {
-	fr_set_weapon_found(weaponnum);
+	frSetWeaponFound(weaponnum);
 
-	if (inv_has_single_weapon_exc_all_guns(weaponnum) == 0) {
+	if (invHasSingleWeaponExcAllGuns(weaponnum) == 0) {
 		struct invitem *item;
 
 		if (g_Vars.currentplayer->equipallguns &&
 				weaponnum <= WEAPON_PSYCHOSISGUN &&
-				inv_can_have_all_guns_weapon(weaponnum)) {
+				invCanHaveAllGunsWeapon(weaponnum)) {
 			return false;
 		}
 
-		item = inv_find_unused_slot();
+		item = invFindUnusedSlot();
 
 		if (item) {
 			item->type = INVITEMTYPE_WEAP;
 			item->type_weap.weapon1 = weaponnum;
 			item->type_weap.pickuppad = -1;
-			inv_insert_item(item);
+			invInsertItem(item);
 		}
 
 		return true;
@@ -385,17 +385,17 @@ bool inv_give_single_weapon(s32 weaponnum)
 	return false;
 }
 
-bool inv_give_double_weapon(s32 weapon1, s32 weapon2)
+bool invGiveDoubleWeapon(s32 weapon1, s32 weapon2)
 {
-	if (inv_has_double_weapon_exc_all_guns(weapon1, weapon2) == 0) {
-		if (gset_has_weapon_flag(weapon1, WEAPONFLAG_DUALWIELD)) {
-			struct invitem *item = inv_find_unused_slot();
+	if (invHasDoubleWeaponExcAllGuns(weapon1, weapon2) == 0) {
+		if (weaponHasFlag(weapon1, WEAPONFLAG_DUALWIELD)) {
+			struct invitem *item = invFindUnusedSlot();
 
 			if (item) {
 				item->type = INVITEMTYPE_DUAL;
 				item->type_dual.weapon1 = weapon1;
 				item->type_dual.weapon2 = weapon2;
-				inv_insert_item(item);
+				invInsertItem(item);
 			}
 
 			return true;
@@ -409,7 +409,7 @@ bool inv_give_double_weapon(s32 weapon1, s32 weapon2)
 	return false;
 }
 
-void inv_remove_item_by_num(s32 weaponnum)
+void invRemoveItemByNum(s32 weaponnum)
 {
 	if (g_Vars.currentplayer->weapons) {
 		// Begin iterating from the second item in the list. This is required
@@ -419,23 +419,23 @@ void inv_remove_item_by_num(s32 weaponnum)
 
 		while (true) {
 			// Have to preload this because item->next shouldn't be trusted
-			// after calling inv_remove_item()
+			// after calling invRemoveItem()
 			struct invitem *next = item->next;
 
 			if (item->type == INVITEMTYPE_PROP) {
 				struct prop *prop = item->type_prop.prop;
-				struct textoverride *override = inv_get_text_override_for_obj(prop->obj);
+				struct textoverride *override = invGetTextOverrideForObj(prop->obj);
 
 				if (override && override->weapon == weaponnum) {
-					inv_remove_item(item);
+					invRemoveItem(item);
 				}
 			} else if (item->type == INVITEMTYPE_WEAP) {
 				if (item->type_weap.weapon1 == weaponnum) {
-					inv_remove_item(item);
+					invRemoveItem(item);
 				}
 			} else if (item->type == INVITEMTYPE_DUAL) {
 				if (item->type_dual.weapon1 == weaponnum || item->type_dual.weapon2 == weaponnum) {
-					inv_remove_item(item);
+					invRemoveItem(item);
 				}
 			}
 
@@ -448,7 +448,7 @@ void inv_remove_item_by_num(s32 weaponnum)
 	}
 }
 
-bool inv_give_prop(struct prop *prop)
+bool invGiveProp(struct prop *prop)
 {
 	struct invitem *item;
 
@@ -456,25 +456,25 @@ bool inv_give_prop(struct prop *prop)
 	// (night vision is already there when using perfect darkness)
 	// Note that this check doesn't work on Investigation because it uses the
 	// IR specs model. See bug note in Investigation's setup file (setupear.c).
-	if (cheat_is_active(CHEAT_PERFECTDARKNESS)
+	if (cheatIsActive(CHEAT_PERFECTDARKNESS)
 			&& prop->type == PROPTYPE_OBJ
 			&& prop->obj
 			&& prop->obj->modelnum == MODEL_CHRNIGHTSIGHT) {
 		return true;
 	}
 
-	item = inv_find_unused_slot();
+	item = invFindUnusedSlot();
 
 	if (item) {
 		item->type = INVITEMTYPE_PROP;
 		item->type_prop.prop = prop;
-		inv_insert_item(item);
+		invInsertItem(item);
 	}
 
 	return true;
 }
 
-void inv_remove_prop(struct prop *prop)
+void invRemoveProp(struct prop *prop)
 {
 	if (g_Vars.currentplayer->weapons) {
 		struct invitem *item = g_Vars.currentplayer->weapons->next;
@@ -483,7 +483,7 @@ void inv_remove_prop(struct prop *prop)
 			struct invitem *next = item->next;
 
 			if (item->type == INVITEMTYPE_PROP && item->type_prop.prop == prop) {
-				inv_remove_item(item);
+				invRemoveItem(item);
 			}
 
 			if (item == g_Vars.currentplayer->weapons || !g_Vars.currentplayer->weapons) {
@@ -495,7 +495,7 @@ void inv_remove_prop(struct prop *prop)
 	}
 }
 
-s32 inv_give_weapons_by_prop(struct prop *prop)
+s32 invGiveWeaponsByProp(struct prop *prop)
 {
 	s32 numgiven = 0;
 
@@ -511,18 +511,29 @@ s32 inv_give_weapons_by_prop(struct prop *prop)
 			weaponnum = weapon->weaponnum;
 			otherweaponnum;
 
-			if (cheat_is_active(CHEAT_PERFECTDARKNESS) && weaponnum == WEAPON_NIGHTVISION) {
+#ifndef PLATFORM_N64
+			// always allow picking up a second gun if dual wield cheat is on
+			if (!g_Vars.normmplayerisrunning && cheatIsActive(CHEAT_DUALWIELDALLGUNS)) {
+				if (invHasSingleWeaponExcAllGuns(weaponnum) && !invHasDoubleWeaponExcAllGuns(weaponnum, weaponnum)) {
+					if (invGiveDoubleWeapon(weaponnum, weaponnum)) {
+						return 2;
+					}
+				}
+			}
+#endif
+
+			if (cheatIsActive(CHEAT_PERFECTDARKNESS) && weaponnum == WEAPON_NIGHTVISION) {
 				return 1;
 			}
 
-			if (inv_give_single_weapon(weaponnum)) {
+			if (invGiveSingleWeapon(weaponnum)) {
 				numgiven = 1;
 			}
 
 			if (g_Vars.normmplayerisrunning
-					&& gset_has_weapon_flag(weaponnum, WEAPONFLAG_DUALWIELD)
-					&& !inv_has_double_weapon_exc_all_guns(weaponnum, weaponnum)) {
-				struct invitem *invitem = inv_find_single_weapon(weaponnum);
+					&& weaponHasFlag(weaponnum, WEAPONFLAG_DUALWIELD)
+					&& !invHasDoubleWeaponExcAllGuns(weaponnum, weaponnum)) {
+				struct invitem *invitem = invFindSingleWeapon(weaponnum);
 
 				if (invitem) {
 					if (invitem->type_weap.pickuppad < 0) {
@@ -530,7 +541,7 @@ s32 inv_give_weapons_by_prop(struct prop *prop)
 							invitem->type_weap.pickuppad = obj->pad;
 						}
 					} else if (obj->pad >= 0 && invitem->type_weap.pickuppad != obj->pad) {
-						if (inv_give_double_weapon(weaponnum, weaponnum)) {
+						if (invGiveDoubleWeapon(weaponnum, weaponnum)) {
 							numgiven = 2;
 						} else {
 							numgiven = 0;
@@ -543,9 +554,9 @@ s32 inv_give_weapons_by_prop(struct prop *prop)
 
 			if (otherweapon) {
 				if (weapon->base.flags & OBJFLAG_WEAPON_LEFTHANDED) {
-					numgiven = inv_has_double_weapon_exc_all_guns(otherweapon->weaponnum, weaponnum) == 0;
+					numgiven = invHasDoubleWeaponExcAllGuns(otherweapon->weaponnum, weaponnum) == 0;
 				} else {
-					numgiven = inv_has_double_weapon_exc_all_guns(weaponnum, otherweapon->weaponnum) == 0;
+					numgiven = invHasDoubleWeaponExcAllGuns(weaponnum, otherweapon->weaponnum) == 0;
 				}
 
 				weapon->dualweapon->dualweaponnum = weaponnum;
@@ -553,13 +564,13 @@ s32 inv_give_weapons_by_prop(struct prop *prop)
 				weapon->dualweapon = NULL;
 			} else if (weapon->dualweaponnum >= 0) {
 				if (weapon->base.flags & OBJFLAG_WEAPON_LEFTHANDED) {
-					if (inv_give_double_weapon(weapon->dualweaponnum, weaponnum)) {
+					if (invGiveDoubleWeapon(weapon->dualweaponnum, weaponnum)) {
 						numgiven = 2;
 					} else {
 						numgiven = 0;
 					}
 				} else {
-					if (inv_give_double_weapon(weaponnum, weapon->dualweaponnum)) {
+					if (invGiveDoubleWeapon(weaponnum, weapon->dualweaponnum)) {
 						numgiven = 2;
 					} else {
 						numgiven = 0;
@@ -572,7 +583,7 @@ s32 inv_give_weapons_by_prop(struct prop *prop)
 	return numgiven;
 }
 
-void inv_choose_cycle_forward_weapon(s32 *ptr1, s32 *ptr2, bool arg2)
+void invChooseCycleForwardWeapon(s32 *ptr1, s32 *ptr2, bool arg2)
 {
 	s32 weapon1 = *ptr1;
 	s32 weapon2 = *ptr2;
@@ -580,7 +591,7 @@ void inv_choose_cycle_forward_weapon(s32 *ptr1, s32 *ptr2, bool arg2)
 	if (g_Vars.currentplayer->equipallguns) {
 		s32 candidate = *ptr1;
 
-		if (gset_has_weapon_flag(*ptr1, WEAPONFLAG_DUALWIELD) && *ptr2 != *ptr1) {
+		if (weaponHasFlag(*ptr1, WEAPONFLAG_DUALWIELD) && *ptr2 != *ptr1) {
 			// Switching to dual from single
 			weapon1 = *ptr1;
 			weapon2 = *ptr1;
@@ -593,7 +604,7 @@ void inv_choose_cycle_forward_weapon(s32 *ptr1, s32 *ptr2, bool arg2)
 					candidate = (candidate + 1) % NUM_CYCLEABLE_WEAPONS;
 				}
 
-				if ((!arg2 || bgun0f0a1a10(candidate)) && inv_can_have_all_guns_weapon(candidate)) {
+				if ((!arg2 || bgun0f0a1a10(candidate)) && invCanHaveAllGunsWeapon(candidate)) {
 					weapon1 = candidate;
 					weapon2 = WEAPON_NONE;
 					break;
@@ -640,7 +651,7 @@ void inv_choose_cycle_forward_weapon(s32 *ptr1, s32 *ptr2, bool arg2)
 	*ptr2 = weapon2;
 }
 
-void inv_choose_cycle_back_weapon(s32 *ptr1, s32 *ptr2, bool arg2)
+void invChooseCycleBackWeapon(s32 *ptr1, s32 *ptr2, bool arg2)
 {
 	s32 weapon1 = *ptr1;
 	s32 weapon2 = *ptr2;
@@ -648,7 +659,7 @@ void inv_choose_cycle_back_weapon(s32 *ptr1, s32 *ptr2, bool arg2)
 	if (g_Vars.currentplayer->equipallguns) {
 		s32 candidate = *ptr1;
 
-		if (gset_has_weapon_flag(weapon1, WEAPONFLAG_DUALWIELD) && weapon1 == weapon2) {
+		if (weaponHasFlag(weapon1, WEAPONFLAG_DUALWIELD) && weapon1 == weapon2) {
 			// Switching from dual to single
 			weapon1 = candidate;
 			weapon2 = WEAPON_NONE;
@@ -660,9 +671,9 @@ void inv_choose_cycle_back_weapon(s32 *ptr1, s32 *ptr2, bool arg2)
 				if (candidate == WEAPON_NONE) {
 					candidate = (candidate + NUM_CYCLEABLE_WEAPONS - 1) % NUM_CYCLEABLE_WEAPONS;
 				}
-			} while ((arg2 && !bgun0f0a1a10(candidate)) || !inv_can_have_all_guns_weapon(candidate));
+			} while ((arg2 && !bgun0f0a1a10(candidate)) || !invCanHaveAllGunsWeapon(candidate));
 
-			if (gset_has_weapon_flag(candidate, WEAPONFLAG_DUALWIELD)) {
+			if (weaponHasFlag(candidate, WEAPONFLAG_DUALWIELD)) {
 				weapon1 = candidate;
 				weapon2 = candidate;
 			} else {
@@ -711,7 +722,7 @@ void inv_choose_cycle_back_weapon(s32 *ptr1, s32 *ptr2, bool arg2)
 	*ptr2 = weapon2;
 }
 
-bool inv_has_key_flags(u32 wantkeyflags)
+bool invHasKeyFlags(u32 wantkeyflags)
 {
 	u32 heldkeyflags = 0;
 	struct invitem *item = g_Vars.currentplayer->weapons;
@@ -745,35 +756,35 @@ bool inv_has_key_flags(u32 wantkeyflags)
 	return false;
 }
 
-bool inv_has_goldeneyekey(void)
+bool func0f11283c(void)
 {
 	return false;
 }
 
-bool inv_has_briefcase(void)
+bool invHasBriefcase(void)
 {
 	if (g_Vars.currentplayer->isdead == false) {
-		return inv_has_single_weapon_exc_all_guns(WEAPON_BRIEFCASE2);
+		return invHasSingleWeaponExcAllGuns(WEAPON_BRIEFCASE2);
 	}
 
 	return false;
 }
 
-bool inv_has_data_uplink(void)
+bool invHasDataUplink(void)
 {
 	if (g_Vars.currentplayer->isdead == false) {
-		return inv_has_single_weapon_exc_all_guns(WEAPON_DATAUPLINK);
+		return invHasSingleWeaponExcAllGuns(WEAPON_DATAUPLINK);
 	}
 
 	return false;
 }
 
-bool inv_has_goldengun(void)
+bool func0f1128c4(void)
 {
 	return false;
 }
 
-bool inv_has_prop(struct prop *prop)
+bool invHasProp(struct prop *prop)
 {
 	struct invitem *item = g_Vars.currentplayer->weapons;
 	struct prop *child;
@@ -803,13 +814,13 @@ bool inv_has_prop(struct prop *prop)
 	return false;
 }
 
-s32 inv_get_count(void)
+s32 invGetCount(void)
 {
 	s32 numitems = 0;
 	struct invitem *item;
 
 	if (g_Vars.currentplayer->equipallguns) {
-		numitems = WEAPON_PSYCHOSISGUN - current_stage_forbids_slayer();
+		numitems = WEAPON_PSYCHOSISGUN - currentStageForbidsSlayer();
 	}
 
 	item = g_Vars.currentplayer->weapons;
@@ -850,16 +861,16 @@ s32 inv_get_count(void)
 	return numitems;
 }
 
-struct invitem *inv_get_item_by_index(s32 index)
+struct invitem *invGetItemByIndex(s32 index)
 {
 	struct invitem *item;
 
 	if (g_Vars.currentplayer->equipallguns) {
-		if (index < WEAPON_PSYCHOSISGUN - current_stage_forbids_slayer()) {
+		if (index < WEAPON_PSYCHOSISGUN - currentStageForbidsSlayer()) {
 			return NULL;
 		}
 
-		index += current_stage_forbids_slayer() - WEAPON_PSYCHOSISGUN;
+		index += currentStageForbidsSlayer() - WEAPON_PSYCHOSISGUN;
 	}
 
 	item = g_Vars.currentplayer->weapons;
@@ -909,7 +920,7 @@ struct invitem *inv_get_item_by_index(s32 index)
 	return NULL;
 }
 
-struct textoverride *inv_get_text_override_for_obj(struct defaultobj *obj)
+struct textoverride *invGetTextOverrideForObj(struct defaultobj *obj)
 {
 	struct textoverride *override = g_Vars.textoverrides;
 
@@ -924,7 +935,7 @@ struct textoverride *inv_get_text_override_for_obj(struct defaultobj *obj)
 	return NULL;
 }
 
-struct textoverride *inv_get_text_override_for_weapon(s32 weaponnum)
+struct textoverride *invGetTextOverrideForWeapon(s32 weaponnum)
 {
 	struct textoverride *override = g_Vars.textoverrides;
 
@@ -939,14 +950,14 @@ struct textoverride *inv_get_text_override_for_weapon(s32 weaponnum)
 	return NULL;
 }
 
-s32 inv_get_weapon_num_by_index(s32 index)
+s32 invGetWeaponNumByIndex(s32 index)
 {
-	struct invitem *item = inv_get_item_by_index(index);
+	struct invitem *item = invGetItemByIndex(index);
 
 	if (item) {
 		if (item->type == INVITEMTYPE_PROP) {
 			struct prop *prop = item->type_prop.prop;
-			struct textoverride *override = inv_get_text_override_for_obj(prop->obj);
+			struct textoverride *override = invGetTextOverrideForObj(prop->obj);
 
 			if (override) {
 				return override->weapon;
@@ -955,25 +966,25 @@ s32 inv_get_weapon_num_by_index(s32 index)
 			return item->type_weap.weapon1;
 		}
 	} else if (g_Vars.currentplayer->equipallguns) {
-		if (index < WEAPON_PSYCHOSISGUN - current_stage_forbids_slayer()) {
+		if (index < WEAPON_PSYCHOSISGUN - currentStageForbidsSlayer()) {
 			index++;
-			return inv_add_one_if_cant_have_slayer(index);
+			return invAddOneIfCantHaveSlayer(index);
 		}
 	}
 
 	return 0;
 }
 
-u16 inv_get_name_id_by_index(s32 index)
+u16 invGetNameIdByIndex(s32 index)
 {
-	struct invitem *item = inv_get_item_by_index(index);
+	struct invitem *item = invGetItemByIndex(index);
 	s32 weaponnum = 0;
 	struct textoverride *override;
 
 	if (item) {
 		if (item->type == INVITEMTYPE_PROP) {
 			struct prop *prop = item->type_prop.prop;
-			override = inv_get_text_override_for_obj(prop->obj);
+			override = invGetTextOverrideForObj(prop->obj);
 
 			if (override) {
 				if (override->inventorytext) {
@@ -984,7 +995,7 @@ u16 inv_get_name_id_by_index(s32 index)
 			}
 		} else if (item->type == INVITEMTYPE_WEAP) {
 			weaponnum = item->type_weap.weapon1;
-			override = inv_get_text_override_for_weapon(weaponnum);
+			override = invGetTextOverrideForWeapon(weaponnum);
 
 			if (override && override->inventorytext) {
 				return override->inventorytext;
@@ -992,36 +1003,36 @@ u16 inv_get_name_id_by_index(s32 index)
 		}
 	} else {
 		if (g_Vars.currentplayer->equipallguns) {
-			if (index < WEAPON_PSYCHOSISGUN - current_stage_forbids_slayer()) {
+			if (index < WEAPON_PSYCHOSISGUN - currentStageForbidsSlayer()) {
 				index++;
-				return bgun_get_name_id(inv_add_one_if_cant_have_slayer(index));
+				return bgunGetNameId(invAddOneIfCantHaveSlayer(index));
 			}
 		}
 	}
 
-	return bgun_get_name_id(weaponnum);
+	return bgunGetNameId(weaponnum);
 }
 
-char *inv_get_name_by_index(s32 index)
+char *invGetNameByIndex(s32 index)
 {
-	return lang_get(inv_get_name_id_by_index(index));
+	return langGet(invGetNameIdByIndex(index));
 }
 
-char *inv_get_short_name_by_index(s32 index)
+char *invGetShortNameByIndex(s32 index)
 {
-	struct invitem *item = inv_get_item_by_index(index);
+	struct invitem *item = invGetItemByIndex(index);
 	s32 weaponnum = 0;
 	struct textoverride *override;
 
 	if (item) {
 		if (item->type == INVITEMTYPE_PROP) {
 			struct prop *prop = item->type_prop.prop;
-			override = inv_get_text_override_for_obj(prop->obj);
+			override = invGetTextOverrideForObj(prop->obj);
 
 			if (override) {
 #if VERSION < VERSION_JPN_FINAL
 				if (override->inventorytext) {
-					return lang_get(override->inventorytext);
+					return langGet(override->inventorytext);
 				}
 #endif
 
@@ -1030,90 +1041,90 @@ char *inv_get_short_name_by_index(s32 index)
 		} else if (item->type == INVITEMTYPE_WEAP) {
 			weaponnum = item->type_weap.weapon1;
 #if VERSION < VERSION_JPN_FINAL
-			override = inv_get_text_override_for_weapon(weaponnum);
+			override = invGetTextOverrideForWeapon(weaponnum);
 
 			if (override && override->inventorytext) {
-				return lang_get(override->inventorytext);
+				return langGet(override->inventorytext);
 			}
 #endif
 		}
 	} else if (g_Vars.currentplayer->equipallguns) {
-		if (index < WEAPON_PSYCHOSISGUN - current_stage_forbids_slayer()) {
+		if (index < WEAPON_PSYCHOSISGUN - currentStageForbidsSlayer()) {
 			index++;
-			return bgun_get_short_name(inv_add_one_if_cant_have_slayer(index));
+			return bgunGetShortName(invAddOneIfCantHaveSlayer(index));
 		}
 	}
 
-	return bgun_get_short_name(weaponnum);
+	return bgunGetShortName(weaponnum);
 }
 
-void inv_insert_text_override(struct textoverride *override)
+void invInsertTextOverride(struct textoverride *override)
 {
 	override->next = g_Vars.textoverrides;
 	g_Vars.textoverrides = override;
 }
 
-u32 inv_get_current_index(void)
+u32 invGetCurrentIndex(void)
 {
 	return g_Vars.currentplayer->equipcuritem;
 }
 
-void inv_set_current_index(u32 item)
+void invSetCurrentIndex(u32 item)
 {
 	g_Vars.currentplayer->equipcuritem = item;
 }
 
-void inv_calculate_current_index(void)
+void invCalculateCurrentIndex(void)
 {
-	s32 curweaponnum = bgun_get_weapon_num(HAND_RIGHT);
+	s32 curweaponnum = bgunGetWeaponNum(HAND_RIGHT);
 	s32 i;
 
 	g_Vars.currentplayer->equipcuritem = 0;
 
-	for (i = 0; i < inv_get_count(); i++) {
-		if (inv_get_weapon_num_by_index(i) == curweaponnum) {
+	for (i = 0; i < invGetCount(); i++) {
+		if (invGetWeaponNumByIndex(i) == curweaponnum) {
 			g_Vars.currentplayer->equipcuritem = i;
 			break;
 		}
 	}
 }
 
-char *inv_get_pickup_text_by_obj(struct defaultobj *obj)
+char *invGetPickupTextByObj(struct defaultobj *obj)
 {
-	struct textoverride *override = inv_get_text_override_for_obj(obj);
+	struct textoverride *override = invGetTextOverrideForObj(obj);
 
 	if (override && override->pickuptext) {
-		return lang_get(override->pickuptext);
+		return langGet(override->pickuptext);
 	}
 
 	return NULL;
 }
 
-char *inv_get_pickup_text_by_weapon_num(s32 weaponnum)
+char *invGetPickupTextByWeaponNum(s32 weaponnum)
 {
-	struct textoverride *override = inv_get_text_override_for_weapon(weaponnum);
+	struct textoverride *override = invGetTextOverrideForWeapon(weaponnum);
 
 	if (override && override->pickuptext) {
-		return lang_get(override->pickuptext);
+		return langGet(override->pickuptext);
 	}
 
 	return NULL;
 }
 
-void inv_increment_held_time(s32 weapon1, s32 weapon2)
+void invIncrementHeldTime(s32 weapon1, s32 weapon2)
 {
 	s32 leastusedtime;
 	s32 leastusedindex;
 	s32 i;
 
-	if (!gset_has_weapon_flag(weapon1, WEAPONFLAG_TRACKTIMEUSED)) {
+	if (!weaponHasFlag(weapon1, WEAPONFLAG_TRACKTIMEUSED)) {
 		return;
 	}
 
 	leastusedtime = 0x7fffffff;
 	leastusedindex = 0;
 
-	if (!gset_has_weapon_flag(weapon2, WEAPONFLAG_TRACKTIMEUSED)) {
+	if (!weaponHasFlag(weapon2, WEAPONFLAG_TRACKTIMEUSED)) {
 		weapon2 = 0;
 	}
 
@@ -1145,7 +1156,7 @@ void inv_increment_held_time(s32 weapon1, s32 weapon2)
 	}
 }
 
-void inv_get_weapon_of_choice(s32 *weapon1, s32 *weapon2)
+void invGetWeaponOfChoice(s32 *weapon1, s32 *weapon2)
 {
 	s32 mosttime = -1;
 	s32 i;

@@ -24,6 +24,7 @@
 #include "lib/lib_317f0.h"
 #include "data.h"
 #include "types.h"
+#include "platform.h"
 
 s16 var8009cb00;
 s32 var8009cb04;
@@ -39,7 +40,7 @@ u32 var80061648 = 0;
 	vertices[i].y = src.y * var80061644; \
 	vertices[i].z = src.z * var80061644; \
 	vertices[i].s = src.y * 256.0f * 32.0f; \
-	vertices[i].t = atan2f(src.x, src.z) / DTOR(360) * 256.0f * 32.0f; \
+	vertices[i].t = atan2f(src.x, src.z) / M_TAU * 256.0f * 32.0f; \
 	vertices[i].colour = var80061648 * 0; \
 \
 	var80061648 = 1 - var80061648; \
@@ -88,7 +89,7 @@ Gfx *func0f006c80(Gfx *gdl, struct coord *arg1, struct coord *arg2, struct coord
 	sp64.y /= dist;
 	sp64.z /= dist;
 
-	vertices = gfx_allocate_vertices(3);
+	vertices = gfxAllocateVertices(3);
 
 	MAKEVERTEX(0, sp7c);
 	MAKEVERTEX(1, sp70);
@@ -114,7 +115,7 @@ Gfx *func0f006c80(Gfx *gdl, struct coord *arg1, struct coord *arg2, struct coord
 
 Gfx *func0f0073ac(Gfx *gdl, struct coord *pos, f32 arg2)
 {
-	Mtxf *modelmtx = gfx_allocate_matrix();
+	Mtxf *modelmtx = gfxAllocateMatrix();
 	Vtx *vertices;
 	Col *colours;
 	Mtxf sp104;
@@ -134,14 +135,14 @@ Gfx *func0f0073ac(Gfx *gdl, struct coord *pos, f32 arg2)
 	spf8[0].y = 0.0f;
 	spf8[0].z = -100.0f;
 
-	mtx4_load_identity(&sp104);
-	mtx4_load_translation(pos, &sp104);
-	mtx00015be0(cam_get_world_to_screen_mtxf(), &sp104);
-	mtx_f2l(&sp104, modelmtx);
+	mtx4LoadIdentity(&sp104);
+	mtx4LoadTranslation(pos, &sp104);
+	mtx00015be0(camGetWorldToScreenMtxf(), &sp104);
+	mtxF2L(&sp104, modelmtx);
 
 	gSPMatrix(gdl++, osVirtualToPhysical(modelmtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
-	tex_select(&gdl, &g_TexGeneralConfigs[TEX_GENERAL_NBOMBDOME], 2, 1, 2, true, NULL);
+	texSelect(&gdl, &g_TexGeneralConfigs[10], 2, 1, 2, true, NULL);
 
 	gDPPipeSync(gdl++);
 	gDPSetCycleType(gdl++, G_CYC_1CYCLE);
@@ -163,14 +164,14 @@ Gfx *func0f0073ac(Gfx *gdl, struct coord *pos, f32 arg2)
 	gDPSetRenderMode(gdl++, G_RM_ZB_XLU_SURF, G_RM_ZB_XLU_SURF2);
 	gDPSetTexturePersp(gdl++, G_TP_PERSP);
 
-	tex_select(&gdl, NULL, 2, 1, 2, true, NULL);
+	texSelect(&gdl, NULL, 2, 1, 2, true, NULL);
 
 	gDPSetRenderMode(gdl++, G_RM_ZB_XLU_SURF, G_RM_ZB_XLU_SURF2);
 
 	var8009cb00 = 2048.0f * g_20SecIntervalFrac;
 	var8009cb04 = 0;
 
-	vertices = gfx_allocate_vertices(6);
+	vertices = gfxAllocateVertices(6);
 
 	MAKEVERTEX(0, spb0[0]);
 	MAKEVERTEX(1, spb0[1]);
@@ -179,9 +180,9 @@ Gfx *func0f0073ac(Gfx *gdl, struct coord *pos, f32 arg2)
 	MAKEVERTEX(4, spb0[4]);
 	MAKEVERTEX(5, spb0[5]);
 
-	colours = gfx_allocate_colours(1);
+	colours = gfxAllocateColours(1);
 
-	colours[0].word = 0xff00007f;
+	colours[0].word = PD_BE32(0xff00007f);
 
 	gSPColor(gdl++, osVirtualToPhysical(colours), 1);
 	gSPVertex(gdl++, osVirtualToPhysical(vertices), 6, 0);
@@ -193,7 +194,7 @@ Gfx *func0f0073ac(Gfx *gdl, struct coord *pos, f32 arg2)
 
 	var8009cb04 = 1;
 
-	vertices = gfx_allocate_vertices(6);
+	vertices = gfxAllocateVertices(6);
 
 	MAKEVERTEX(0, spb0[0]);
 	MAKEVERTEX(1, spb0[1]);
@@ -228,7 +229,7 @@ Gfx *func0f008558(Gfx *gdl, s32 depth)
 
 	var8009cb04 = 0;
 
-	vertices = gfx_allocate_vertices(6);
+	vertices = gfxAllocateVertices(6);
 
 	MAKEVERTEX(0, sp5c[0]);
 	MAKEVERTEX(1, sp5c[1]);
@@ -246,7 +247,7 @@ Gfx *func0f008558(Gfx *gdl, s32 depth)
 
 	var8009cb04 = 1;
 
-	vertices = gfx_allocate_vertices(6);
+	vertices = gfxAllocateVertices(6);
 
 	MAKEVERTEX(0, sp5c[0]);
 	MAKEVERTEX(1, sp5c[1]);
@@ -275,11 +276,14 @@ void nbomb0f0093c4(f32 *arg0)
 	guNormalize(&arg0[1], &arg0[2], &arg0[3]);
 }
 
-void nbomb_reset(struct nbomb *nbomb)
+void nbombReset(struct nbomb *nbomb)
 {
 	nbomb->age240 = 0;
 #if VERSION >= VERSION_PAL_BETA
 	nbomb->radius = 0;
+#endif
+#ifndef PLATFORM_N64
+	nbomb->spawnframe240 = g_Vars.lvframe240;
 #endif
 }
 
@@ -288,7 +292,7 @@ void nbomb_reset(struct nbomb *nbomb)
  * If nbomb->age240 is 311 to 349, return a scaled number between 127 and 0
  * If nbomb->age240 is 350+, return 0
  */
-s32 nbomb_calculate_alpha(struct nbomb *nbomb)
+s32 nbombCalculateAlpha(struct nbomb *nbomb)
 {
 	s32 alpha = 127;
 
@@ -308,10 +312,14 @@ s32 nbomb_calculate_alpha(struct nbomb *nbomb)
  *
  * The gdl sets up a single vertex but has no colour or triangles.
  */
-Gfx *nbomb_create_gdl(void)
+Gfx *nbombCreateGdl(void)
 {
 	Vtx *vertices;
-	u32 gdlsizes[] = { 326 * sizeof(Gfx), 102 * sizeof(Gfx) }; // 1 player, 2+ players
+#ifdef PLATFORM_64BIT
+	u32 gdlsizes[] = { 0x0a30*2, 0x0330*2 }; // 1 player, 2+ players
+#else
+	u32 gdlsizes[] = { 0x0a30, 0x0330 }; // 1 player, 2+ players
+#endif
 	Gfx *gdlstart;
 	Gfx *gdl;
 	s32 index = 0;
@@ -322,9 +330,9 @@ Gfx *nbomb_create_gdl(void)
 
 	var8009cb00 = (s32)(g_20SecIntervalFrac * 64.0f * 32.0f * 16.0f) % 0x800;
 
-	gdl = gdlstart = gfx_allocate(gdlsizes[index]);
+	gdl = gdlstart = gfxAllocate(gdlsizes[index]);
 
-	tex_select(&gdl, &g_TexGeneralConfigs[TEX_GENERAL_NBOMBDOME], 2, 1, 2, 1, NULL);
+	texSelect(&gdl, &g_TexGeneralConfigs[10], 2, 1, 2, 1, NULL);
 
 	gDPPipeSync(gdl++);
 	gDPSetCycleType(gdl++, G_CYC_1CYCLE);
@@ -336,7 +344,7 @@ Gfx *nbomb_create_gdl(void)
 	gDPSetRenderMode(gdl++, G_RM_ZB_XLU_SURF, G_RM_ZB_XLU_SURF2);
 	gDPSetTexturePersp(gdl++, G_TP_PERSP);
 
-	vertices = gfx_allocate_vertices(1);
+	vertices = gfxAllocateVertices(1);
 
 	vertices[0].z = 0;
 	vertices[0].t = 0;
@@ -361,7 +369,7 @@ Gfx *nbomb_create_gdl(void)
 
 struct sndstate *g_NbombAudioHandle = NULL;
 
-Gfx *nbomb_render(Gfx *gdl, struct nbomb *nbomb, Gfx *subgdl)
+Gfx *nbombRender(Gfx *gdl, struct nbomb *nbomb, Gfx *subgdl)
 {
 	f32 divider = 2048;
 	Mtxf *mtx;
@@ -372,13 +380,13 @@ Gfx *nbomb_render(Gfx *gdl, struct nbomb *nbomb, Gfx *subgdl)
 	u32 colour;
 	Col *colours;
 
-	mtx = gfx_allocate_matrix();
+	mtx = gfxAllocateMatrix();
 	var80061644 = 2000.0f;
-	colour = nbomb_calculate_alpha(nbomb);
+	colour = nbombCalculateAlpha(nbomb);
 
-	colours = gfx_allocate_colours(2);
-	colours[0].word = colour;
-	colours[1].word = 0xffffff00;
+	colours = gfxAllocateColours(2);
+	colours[0].word = PD_BE32(colour);
+	colours[1].word = PD_BE32(0xffffff00);
 
 	gSPColor(gdl++, osVirtualToPhysical(colours), 2);
 
@@ -386,19 +394,19 @@ Gfx *nbomb_render(Gfx *gdl, struct nbomb *nbomb, Gfx *subgdl)
 	sp3c.y = 0;
 	sp3c.z = -100;
 
-	mtx4_load_identity(&sp48);
-	mtx4_load_translation(&nbomb->pos, &sp48);
+	mtx4LoadIdentity(&sp48);
+	mtx4LoadTranslation(&nbomb->pos, &sp48);
 
 	sp3c.x = 0;
-	sp3c.y = nbomb->unk14 / divider * DTOR(360);
+	sp3c.y = nbomb->unk14 / divider * M_TAU;
 	sp3c.z = 0;
 
-	mtx4_load_rotation(&sp3c, &sp88);
+	mtx4LoadRotation(&sp3c, &sp88);
 	mtx00015f04(nbomb->radius / 2000.0f, &sp88);
-	mtx4_mult_mtx4(&sp48, &sp88, &spc8);
+	mtx4MultMtx4(&sp48, &sp88, &spc8);
 
-	mtx00015be0(cam_get_world_to_screen_mtxf(), &spc8);
-	mtx_f2l(&spc8, mtx);
+	mtx00015be0(camGetWorldToScreenMtxf(), &spc8);
+	mtxF2L(&spc8, mtx);
 
 	gSPMatrix(gdl++, osVirtualToPhysical(mtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
@@ -424,7 +432,7 @@ void func0f0099a4(void)
 	}
 }
 
-void nbomb_inflict_damage(struct nbomb *nbomb)
+void nbombInflictDamage(struct nbomb *nbomb)
 {
 	s32 index = 0;
 	u32 stack;
@@ -462,7 +470,7 @@ void nbomb_inflict_damage(struct nbomb *nbomb)
 			if (index < 52) {
 				roomnums[index] = i;
 				index++;
-				room_flash_lighting(i, -38, -180);
+				roomFlashLighting(i, -38, -180);
 			}
 		}
 	}
@@ -472,7 +480,7 @@ void nbomb_inflict_damage(struct nbomb *nbomb)
 	if (1);
 
 	// Iterate props in the affected rooms and damage any chrs
-	room_get_props(roomnums, propnums, 256);
+	roomGetProps(roomnums, propnums, 256);
 
 	propnumptr = propnums;
 
@@ -497,7 +505,7 @@ void nbomb_inflict_damage(struct nbomb *nbomb)
 						struct coord vector = {0, 0, 0};
 						f32 damage = 0.01f * g_Vars.lvupdate60freal;
 
-						chr_damage_by_dizziness(chr, damage, &vector, &gset, nbomb->ownerprop);
+						chrDamageByMisc(chr, damage, &vector, &gset, nbomb->ownerprop);
 
 #if VERSION >= VERSION_NTSC_1_0
 						if (chr->actiontype);
@@ -506,7 +514,7 @@ void nbomb_inflict_damage(struct nbomb *nbomb)
 						chr->chrflags |= CHRCFLAG_TRIGGERSHOTLIST;
 
 						if (chr->hidden & CHRHFLAG_CLOAKED) {
-							chr_uncloak(chr, true);
+							chrUncloak(chr, true);
 						}
 					}
 
@@ -519,13 +527,18 @@ void nbomb_inflict_damage(struct nbomb *nbomb)
 	}
 }
 
-void nbomb_tick(struct nbomb *nbomb)
+void nbombTick(struct nbomb *nbomb)
 {
 	if (nbomb->age240 >= 0) {
 		s32 age60;
+#ifdef PLATFORM_N64
 		s32 increment = (g_Vars.lvupdate240 + 2) >> 2;
-
 		nbomb->age240 += increment;
+#else
+		s32 oldage240 = nbomb->age240;
+		nbomb->age240 = (g_Vars.lvframe240 - nbomb->spawnframe240) >> 2;
+		s32 increment = nbomb->age240 - oldage240;
+#endif
 
 		if (nbomb->age240 < TICKS(80)) {
 			nbomb->radius = nbomb->age240 / (PAL ? 66.0f : 80.0f);
@@ -542,7 +555,7 @@ void nbomb_tick(struct nbomb *nbomb)
 
 		nbomb->radius *= 500.0f;
 
-		nbomb_inflict_damage(nbomb);
+		nbombInflictDamage(nbomb);
 
 		age60 = nbomb->age240 / 4;
 
@@ -564,7 +577,7 @@ void nbomb_tick(struct nbomb *nbomb)
 	}
 }
 
-void nbombs_tick(void)
+void nbombsTick(void)
 {
 	s32 i;
 	s32 youngest240 = 20000;
@@ -576,7 +589,7 @@ void nbombs_tick(void)
 
 	for (i = 0; i < ARRAYCOUNT(g_Nbombs); i++) {
 		if (g_Vars.lvupdate240 != 0 && g_Nbombs[i].age240 >= 0) {
-			nbomb_tick(&g_Nbombs[i]);
+			nbombTick(&g_Nbombs[i]);
 
 			if (g_Nbombs[i].age240 < youngest240) {
 				youngest240 = g_Nbombs[i].age240;
@@ -591,13 +604,13 @@ void nbombs_tick(void)
 	if (youngest240 < TICKS(350)) {
 		if (g_Vars.lvupdate240 != 0) {
 			if (g_NbombAudioHandle == 0) {
-				snd_start(var80095200, SFXMAP_810C_SHIP_HUM, &g_NbombAudioHandle, -1, -1, -1, -1, -1);
+				sndStart(var80095200, SFX_SHIP_HUM, &g_NbombAudioHandle, -1, -1, -1, -1, -1);
 			}
 
 			volume = AL_VOL_FULL;
 
 			if (g_NbombAudioHandle) {
-				f32 speed = menu_get_sin_osc_frac(20) * 0.02f + 0.4f;
+				f32 speed = menuGetSinOscFrac(20) * 0.02f + 0.4f;
 
 				if (youngest240 > TICKS(300)) {
 					volume = (1.0f - (f32)(youngest240 - TICKS(300)) / (PAL ? 41.0f : 50.0f)) * AL_VOL_FULL;
@@ -607,32 +620,32 @@ void nbombs_tick(void)
 					volume = 0;
 				}
 
-				sndp_post_event(g_NbombAudioHandle, AL_SNDP_VOL_EVT, volume);
-				sndp_post_event(g_NbombAudioHandle, AL_SNDP_PITCH_EVT, *(s32 *)&speed);
+				audioPostEvent(g_NbombAudioHandle, AL_SNDP_VOL_EVT, volume);
+				audioPostEvent(g_NbombAudioHandle, AL_SNDP_PITCH_EVT, *(s32 *)&speed);
 			}
 		} else {
-			if (g_NbombAudioHandle && sndp_get_state(g_NbombAudioHandle) != AL_STOPPED) {
-				sndp_stop_sound(g_NbombAudioHandle);
+			if (g_NbombAudioHandle && sndGetState(g_NbombAudioHandle) != AL_STOPPED) {
+				audioStop(g_NbombAudioHandle);
 			}
 		}
 	} else {
-		if (g_NbombAudioHandle && sndp_get_state(g_NbombAudioHandle) != AL_STOPPED) {
-			sndp_stop_sound(g_NbombAudioHandle);
+		if (g_NbombAudioHandle && sndGetState(g_NbombAudioHandle) != AL_STOPPED) {
+			audioStop(g_NbombAudioHandle);
 		}
 	}
 
 	if (g_Vars.lvupdate240 == 0) {
 		for (i = 0; i < ARRAYCOUNT(g_Nbombs); i++) {
 			if (g_Nbombs[i].age240 >= 0) {
-				if (g_Nbombs[i].audiohandle20 && sndp_get_state(g_Nbombs[i].audiohandle20) != AL_STOPPED) {
-					sndp_stop_sound(g_Nbombs[i].audiohandle20);
+				if (g_Nbombs[i].audiohandle20 && sndGetState(g_Nbombs[i].audiohandle20) != AL_STOPPED) {
+					audioStop(g_Nbombs[i].audiohandle20);
 #if VERSION < VERSION_NTSC_1_0
 					g_Nbombs[i].audiohandle20 = NULL;
 #endif
 				}
 
-				if (g_Nbombs[i].audiohandle24 && sndp_get_state(g_Nbombs[i].audiohandle24) != AL_STOPPED) {
-					sndp_stop_sound(g_Nbombs[i].audiohandle24);
+				if (g_Nbombs[i].audiohandle24 && sndGetState(g_Nbombs[i].audiohandle24) != AL_STOPPED) {
+					audioStop(g_Nbombs[i].audiohandle24);
 #if VERSION < VERSION_NTSC_1_0
 					g_Nbombs[i].audiohandle24 = NULL;
 #endif
@@ -642,7 +655,7 @@ void nbombs_tick(void)
 	}
 }
 
-Gfx *nbombs_render(Gfx *gdl)
+Gfx *nbombsRender(Gfx *gdl)
 {
 	s32 i;
 	Gfx *subgdl = NULL;
@@ -650,17 +663,17 @@ Gfx *nbombs_render(Gfx *gdl)
 	for (i = 0; i < ARRAYCOUNT(g_Nbombs); i++) {
 		if (g_Nbombs[i].age240 >= 0) {
 			if (!subgdl) {
-				subgdl = nbomb_create_gdl();
+				subgdl = nbombCreateGdl();
 			}
 
-			gdl = nbomb_render(gdl, &g_Nbombs[i], subgdl);
+			gdl = nbombRender(gdl, &g_Nbombs[i], subgdl);
 		}
 	}
 
 	return gdl;
 }
 
-void nbomb_create_storm(struct coord *pos, struct prop *ownerprop)
+void nbombCreateStorm(struct coord *pos, struct prop *ownerprop)
 {
 	u32 stack;
 	s32 oldest240;
@@ -689,7 +702,7 @@ void nbomb_create_storm(struct coord *pos, struct prop *ownerprop)
 		}
 	}
 
-	nbomb_reset(&g_Nbombs[index]);
+	nbombReset(&g_Nbombs[index]);
 
 	g_Nbombs[index].pos.x = pos->x;
 	g_Nbombs[index].pos.y = pos->y;
@@ -701,49 +714,49 @@ void nbomb_create_storm(struct coord *pos, struct prop *ownerprop)
 	// Newer versions only play audio if the handles are null,
 	// while ntsc-beta clears the handles then plays them unconditionally.
 	if (g_Nbombs[index].audiohandle20 == NULL) {
-		snd_start(var80095200, SFXNUM_0001_LAUNCH_ROCKET, &g_Nbombs[index].audiohandle20, -1, -1, -1, -1, -1);
+		sndStart(var80095200, SFX_LAUNCH_ROCKET, &g_Nbombs[index].audiohandle20, -1, -1, -1, -1, -1);
 
 		if (g_Nbombs[index].audiohandle20) {
 			union audioparam param;
 			param.f32 = 0.4f;
-			sndp_post_event(g_Nbombs[index].audiohandle20, AL_SNDP_PITCH_EVT, param.s32);
+			audioPostEvent(g_Nbombs[index].audiohandle20, AL_SNDP_PITCH_EVT, param.s32);
 		}
 	}
 
 	if (g_Nbombs[index].audiohandle24 == NULL) {
-		snd_start(var80095200, SFXNUM_0001_LAUNCH_ROCKET, &g_Nbombs[index].audiohandle24, -1, -1, -1, -1, -1);
+		sndStart(var80095200, SFX_LAUNCH_ROCKET, &g_Nbombs[index].audiohandle24, -1, -1, -1, -1, -1);
 
 		if (g_Nbombs[index].audiohandle24) {
 			union audioparam param;
 			param.f32 = 0.4f;
-			sndp_post_event(g_Nbombs[index].audiohandle24, AL_SNDP_PITCH_EVT, param.s32);
+			audioPostEvent(g_Nbombs[index].audiohandle24, AL_SNDP_PITCH_EVT, param.s32);
 		}
 	}
 #else
 	g_Nbombs[index].audiohandle20 = NULL;
 	g_Nbombs[index].audiohandle24 = NULL;
 
-	snd_start(var80095200, SFXNUM_0001_LAUNCH_ROCKET, &g_Nbombs[index].audiohandle20, -1, -1, -1, -1, -1);
+	sndStart(var80095200, SFX_LAUNCH_ROCKET, &g_Nbombs[index].audiohandle20, -1, -1, -1, -1, -1);
 
 	if (g_Nbombs[index].audiohandle20) {
 		union audioparam param;
 		param.f32 = 0.4f;
-		sndp_post_event(g_Nbombs[index].audiohandle20, AL_SNDP_PITCH_EVT, param.s32);
+		audioPostEvent(g_Nbombs[index].audiohandle20, AL_SNDP_PITCH_EVT, param.s32);
 	}
 
-	snd_start(var80095200, SFXNUM_0001_LAUNCH_ROCKET, &g_Nbombs[index].audiohandle24, -1, -1, -1, -1, -1);
+	sndStart(var80095200, SFX_LAUNCH_ROCKET, &g_Nbombs[index].audiohandle24, -1, -1, -1, -1, -1);
 
 	if (g_Nbombs[index].audiohandle24) {
 		union audioparam param;
 		param.f32 = 0.4f;
-		sndp_post_event(g_Nbombs[index].audiohandle24, AL_SNDP_PITCH_EVT, param.s32);
+		audioPostEvent(g_Nbombs[index].audiohandle24, AL_SNDP_PITCH_EVT, param.s32);
 	}
 #endif
 }
 
-bool door_is_open_or_opening(s32 tagnum)
+bool doorIsOpenOrOpening(s32 tagnum)
 {
-	struct defaultobj *obj = obj_find_by_tag_id(tagnum);
+	struct defaultobj *obj = objFindByTagId(tagnum);
 
 	if (obj && obj->prop && obj->type == OBJTYPE_DOOR) {
 		struct doorobj *door = (struct doorobj *)obj;
@@ -765,9 +778,9 @@ bool door_is_open_or_opening(s32 tagnum)
 	return false;
 }
 
-f32 gas_get_door_frac(s32 tagnum)
+f32 gasGetDoorFrac(s32 tagnum)
 {
-	struct defaultobj *obj = obj_find_by_tag_id(tagnum);
+	struct defaultobj *obj = objFindByTagId(tagnum);
 
 	if (obj && obj->prop && obj->type == OBJTYPE_DOOR) {
 		struct doorobj *door = (struct doorobj *)obj;
@@ -781,7 +794,7 @@ f32 gas_get_door_frac(s32 tagnum)
  * Checks if the player is inside an nbomb storm, and if so renders the black
  * storm texture directly over the screen.
  */
-Gfx *nbomb_render_overlay(Gfx *gdl)
+Gfx *nbombRenderOverlay(Gfx *gdl)
 {
 	bool inside = false;
 	struct coord campos;
@@ -811,7 +824,7 @@ Gfx *nbomb_render_overlay(Gfx *gdl)
 			f32 zdiff = campos.f[2] - g_Nbombs[i].pos.f[2];
 
 			if (sqrtf(xdiff * xdiff + ydiff * ydiff + zdiff * zdiff) < g_Nbombs[i].radius) {
-				u32 alpha = nbomb_calculate_alpha(&g_Nbombs[i]);
+				u32 alpha = nbombCalculateAlpha(&g_Nbombs[i]);
 
 				inside = true;
 
@@ -823,13 +836,13 @@ Gfx *nbomb_render_overlay(Gfx *gdl)
 	}
 
 	if (inside) {
-		colours = gfx_allocate_colours(1);
-		vertices = gfx_allocate_vertices(4);
+		colours = gfxAllocateColours(1);
+		vertices = gfxAllocateVertices(4);
 
-		viewleft = vi_get_view_left() * 10;
-		viewtop = vi_get_view_top() * 10;
-		viewright = (s16) (vi_get_view_left() + vi_get_view_width()) * 10;
-		viewbottom = (s16) (vi_get_view_top() + vi_get_view_height()) * 10;
+		viewleft = viGetViewLeft() * 10;
+		viewtop = viGetViewTop() * 10;
+		viewright = (s16) (viGetViewLeft() + viGetViewWidth()) * 10;
+		viewbottom = (s16) (viGetViewTop() + viGetViewHeight()) * 10;
 
 		s = (s32) (8.0f * g_20SecIntervalFrac * 128.0f * 32.0f) % 2048;
 		t = (s16) ((s32) (campos.f[1] * 8.0f) % 2048) + (s16) (2.0f * g_20SecIntervalFrac * 128.0f * 32.0f);
@@ -839,11 +852,11 @@ Gfx *nbomb_render_overlay(Gfx *gdl)
 		if (1);
 		if (1);
 
-		gdl = ortho_begin(gdl);
+		gdl = func0f0d479c(gdl);
 
 		if (1);
 
-		tex_select(&gdl, &g_TexGeneralConfigs[TEX_GENERAL_NBOMBDOME], 2, 1, 2, true, NULL);
+		texSelect(&gdl, &g_TexGeneralConfigs[10], 2, 1, 2, true, NULL);
 
 		gDPPipeSync(gdl++);
 		gDPSetCycleType(gdl++, G_CYC_1CYCLE);
@@ -885,7 +898,7 @@ Gfx *nbomb_render_overlay(Gfx *gdl)
 		vertices[2].colour = 0;
 		vertices[3].colour = 0;
 
-		colours[0].word = finalalpha;
+		colours[0].word = PD_BE32(finalalpha);
 
 		gSPColor(gdl++, osVirtualToPhysical(colours), 1);
 		gSPVertex(gdl++, osVirtualToPhysical(vertices), 4, 0);
@@ -894,13 +907,13 @@ Gfx *nbomb_render_overlay(Gfx *gdl)
 	}
 
 	if (drawn) {
-		gdl = ortho_end(gdl);
+		gdl = func0f0d49c8(gdl);
 	}
 
 	return gdl;
 }
 
-Gfx *gas_render(Gfx *gdl)
+Gfx *gasRender(Gfx *gdl)
 {
 	bool show = false;
 	f32 alphafrac = 1.0f;
@@ -933,7 +946,7 @@ Gfx *gas_render(Gfx *gdl)
 		campos.z = g_Vars.currentplayer->cam_pos.z;
 
 		for (i = 0; i < ARRAYCOUNT(gasrooms); i++) {
-			if (bg_room_contains_coord(&campos, gasrooms[i])) {
+			if (bgRoomContainsCoord(&campos, gasrooms[i])) {
 				show = true;
 			}
 		}
@@ -948,13 +961,13 @@ Gfx *gas_render(Gfx *gdl)
 			if (distance < 1328.0f) {
 				show = true;
 				alphafrac = 1.0f - distance / 1328.0f;
-				intensityfrac = gas_get_door_frac(0x32);
+				intensityfrac = gasGetDoorFrac(0x32);
 			}
 		} else {
-			if (bg_room_contains_coord(&campos, 0x91)) {
+			if (bgRoomContainsCoord(&campos, 0x91)) {
 				// In the small room between the first two doors
-				f32 frac1 = gas_get_door_frac(0x30);
-				f32 frac2 = gas_get_door_frac(0x31);
+				f32 frac1 = gasGetDoorFrac(0x30);
+				f32 frac2 = gasGetDoorFrac(0x31);
 
 				if (frac2 > frac1) {
 					intensityfrac = frac2;
@@ -978,12 +991,12 @@ Gfx *gas_render(Gfx *gdl)
 		}
 
 		if (show) {
-			Col *colours = gfx_allocate_colours(1);
-			Vtx *vertices = gfx_allocate_vertices(8);
-			s16 viewleft = vi_get_view_left() * 10;
-			s16 viewtop = vi_get_view_top() * 10;
-			s16 viewright = (s16) (vi_get_view_left() + vi_get_view_width()) * 10;
-			s16 viewbottom = (s16) (vi_get_view_top() + vi_get_view_height()) * 10;
+			Col *colours = gfxAllocateColours(1);
+			Vtx *vertices = gfxAllocateVertices(8);
+			s16 viewleft = viGetViewLeft() * 10;
+			s16 viewtop = viGetViewTop() * 10;
+			s16 viewright = (s16) (viGetViewLeft() + viGetViewWidth()) * 10;
+			s16 viewbottom = (s16) (viGetViewTop() + viGetViewHeight()) * 10;
 			f32 lookx = g_Vars.currentplayer->cam_look.x;
 			f32 lookz = g_Vars.currentplayer->cam_look.z;
 			f32 camposx = g_Vars.currentplayer->cam_pos.x;
@@ -999,21 +1012,21 @@ Gfx *gas_render(Gfx *gdl)
 			f2 = (camposx + camposz) / 3000.0f;
 			f16 = (f2 - (s32) f2);
 
-			sp78 = atan2f(-lookx, lookz) / BADDTOR(360);
+			sp78 = atan2f(-lookx, lookz) / M_BADTAU;
 
-			layer2s = ((s32) (2.0f * ((menu_get_sin_osc_frac(4.0f) - 0.5f) / 6.0f + sp78 + f16 * 1.5f) * 128.0f * 32.0f) % 2048);
-			layer1s = ((s32) (2.0f * ((menu_get_cos_osc_frac(4.0f) - 0.5f) / -9.0f + sp78 + f16) * 128.0f * 32.0f) % 2048);
+			layer2s = ((s32) (2.0f * ((menuGetSinOscFrac(4.0f) - 0.5f) / 6.0f + sp78 + f16 * 1.5f) * 128.0f * 32.0f) % 2048);
+			layer1s = ((s32) (2.0f * ((menuGetCosOscFrac(4.0f) - 0.5f) / -9.0f + sp78 + f16) * 128.0f * 32.0f) % 2048);
 
 			layer2t = (s16) ((s32) (campos.y * 8.0f) % 2048) + (s16) (2.0f * g_20SecIntervalFrac * 128.0f * 32.0f);
 			layer1t = (s16) ((s32) (campos.y * 8.0f) % 2048) + (s16) (2.0f * g_20SecIntervalFrac * 64.0f * 32.0f);
 
 			drawn = true;
 
-			gdl = ortho_begin(gdl);
+			gdl = func0f0d479c(gdl);
 
 			if (1);
 
-			tex_select(&gdl, &g_TexGeneralConfigs[TEX_GENERAL_MENURAY0], 4, 1, 2, true, NULL);
+			texSelect(&gdl, &g_TexGeneralConfigs[6], 4, 1, 2, true, NULL);
 
 			gDPPipeSync(gdl++);
 			gDPSetCycleType(gdl++, G_CYC_1CYCLE);
@@ -1087,7 +1100,7 @@ Gfx *gas_render(Gfx *gdl)
 
 			alpha = 127.0f * alphafrac;
 
-			colours[0].word = 0x3faf1100 | alpha;
+			colours[0].word = PD_BE32(0x3faf1100 | alpha);
 
 			gSPColor(gdl++, osVirtualToPhysical(colours), 1);
 			gSPVertex(gdl++, osVirtualToPhysical(vertices), 8, 0);
@@ -1097,7 +1110,7 @@ Gfx *gas_render(Gfx *gdl)
 	}
 
 	if (drawn) {
-		gdl = ortho_end(gdl);
+		gdl = func0f0d49c8(gdl);
 	}
 
 	return gdl;

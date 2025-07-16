@@ -29,13 +29,13 @@
 #define NUMTYPE3() (IS4MB() ? 0 : 20)
 #define NUMSPARE() (IS4MB() ? 40 : 60)
 
-void modelmgr_reset(void)
+void modelmgrReset(void)
 {
 	g_MaxAnims = 0;
 	g_MaxModels = 0;
 }
 
-void modelmgr_set_lv_resetting(bool value)
+void modelmgrSetLvResetting(bool value)
 {
 	g_ModelIsLvResetting = value;
 }
@@ -57,7 +57,7 @@ void modelmgr_set_lv_resetting(bool value)
  * (eg. for thrown weapons), and a further 20 model and 20 anim slots are
  * allocated for animated objects.
  */
-void modelmgr_allocate_slots(s32 numobjs, s32 numchrs)
+void modelmgrAllocateSlots(s32 numobjs, s32 numchrs)
 {
 	s32 rwdata2sizetotal;
 	s32 rwdata1sizetotal;
@@ -97,21 +97,21 @@ void modelmgr_allocate_slots(s32 numobjs, s32 numchrs)
 	g_ModelRwdataBindings[1] = NULL;
 	g_ModelRwdataBindings[2] = NULL;
 
-	ptr = memp_alloc(totalsize, MEMPOOL_STAGE);
+	ptr = mempAlloc(totalsize, MEMPOOL_STAGE);
 
 	if (NUMTYPE1()) {
 		g_ModelRwdataBindings[0] = (struct modelrwdatabinding *) ptr;
-		ptr += NUMTYPE1() * 8;
+		ptr += NUMTYPE1() * sizeof(struct modelrwdatabinding);
 	}
 
 	if (NUMTYPE2()) {
 		g_ModelRwdataBindings[1] = (struct modelrwdatabinding *) ptr;
-		ptr += NUMTYPE2() * 8;
+		ptr += NUMTYPE2() * sizeof(struct modelrwdatabinding);
 	}
 
 	if (NUMTYPE3()) {
 		g_ModelRwdataBindings[2] = (struct modelrwdatabinding *) ptr;
-		ptr += NUMTYPE3() * 8;
+		ptr += NUMTYPE3() * sizeof(struct modelrwdatabinding);
 	}
 
 	g_ModelSlots = (struct model *) ptr;
@@ -156,27 +156,27 @@ void modelmgr_allocate_slots(s32 numobjs, s32 numchrs)
 	g_ModelMostAnims = 0;
 }
 
-bool modelmgr_load_projectile_modeldefs(s32 weaponnum)
+bool modelmgrLoadProjectileModeldefs(s32 weaponnum)
 {
 	bool result = false;
-	struct weapondef *weapon = g_Weapons[weaponnum];
+	struct weapon *weapon = g_Weapons[weaponnum];
 	s32 i;
 
 	for (i = 0; i != 2; i++) {
 		if (weapon->functions[i]) {
-			struct funcdef *genericfunc = weapon->functions[i];
+			struct weaponfunc *genericfunc = weapon->functions[i];
 
 			if (genericfunc->type == INVENTORYFUNCTYPE_SHOOT_PROJECTILE) {
-				struct funcdef_shootprojectile *func = (struct funcdef_shootprojectile *)genericfunc;
+				struct weaponfunc_shootprojectile *func = (struct weaponfunc_shootprojectile *)genericfunc;
 
 				if (func->projectilemodelnum >= 0) {
-					result |= setup_load_modeldef(func->projectilemodelnum);
+					result |= setupLoadModeldef(func->projectilemodelnum);
 				}
 			} else if (genericfunc->type == INVENTORYFUNCTYPE_THROW) {
-				struct funcdef_throw *func = (struct funcdef_throw *)genericfunc;
+				struct weaponfunc_throw *func = (struct weaponfunc_throw *)genericfunc;
 
 				if (func->projectilemodelnum >= 0) {
-					result |= setup_load_modeldef(func->projectilemodelnum);
+					result |= setupLoadModeldef(func->projectilemodelnum);
 				}
 			}
 		}

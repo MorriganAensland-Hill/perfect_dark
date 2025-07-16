@@ -3,13 +3,13 @@
 #include "game/chraction.h"
 #include "game/ceil.h"
 #include "game/bondgun.h"
-#include "game/gset.h"
+#include "game/game_0b0fd0.h"
 #include "game/tex.h"
 #include "game/menugfx.h"
 #include "game/menu.h"
 #include "game/mainmenu.h"
 #include "game/inv.h"
-#include "game/text.h"
+#include "game/game_1531a0.h"
 #include "game/file.h"
 #include "game/texdecompress.h"
 #include "game/tex.h"
@@ -104,6 +104,9 @@ struct skeleton *g_Skeletons[] = {
 	&g_SkelWireFence,
 	&g_SkelRemoteMine,
 	&g_SkelBB,
+#ifdef AVOID_UB
+	NULL // terminate list for sure
+#endif
 };
 
 void modeldef0f1a7560(struct modeldef *modeldef, u16 filenum, u32 arg2, struct modeldef *modeldef2, struct texpool *texpool, bool arg5)
@@ -119,36 +122,36 @@ void modeldef0f1a7560(struct modeldef *modeldef, u16 filenum, u32 arg2, struct m
 	uintptr_t gdl;
 	Vtx *vertices;
 
-	allocsize = file_get_allocation_size(filenum);
-	loadedsize = file_get_loaded_size(filenum);
+	allocsize = fileGetAllocationSize(filenum);
+	loadedsize = fileGetLoadedSize(filenum);
 	node = NULL;
 
-	model_iterate_display_lists(modeldef, &node, (Gfx **)&gdl);
+	modelIterateDisplayLists(modeldef, &node, (Gfx **)&gdl);
 
 	s5 = gdl;
 
 	if (gdl) {
-		s32 v1 = allocsize - (loadedsize - (s32)(((uintptr_t)modeldef + (gdl & 0xffffff)) - (uintptr_t)modeldef));
-		sp84 = (s32)v1 + (s32)((uintptr_t)modeldef - ((uintptr_t)modeldef + (gdl & 0xffffff)));
+		s32 v1 = allocsize - (loadedsize - (uintptr_t)(((uintptr_t)modeldef + (UNSEGADDR(gdl) & 0xffffff)) - (uintptr_t)modeldef));
+		sp84 = (uintptr_t)v1 + (uintptr_t)((uintptr_t)modeldef - ((uintptr_t)modeldef + (UNSEGADDR(gdl) & 0xffffff)));
 
-		tex_copy_gdls((Gfx *)((uintptr_t)modeldef + (gdl & 0xffffff)),
+		texCopyGdls((Gfx *)((uintptr_t)modeldef + (UNSEGADDR(gdl) & 0xffffff)),
 				(Gfx *)(v1 + (uintptr_t)modeldef),
-				loadedsize - (s32)(((uintptr_t)modeldef + (gdl & 0xffffff)) - (uintptr_t)modeldef));
-		tex_load_from_configs(modeldef->texconfigs, modeldef->numtexconfigs, texpool, (uintptr_t)modeldef2 - arg2);
+				loadedsize - (uintptr_t)(((uintptr_t)modeldef + (UNSEGADDR(gdl) & 0xffffff)) - (uintptr_t)modeldef));
+		texLoadFromConfigs(modeldef->texconfigs, modeldef->numtexconfigs, texpool, (uintptr_t)modeldef2 - (uintptr_t)arg2);
 
 		while (node) {
 			prevnode = node;
 			s0 = gdl;
 
-			model_iterate_display_lists(modeldef, &node, (Gfx **) &gdl);
+			modelIterateDisplayLists(modeldef, &node, (Gfx **) &gdl);
 
 			if (gdl) {
-				s4 = gdl - s0;
+				s4 = UNSEGADDR(gdl) - UNSEGADDR(s0);
 			} else {
-				s4 = loadedsize + (uintptr_t)modeldef - (uintptr_t)modeldef - (s0 & 0xffffff);
+				s4 = loadedsize + (uintptr_t)modeldef - (uintptr_t)modeldef - (UNSEGADDR(s0) & 0xffffff);
 			}
 
-			model_node_replace_gdl(modeldef, prevnode, (Gfx *) s0, (Gfx *) s5);
+			modelNodeReplaceGdl(modeldef, prevnode, (Gfx *) s0, (Gfx *) s5);
 
 			if (prevnode->type == MODELNODETYPE_DL) {
 				struct modelrodata_dl *rodata = &prevnode->rodata->dl;
@@ -157,14 +160,14 @@ void modeldef0f1a7560(struct modeldef *modeldef, u16 filenum, u32 arg2, struct m
 				vertices = NULL;
 			}
 
-			s5 += tex_load_from_gdl((Gfx *)((uintptr_t)modeldef + (s0 & 0xffffff) + sp84), s4, (Gfx *)((uintptr_t)modeldef + (s5 & 0xffffff)), texpool, (u8 *) vertices);
+			s5 += texLoadFromGdl((Gfx *)((uintptr_t)modeldef + (UNSEGADDR(s0) & 0xffffff) + sp84), s4, (Gfx *)((uintptr_t)modeldef + (UNSEGADDR(s5) & 0xffffff)), texpool, (u8 *) vertices);
 		}
 
-		file_set_size(filenum, modeldef, (((uintptr_t)modeldef + (s5 & 0xffffff)) - (uintptr_t)modeldef + 0xf) & ~0xf, arg5);
+		fileSetSize(filenum, modeldef, (((uintptr_t)modeldef + (UNSEGADDR(s5) & 0xffffff)) - (uintptr_t)modeldef + 0xf) & ~0xf, arg5);
 	}
 }
 
-void model_promote_type_to_pointer(struct modeldef *modeldef)
+void modelPromoteTypeToPointer(struct modeldef *modeldef)
 {
 	s32 i;
 
@@ -178,31 +181,31 @@ void model_promote_type_to_pointer(struct modeldef *modeldef)
 	}
 }
 
-struct modeldef *modeldef_load(u16 fileid, u8 *dst, s32 size, struct texpool *arg3)
+struct modeldef *modeldefLoad(u16 fileid, u8 *dst, s32 size, struct texpool *arg3)
 {
 	struct modeldef *modeldef;
 
 	g_LoadType = LOADTYPE_MODEL;
 
 	if (dst) {
-		modeldef = file_load_to_addr(fileid, FILELOADMETHOD_EXTRAMEM, dst, size);
+		modeldef = fileLoadToAddr(fileid, FILELOADMETHOD_EXTRAMEM, dst, size);
 	} else {
-		modeldef = file_load_to_new(fileid, FILELOADMETHOD_EXTRAMEM);
+		modeldef = fileLoadToNew(fileid, FILELOADMETHOD_EXTRAMEM, LOADTYPE_MODEL);
 	}
 
-	model_promote_type_to_pointer(modeldef);
-	model_promote_offsets_to_pointers(modeldef, 0x5000000, (uintptr_t) modeldef);
+	modelPromoteTypeToPointer(modeldef);
+	modelPromoteOffsetsToPointers(modeldef, 0x5000000, (uintptr_t) modeldef);
 	modeldef0f1a7560(modeldef, fileid, 0x5000000, modeldef, arg3, dst == NULL);
 
 	return modeldef;
 }
 
-struct modeldef *modeldef_load_to_new(u16 fileid)
+struct modeldef *modeldefLoadToNew(u16 fileid)
 {
-	return modeldef_load(fileid, NULL, 0, NULL);
+	return modeldefLoad(fileid, NULL, 0, NULL);
 }
 
-struct modeldef *modeldef_load_to_addr(u16 fileid, u8 *dst, s32 size)
+struct modeldef *modeldefLoadToAddr(u16 fileid, u8 *dst, s32 size)
 {
-	return modeldef_load(fileid, dst, size, NULL);
+	return modeldefLoad(fileid, dst, size, NULL);
 }

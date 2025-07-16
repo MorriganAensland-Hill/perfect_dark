@@ -2,7 +2,7 @@
 #include "constants.h"
 #include "game/player.h"
 #include "game/healthbar.h"
-#include "game/text.h"
+#include "game/game_1531a0.h"
 #include "game/gfxmemory.h"
 #include "game/file.h"
 #include "bss.h"
@@ -18,7 +18,7 @@ struct marker {
 	f32 frac;
 };
 
-s32 healthbar_maybe_insert_marker(struct marker *markers, s32 *indexes, s32 maxlen, f32 fillfrac)
+s32 healthbarMaybeInsertMarker(struct marker *markers, s32 *indexes, s32 maxlen, f32 fillfrac)
 {
 	s32 len = 0;
 	s32 i;
@@ -76,7 +76,7 @@ s32 healthbar_maybe_insert_marker(struct marker *markers, s32 *indexes, s32 maxl
 	return 0;
 }
 
-u32 healthbar_choose_colour(u32 fillcol, u32 bgcol, f32 fillexcfade, f32 fillincfade, f32 frac)
+u32 healthbarChooseColour(u32 fillcol, u32 bgcol, f32 fillexcfade, f32 fillincfade, f32 frac)
 {
 	f32 mult;
 	u32 r;
@@ -130,7 +130,7 @@ u32 healthbar_choose_colour(u32 fillcol, u32 bgcol, f32 fillexcfade, f32 fillinc
  * of these dynamic markers are tweened from the two neighbours. There are two
  * of these because the colour change uses a fade rather than a hard edge.
  */
-Gfx *healthbar_draw(Gfx *gdl, struct chrdata *chr, s32 offyarg, f32 heightfracarg)
+Gfx *healthbarDraw(Gfx *gdl, struct chrdata *chr, s32 offyarg, f32 heightfracarg)
 {
 	struct marker shieldmarkers[12];
 	struct marker armourmarkers[8];
@@ -191,8 +191,8 @@ Gfx *healthbar_draw(Gfx *gdl, struct chrdata *chr, s32 offyarg, f32 heightfracar
 	static s32 underbottom = 46;
 	static u32 undercol = 0x00000000;
 
-	vertices = gfx_allocate_vertices(56);
-	colours = gfx_allocate_colours(56);
+	vertices = gfxAllocateVertices(56);
+	colours = gfxAllocateColours(56);
 
 	// 12 markers (24 vertices) for shield
 	// 8 markers (16 vertices) for armour
@@ -205,34 +205,34 @@ Gfx *healthbar_draw(Gfx *gdl, struct chrdata *chr, s32 offyarg, f32 heightfracar
 	armourcolours = colours + 24;
 	traumacolours = colours + 40;
 
-	main_override_variable("radmax", &radmax);
-	main_override_variable("radmed", &radmed);
-	main_override_variable("radmin", &radmin);
-	main_override_variable("len1", &len1);
-	main_override_variable("len2", &len2);
-	main_override_variable("len3", &len3);
-	main_override_variable("offx", &offx);
-	main_override_variable("offy", &offy);
-	main_override_variable("shieldcol", &shieldcol);
-	main_override_variable("armourcol", &armourcol);
-	main_override_variable("traumacol", &traumacol);
-	main_override_variable("bgcol", &bgcol);
-	main_override_variable("shieldfade", &shieldfade);
-	main_override_variable("armourfade", &armourfade);
-	main_override_variable("traumafade", &traumafade);
-	main_override_variable("shielddir", &shielddir);
-	main_override_variable("underleft", &underleft);
-	main_override_variable("undertop", &undertop);
-	main_override_variable("underright", &underright);
-	main_override_variable("underbottom", &underbottom);
-	main_override_variable("undercol", &undercol);
+	mainOverrideVariable("radmax", &radmax);
+	mainOverrideVariable("radmed", &radmed);
+	mainOverrideVariable("radmin", &radmin);
+	mainOverrideVariable("len1", &len1);
+	mainOverrideVariable("len2", &len2);
+	mainOverrideVariable("len3", &len3);
+	mainOverrideVariable("offx", &offx);
+	mainOverrideVariable("offy", &offy);
+	mainOverrideVariable("shieldcol", &shieldcol);
+	mainOverrideVariable("armourcol", &armourcol);
+	mainOverrideVariable("traumacol", &traumacol);
+	mainOverrideVariable("bgcol", &bgcol);
+	mainOverrideVariable("shieldfade", &shieldfade);
+	mainOverrideVariable("armourfade", &armourfade);
+	mainOverrideVariable("traumafade", &traumafade);
+	mainOverrideVariable("shielddir", &shielddir);
+	mainOverrideVariable("underleft", &underleft);
+	mainOverrideVariable("undertop", &undertop);
+	mainOverrideVariable("underright", &underright);
+	mainOverrideVariable("underbottom", &underbottom);
+	mainOverrideVariable("undercol", &undercol);
 
 	if (chr == NULL || offyarg <= 0 || heightfracarg <= 0.0f) {
 		// Use the player's health
 		shieldfrac = g_Vars.currentplayer->apparentarmour;
 		armourfrac = (g_Vars.currentplayer->apparenthealth - 0.25f) / 0.75f;
 		traumafrac = (0.25f - g_Vars.currentplayer->apparenthealth) * 4.0f;
-		heightfrac = player_get_health_bar_height_frac();
+		heightfrac = playerGetHealthBarHeightFrac();
 	} else {
 		// Use the given chr's health
 		healthfrac = (chr->maxdamage - chr->damage) / chr->maxdamage;
@@ -430,17 +430,17 @@ Gfx *healthbar_draw(Gfx *gdl, struct chrdata *chr, s32 offyarg, f32 heightfracar
 	shieldfillexcfade = shieldfillincfade - shieldfade * 0.001f;
 
 	numshieldmarkers = 10;
-	numshieldmarkers += healthbar_maybe_insert_marker(shieldmarkers, shieldmarkerindexes, ARRAYCOUNT(shieldmarkers), shieldfillexcfade);
-	numshieldmarkers += healthbar_maybe_insert_marker(shieldmarkers, shieldmarkerindexes, ARRAYCOUNT(shieldmarkers), shieldfillincfade);
+	numshieldmarkers += healthbarMaybeInsertMarker(shieldmarkers, shieldmarkerindexes, ARRAYCOUNT(shieldmarkers), shieldfillexcfade);
+	numshieldmarkers += healthbarMaybeInsertMarker(shieldmarkers, shieldmarkerindexes, ARRAYCOUNT(shieldmarkers), shieldfillincfade);
 
 	for (i = 0; i < numshieldmarkers; i++) {
 		index = shieldmarkerindexes[i];
 		marker = &shieldmarkers[index];
 
 		if (shielddir != 0) {
-			colour = healthbar_choose_colour(bgcol, shieldcol, shieldfillexcfade, shieldfillincfade, marker->frac);
+			colour = healthbarChooseColour(bgcol, shieldcol, shieldfillexcfade, shieldfillincfade, marker->frac);
 		} else {
-			colour = healthbar_choose_colour(shieldcol, bgcol, shieldfillexcfade, shieldfillincfade, marker->frac);
+			colour = healthbarChooseColour(shieldcol, bgcol, shieldfillexcfade, shieldfillincfade, marker->frac);
 		}
 
 		shieldvertices->x = (s32)marker->x1 + offx;
@@ -449,7 +449,7 @@ Gfx *healthbar_draw(Gfx *gdl, struct chrdata *chr, s32 offyarg, f32 heightfracar
 		shieldvertices->colour = (i + i) << 2;
 		shieldvertices++;
 
-		shieldcolours->word = colour;
+		shieldcolours->word = PD_BE32(colour);
 		shieldcolours++;
 
 		shieldvertices->x = (s32)marker->x2 + offx;
@@ -458,7 +458,7 @@ Gfx *healthbar_draw(Gfx *gdl, struct chrdata *chr, s32 offyarg, f32 heightfracar
 		shieldvertices->colour = (i + i + 1) << 2;
 		shieldvertices++;
 
-		shieldcolours->word = colour;
+		shieldcolours->word = PD_BE32(colour);
 		shieldcolours++;
 	}
 
@@ -468,14 +468,14 @@ Gfx *healthbar_draw(Gfx *gdl, struct chrdata *chr, s32 offyarg, f32 heightfracar
 	armourfillexcfade = armourfillincfade - armourfade * 0.001f;
 
 	numarmourmarkers = 6;
-	numarmourmarkers += healthbar_maybe_insert_marker(armourmarkers, armourmarkerindexes, ARRAYCOUNT(armourmarkers), armourfillexcfade);
-	numarmourmarkers += healthbar_maybe_insert_marker(armourmarkers, armourmarkerindexes, ARRAYCOUNT(armourmarkers), armourfillincfade);
+	numarmourmarkers += healthbarMaybeInsertMarker(armourmarkers, armourmarkerindexes, ARRAYCOUNT(armourmarkers), armourfillexcfade);
+	numarmourmarkers += healthbarMaybeInsertMarker(armourmarkers, armourmarkerindexes, ARRAYCOUNT(armourmarkers), armourfillincfade);
 
 	for (i = 0; i < numarmourmarkers; i++) {
 		index = armourmarkerindexes[i];
 		marker = &armourmarkers[index];
 
-		colour = healthbar_choose_colour(armourcol, bgcol, armourfillexcfade, armourfillincfade, marker->frac);
+		colour = healthbarChooseColour(armourcol, bgcol, armourfillexcfade, armourfillincfade, marker->frac);
 
 		armourvertices->x = (s32)marker->x1 + offx;
 		armourvertices->y = 0;
@@ -483,7 +483,7 @@ Gfx *healthbar_draw(Gfx *gdl, struct chrdata *chr, s32 offyarg, f32 heightfracar
 		armourvertices->colour = (i + i) << 2;
 		armourvertices++;
 
-		armourcolours->word = colour;
+		armourcolours->word = PD_BE32(colour);
 		armourcolours++;
 
 		armourvertices->x = (s32)marker->x2 + offx;
@@ -492,7 +492,7 @@ Gfx *healthbar_draw(Gfx *gdl, struct chrdata *chr, s32 offyarg, f32 heightfracar
 		armourvertices->colour = (i + i + 1) << 2;
 		armourvertices++;
 
-		armourcolours->word = colour;
+		armourcolours->word = PD_BE32(colour);
 		armourcolours++;
 	}
 
@@ -502,14 +502,14 @@ Gfx *healthbar_draw(Gfx *gdl, struct chrdata *chr, s32 offyarg, f32 heightfracar
 	traumafillexcfade = traumafillincfade - traumafade * 0.001f;
 
 	numtraumamarkers = 6;
-	numtraumamarkers += healthbar_maybe_insert_marker(traumamarkers, traumamarkerindexes, ARRAYCOUNT(traumamarkers), traumafillexcfade);
-	numtraumamarkers += healthbar_maybe_insert_marker(traumamarkers, traumamarkerindexes, ARRAYCOUNT(traumamarkers), traumafillincfade);
+	numtraumamarkers += healthbarMaybeInsertMarker(traumamarkers, traumamarkerindexes, ARRAYCOUNT(traumamarkers), traumafillexcfade);
+	numtraumamarkers += healthbarMaybeInsertMarker(traumamarkers, traumamarkerindexes, ARRAYCOUNT(traumamarkers), traumafillincfade);
 
 	for (i = 0; i < numtraumamarkers; i++) {
 		index = traumamarkerindexes[i];
 		marker = &traumamarkers[index];
 
-		colour = healthbar_choose_colour(traumacol, bgcol, traumafillexcfade, traumafillincfade, marker->frac);
+		colour = healthbarChooseColour(traumacol, bgcol, traumafillexcfade, traumafillincfade, marker->frac);
 
 		traumavertices->x = (s32)marker->x1 + offx;
 		traumavertices->y = 0;
@@ -517,7 +517,7 @@ Gfx *healthbar_draw(Gfx *gdl, struct chrdata *chr, s32 offyarg, f32 heightfracar
 		traumavertices->colour = (i + i) << 2;
 		traumavertices++;
 
-		traumacolours->word = colour;
+		traumacolours->word = PD_BE32(colour);
 		traumacolours++;
 
 		traumavertices->x = (s32)marker->x2 + offx;
@@ -526,13 +526,13 @@ Gfx *healthbar_draw(Gfx *gdl, struct chrdata *chr, s32 offyarg, f32 heightfracar
 		traumavertices->colour = (i + i + 1) << 2;
 		traumavertices++;
 
-		traumacolours->word = colour;
+		traumacolours->word = PD_BE32(colour);
 		traumacolours++;
 	}
 
-	gdl = text_begin(gdl);
-	gdl = text_draw_box(gdl, underleft, undertop, underright, underbottom, undercol);
-	gdl = text_end(gdl);
+	gdl = text0f153628(gdl);
+	gdl = text0f153a34(gdl, underleft, undertop, underright, underbottom, undercol);
+	gdl = text0f153780(gdl);
 
 	gDPSetRenderMode(gdl++, G_RM_AA_XLU_SURF, G_RM_AA_XLU_SURF2);
 	gDPSetCombineMode(gdl++, G_CC_SHADE, G_CC_SHADE);

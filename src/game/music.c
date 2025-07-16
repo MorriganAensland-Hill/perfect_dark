@@ -46,6 +46,10 @@ s32 g_MusicAge60 = 0;           // The current age of the MP track being played
 s32 g_MusicLife60 = TICKS(120); // The max age of any MP track (this value is changed in MP code)
 s32 g_MusicSilenceTimer60 = 0;  // Counts down the 2 second silence between MP track changes
 
+#ifndef PLATFORM_N64
+s32 g_MusicDisableMpDeath = false;
+#endif
+
 #if VERSION < VERSION_NTSC_1_0
 const char var7f1b2030nb[] = "MUSIC : musicPlayLevel\n";
 const char var7f1b2048nb[] = "MUSIC : SWITCHING TO CORRECT AMBIENT TUNE\n";
@@ -81,11 +85,7 @@ u32 var8008465cpf = 0;
 
 const char var7f1b7918[] = "MUSIC : activedeath=%d\n";
 
-void music_save_interval(void);
-void music_restore_interval(void);
-bool music_is_any_player_in_ambient_room(void);
-
-u16 music_get_volume(void)
+u16 musicGetVolume(void)
 {
 #if VERSION >= VERSION_NTSC_1_0
 	u32 volume;
@@ -102,11 +102,11 @@ u16 music_get_volume(void)
 
 	return volume;
 #else
-	return options_get_music_volume();
+	return optionsGetMusicVolume();
 #endif
 }
 
-void music_set_volume(u16 volume)
+void musicSetVolume(u16 volume)
 {
 	s32 i;
 
@@ -118,7 +118,7 @@ void music_set_volume(u16 volume)
 
 	for (i = 0; i < ARRAYCOUNT(g_SeqChannels); i++) {
 		if (g_SeqChannels[i].tracktype != TRACKTYPE_NONE && g_SeqChannels[i].tracktype != TRACKTYPE_AMBIENT) {
-			seq_set_volume(&g_SeqInstances[i], volume);
+			seqSetVolume(&g_SeqInstances[i], volume);
 		}
 	}
 
@@ -127,7 +127,7 @@ void music_set_volume(u16 volume)
 #endif
 }
 
-bool music_is_track_state(s32 tracktype, s32 state)
+bool musicIsTrackState(s32 tracktype, s32 state)
 {
 	s32 i;
 
@@ -147,7 +147,7 @@ bool music_is_track_state(s32 tracktype, s32 state)
 	return false;
 }
 
-s32 music_get_track_state(s32 tracktype)
+s32 musicGetTrackState(s32 tracktype)
 {
 	s32 i;
 
@@ -166,7 +166,7 @@ s32 music_get_track_state(s32 tracktype)
 	return AL_STOPPED;
 }
 
-s32 music_get_channel_by_track_type(s32 tracktype)
+s32 musicGetChannelByTrackType(s32 tracktype)
 {
 	s32 i;
 
@@ -179,12 +179,12 @@ s32 music_get_channel_by_track_type(s32 tracktype)
 	return -1;
 }
 
-void music_queue_start_event(u32 tracktype, u32 tracknum, f32 seconds, u16 volume)
+void musicQueueStartEvent(u32 tracktype, u32 tracknum, f32 arg2, u16 volume)
 {
 	if (!g_SndDisabled) {
 		g_MusicEventQueue[g_MusicEventQueueLength].tracktype = tracktype;
 		g_MusicEventQueue[g_MusicEventQueueLength].tracknum = tracknum;
-		g_MusicEventQueue[g_MusicEventQueueLength].fadesecs = seconds;
+		g_MusicEventQueue[g_MusicEventQueueLength].unk0c = arg2;
 		g_MusicEventQueue[g_MusicEventQueueLength].volume = volume;
 		g_MusicEventQueue[g_MusicEventQueueLength].eventtype = MUSICEVENTTYPE_PLAY;
 		g_MusicEventQueue[g_MusicEventQueueLength].id = g_MusicNextEventId++;
@@ -194,7 +194,7 @@ void music_queue_start_event(u32 tracktype, u32 tracknum, f32 seconds, u16 volum
 	}
 }
 
-void music_queue_stop_event(s32 tracktype)
+void musicQueueStopEvent(s32 tracktype)
 {
 	if (!g_SndDisabled) {
 		g_MusicEventQueue[g_MusicEventQueueLength].tracktype = tracktype;
@@ -206,11 +206,11 @@ void music_queue_stop_event(s32 tracktype)
 	}
 }
 
-void music_queue_fade_event(s32 tracktype, f32 seconds, bool keepafterfade)
+void musicQueueFadeEvent(s32 tracktype, f32 arg1, bool keepafterfade)
 {
 	if (!g_SndDisabled) {
 		g_MusicEventQueue[g_MusicEventQueueLength].tracktype = tracktype;
-		g_MusicEventQueue[g_MusicEventQueueLength].fadesecs = seconds;
+		g_MusicEventQueue[g_MusicEventQueueLength].unk0c = arg1;
 		g_MusicEventQueue[g_MusicEventQueueLength].keepafterfade = keepafterfade;
 		g_MusicEventQueue[g_MusicEventQueueLength].eventtype = MUSICEVENTTYPE_FADE;
 		g_MusicEventQueue[g_MusicEventQueueLength].id = g_MusicNextEventId++;
@@ -220,7 +220,7 @@ void music_queue_fade_event(s32 tracktype, f32 seconds, bool keepafterfade)
 	}
 }
 
-void music_reset(void)
+void musicReset(void)
 {
 	s32 i;
 
@@ -232,11 +232,11 @@ void music_reset(void)
 		}
 
 #if VERSION >= VERSION_NTSC_1_0
-		music_save_interval();
-		music_queue_stop_all_event();
-		music_restore_interval();
+		musicSaveInterval();
+		musicQueueStopAllEvent();
+		musicRestoreInterval();
 #else
-		music_queue_stop_all_event();
+		musicQueueStopAllEvent();
 #endif
 
 		g_MusicSoloDeathIsPlaying = false;
@@ -248,7 +248,7 @@ void music_reset(void)
 	}
 }
 
-void music_queue_stop_all_event(void)
+void musicQueueStopAllEvent(void)
 {
 #if VERSION >= VERSION_NTSC_1_0
 	g_MusicEventQueue[0].tracktype = TRACKTYPE_6;
@@ -261,17 +261,17 @@ void music_queue_stop_all_event(void)
 
 	g_MusicEventQueueLength = 1;
 
-	music_tick_events();
+	musicTickEvents();
 }
 
 #if VERSION >= VERSION_NTSC_1_0
-void music_save_interval(void)
+void musicSaveInterval(void)
 {
 	g_MusicSavedInterval240 = g_MusicInterval240;
 	g_MusicInterval240 = 0;
 }
 
-void music_restore_interval(void)
+void musicRestoreInterval(void)
 {
 	g_MusicEventQueue[g_MusicEventQueueLength].tracktype = TRACKTYPE_6;
 	g_MusicEventQueue[g_MusicEventQueueLength].eventtype = MUSICEVENTTYPE_SETINTERVAL;
@@ -285,27 +285,27 @@ void music_restore_interval(void)
 }
 #endif
 
-#define PRIMARYTRACK() (g_TemporaryPrimaryTrack != -1 ? g_TemporaryPrimaryTrack : stage_get_primary_track(g_MusicStageNum))
-#define AMBIENTTRACK() (g_TemporaryAmbientTrack != -1 ? g_TemporaryAmbientTrack : stage_get_ambient_track(g_MusicStageNum))
+#define PRIMARYTRACK() (g_TemporaryPrimaryTrack != -1 ? g_TemporaryPrimaryTrack : stageGetPrimaryTrack(g_MusicStageNum))
+#define AMBIENTTRACK() (g_TemporaryAmbientTrack != -1 ? g_TemporaryAmbientTrack : stageGetAmbientTrack(g_MusicStageNum))
 
-void music_start_primary(f32 arg0)
+void musicStartPrimary(f32 arg0)
 {
 	if (PRIMARYTRACK() >= 0) {
-		music_queue_start_event(TRACKTYPE_PRIMARY, PRIMARYTRACK(), arg0, music_get_volume());
+		musicQueueStartEvent(TRACKTYPE_PRIMARY, PRIMARYTRACK(), arg0, musicGetVolume());
 	}
 }
 
-void music_start_ambient(f32 arg0)
+void musicStartAmbient(f32 arg0)
 {
 	s32 pass = false;
 
 	if (AMBIENTTRACK() >= 0) {
 		if (g_TemporaryAmbientTrack != -1) {
 			pass = true;
-		} else if (music_is_any_player_in_ambient_room()) {
-			if (g_Vars.tickmode != TICKMODE_CUTSCENE && AMBIENTTRACK() != stage_get_ambient_track(g_MusicStageNum)) {
-				music_queue_stop_event(TRACKTYPE_AMBIENT);
-				music_start_temporary_ambient(stage_get_ambient_track(g_MusicStageNum));
+		} else if (musicIsAnyPlayerInAmbientRoom()) {
+			if (g_Vars.tickmode != TICKMODE_CUTSCENE && AMBIENTTRACK() != stageGetAmbientTrack(g_MusicStageNum)) {
+				musicQueueStopEvent(TRACKTYPE_AMBIENT);
+				musicStartTemporaryAmbient(stageGetAmbientTrack(g_MusicStageNum));
 				return;
 			}
 
@@ -314,16 +314,16 @@ void music_start_ambient(f32 arg0)
 	}
 
 	if (pass) {
-		switch (music_get_track_state(TRACKTYPE_AMBIENT)) {
+		switch (musicGetTrackState(TRACKTYPE_AMBIENT)) {
 		case AL_STOPPED:
 		case AL_STOPPING:
-			music_queue_start_event(TRACKTYPE_AMBIENT, AMBIENTTRACK(), arg0, VOLUME(g_SfxVolume));
+			musicQueueStartEvent(TRACKTYPE_AMBIENT, AMBIENTTRACK(), arg0, VOLUME(g_SfxVolume));
 			break;
 		}
 	}
 }
 
-bool music_is_any_player_in_ambient_room(void)
+bool musicIsAnyPlayerInAmbientRoom(void)
 {
 	s32 i;
 
@@ -331,7 +331,7 @@ bool music_is_any_player_in_ambient_room(void)
 		return false;
 	}
 
-	if (lv_is_paused()) {
+	if (lvIsPaused()) {
 		return false;
 	}
 
@@ -364,17 +364,17 @@ bool music_is_any_player_in_ambient_room(void)
 	return false;
 }
 
-void music_start_nrg(f32 arg0)
+void musicStartNrg(f32 arg0)
 {
-	music_queue_start_event(TRACKTYPE_NRG, stage_get_nrg_track(g_MusicStageNum), arg0, music_get_volume());
+	musicQueueStartEvent(TRACKTYPE_NRG, stageGetNrgTrack(g_MusicStageNum), arg0, musicGetVolume());
 }
 
 /**
  * Not called.
  */
-void music_start_watch(f32 arg0)
+void musicStartWatch(f32 arg0)
 {
-	music_queue_start_event(TRACKTYPE_MENU, menu_choose_music(), arg0, music_get_volume());
+	musicQueueStartEvent(TRACKTYPE_MENU, menuChooseMusic(), arg0, musicGetVolume());
 }
 
 /**
@@ -382,15 +382,15 @@ void music_start_watch(f32 arg0)
  *
  * Used in credits and the soundtrack dialog in MP setup.
  */
-void music_start_track_as_menu(s32 tracknum)
+void musicStartTrackAsMenu(s32 tracknum)
 {
 	if (tracknum != g_MenuTrack) {
-		music_queue_stop_event(TRACKTYPE_MENU);
-		music_queue_stop_event(TRACKTYPE_DEATH);
-		music_queue_fade_event(TRACKTYPE_PRIMARY, 0.5f, FADETYPE_PAUSE);
-		music_queue_fade_event(TRACKTYPE_NRG, 0.5f, FADETYPE_PAUSE);
-		music_queue_fade_event(TRACKTYPE_AMBIENT, 0.5f, FADETYPE_PAUSE);
-		music_queue_start_event(TRACKTYPE_MENU, tracknum, 0, music_get_volume());
+		musicQueueStopEvent(TRACKTYPE_MENU);
+		musicQueueStopEvent(TRACKTYPE_DEATH);
+		musicQueueFadeEvent(TRACKTYPE_PRIMARY, 0.5f, FADETYPE_PAUSE);
+		musicQueueFadeEvent(TRACKTYPE_NRG, 0.5f, FADETYPE_PAUSE);
+		musicQueueFadeEvent(TRACKTYPE_AMBIENT, 0.5f, FADETYPE_PAUSE);
+		musicQueueStartEvent(TRACKTYPE_MENU, tracknum, 0, musicGetVolume());
 	}
 
 	g_MenuTrack = tracknum;
@@ -399,66 +399,66 @@ void music_start_track_as_menu(s32 tracknum)
 /**
  * Used when starting combat simulator matches.
  */
-void music_set_stage_and_start_music(s32 stagenum)
+void musicSetStageAndStartMusic(s32 stagenum)
 {
 	g_MusicStageNum = stagenum;
 
-	music_start_primary(0);
+	musicStartPrimary(0);
 
-	if (stage_get_ambient_track(g_MusicStageNum) >= 0) {
-		music_start_ambient(0);
+	if (stageGetAmbientTrack(g_MusicStageNum) >= 0) {
+		musicStartAmbient(0);
 	}
 }
 
 /**
  * Used for solo missions.
  */
-void music_set_stage(s32 stagenum)
+void musicSetStage(s32 stagenum)
 {
 	g_MusicStageNum = stagenum;
 }
 
-void music_stop(void)
+void musicStop(void)
 {
 #if VERSION >= VERSION_NTSC_1_0
-	music_save_interval();
-	music_queue_stop_all_event();
-	music_restore_interval();
+	musicSaveInterval();
+	musicQueueStopAllEvent();
+	musicRestoreInterval();
 #else
-	music_queue_stop_all_event();
+	musicQueueStopAllEvent();
 #endif
 }
 
-void music_activate_nrg(void)
+void musicActivateNrg(void)
 {
 #if VERSION >= VERSION_NTSC_1_0
 	if (!g_MusicNrgIsActive)
 #endif
 	{
-		if (stage_get_nrg_track(g_MusicStageNum) >= 0) {
-			music_queue_stop_event(TRACKTYPE_NRG);
-			music_queue_stop_event(TRACKTYPE_MENU);
-			music_queue_stop_event(TRACKTYPE_DEATH);
-			music_queue_fade_event(TRACKTYPE_PRIMARY, 0.5, FADETYPE_PAUSE);
-			music_start_nrg(0);
+		if (stageGetNrgTrack(g_MusicStageNum) >= 0) {
+			musicQueueStopEvent(TRACKTYPE_NRG);
+			musicQueueStopEvent(TRACKTYPE_MENU);
+			musicQueueStopEvent(TRACKTYPE_DEATH);
+			musicQueueFadeEvent(TRACKTYPE_PRIMARY, 0.5, FADETYPE_PAUSE);
+			musicStartNrg(0);
 
 			g_MusicNrgIsActive = true;
 		}
 	}
 }
 
-void music_deactivate_nrg(void)
+void musicDeactivateNrg(void)
 {
 #if VERSION >= VERSION_NTSC_1_0
 	if (g_MusicNrgIsActive)
 #endif
 	{
-		music_queue_stop_event(TRACKTYPE_MENU);
-		music_queue_stop_event(TRACKTYPE_DEATH);
-		music_queue_fade_event(TRACKTYPE_NRG, 1, FADETYPE_STOP);
+		musicQueueStopEvent(TRACKTYPE_MENU);
+		musicQueueStopEvent(TRACKTYPE_DEATH);
+		musicQueueFadeEvent(TRACKTYPE_NRG, 1, FADETYPE_STOP);
 
 		if (g_Vars.dontplaynrg == false) {
-			music_start_primary(0.5);
+			musicStartPrimary(0.5);
 		}
 
 		g_MusicNrgIsActive = false;
@@ -468,90 +468,96 @@ void music_deactivate_nrg(void)
 /**
  * Called in many places when opening a pause menu.
  */
-void music_start_menu(void)
+void musicStartMenu(void)
 {
-	music_start_track_as_menu(menu_choose_music());
+	musicStartTrackAsMenu(menuChooseMusic());
 }
 
-void music_end_menu(void)
+void musicEndMenu(void)
 {
-	music_queue_fade_event(TRACKTYPE_MENU, 1, FADETYPE_STOP);
+	musicQueueFadeEvent(TRACKTYPE_MENU, 1, FADETYPE_STOP);
 
-	if (music_is_track_state(TRACKTYPE_NRG, AL_PLAYING)) {
-		music_start_nrg(1);
+	if (musicIsTrackState(TRACKTYPE_NRG, AL_PLAYING)) {
+		musicStartNrg(1);
 	} else {
-		music_start_primary(1);
+		musicStartPrimary(1);
 	}
 
 	g_MenuTrack = -1;
 }
 
-void music_start_solo_death(void)
+void musicStartSoloDeath(void)
 {
 	g_MusicSoloDeathIsPlaying = true;
 
 #if VERSION >= VERSION_NTSC_1_0
-	music_save_interval();
+	musicSaveInterval();
 #endif
 
-	music_queue_stop_event(TRACKTYPE_MENU);
-	music_queue_stop_event(TRACKTYPE_DEATH);
-	music_unset_x_reason(-1);
-	music_queue_stop_event(TRACKTYPE_NRG);
-	music_queue_stop_event(TRACKTYPE_PRIMARY);
-	music_queue_stop_event(TRACKTYPE_AMBIENT);
-	music_queue_start_event(TRACKTYPE_PRIMARY, MUSIC_DEATH_SOLO, 0, VOLUME(g_SfxVolume) > music_get_volume() ? VOLUME(g_SfxVolume) : music_get_volume());
+	musicQueueStopEvent(TRACKTYPE_MENU);
+	musicQueueStopEvent(TRACKTYPE_DEATH);
+	musicUnsetXReason(-1);
+	musicQueueStopEvent(TRACKTYPE_NRG);
+	musicQueueStopEvent(TRACKTYPE_PRIMARY);
+	musicQueueStopEvent(TRACKTYPE_AMBIENT);
+	musicQueueStartEvent(TRACKTYPE_PRIMARY, MUSIC_DEATH_SOLO, 0, VOLUME(g_SfxVolume) > musicGetVolume() ? VOLUME(g_SfxVolume) : musicGetVolume());
 
 #if VERSION >= VERSION_NTSC_1_0
-	music_restore_interval();
+	musicRestoreInterval();
 #endif
 }
 
-void _music_start_mp_death(f32 arg0)
+void _musicStartMpDeath(f32 arg0)
 {
 #if VERSION >= VERSION_NTSC_1_0
-	music_save_interval();
-	music_queue_start_event(TRACKTYPE_DEATH, MUSIC_DEATH_MP, arg0, VOLUME(g_SfxVolume) > music_get_volume() ? VOLUME(g_SfxVolume) : music_get_volume());
-	music_restore_interval();
+	musicSaveInterval();
+	musicQueueStartEvent(TRACKTYPE_DEATH, MUSIC_DEATH_MP, arg0, VOLUME(g_SfxVolume) > musicGetVolume() ? VOLUME(g_SfxVolume) : musicGetVolume());
+	musicRestoreInterval();
 #else
-	music_queue_start_event(TRACKTYPE_DEATH, MUSIC_DEATH_MP, arg0, VOLUME(g_SfxVolume) > music_get_volume() ? VOLUME(g_SfxVolume) : music_get_volume());
+	musicQueueStartEvent(TRACKTYPE_DEATH, MUSIC_DEATH_MP, arg0, VOLUME(g_SfxVolume) > musicGetVolume() ? VOLUME(g_SfxVolume) : musicGetVolume());
 #endif
 }
 
-void music_start_mp_death(void)
+void musicStartMpDeath(void)
 {
-#if VERSION >= VERSION_NTSC_1_0
-	music_save_interval();
+#ifndef PLATFORM_N64
+	if (g_MusicDisableMpDeath) {
+		return;
+	}
 #endif
 
-	music_queue_stop_event(TRACKTYPE_MENU);
-	music_queue_stop_event(TRACKTYPE_DEATH);
-	music_queue_stop_event(TRACKTYPE_AMBIENT);
+#if VERSION >= VERSION_NTSC_1_0
+	musicSaveInterval();
+#endif
+
+	musicQueueStopEvent(TRACKTYPE_MENU);
+	musicQueueStopEvent(TRACKTYPE_DEATH);
+	musicQueueStopEvent(TRACKTYPE_AMBIENT);
 
 	if (g_MusicNrgIsActive) {
-		music_queue_fade_event(TRACKTYPE_NRG, 0.1f, FADETYPE_PAUSE);
+		musicQueueFadeEvent(TRACKTYPE_NRG, 0.1f, FADETYPE_PAUSE);
 	} else {
-		music_queue_fade_event(TRACKTYPE_PRIMARY, 0.1f, FADETYPE_PAUSE);
+		musicQueueFadeEvent(TRACKTYPE_PRIMARY, 0.1f, FADETYPE_PAUSE);
 	}
 
-	_music_start_mp_death(0);
+	_musicStartMpDeath(0);
 
 	g_MusicDeathTimer240 = TICKS(1200);
 	g_MusicMpDeathIsPlaying = true;
 
 #if VERSION >= VERSION_NTSC_1_0
-	music_restore_interval();
+	musicRestoreInterval();
 #endif
 }
 
-void music_end_death(void)
+void musicEndDeath(void)
 {
-	music_queue_fade_event(TRACKTYPE_DEATH, 2, FADETYPE_STOP);
+	musicQueueFadeEvent(TRACKTYPE_DEATH, 2, FADETYPE_STOP);
 
 	if (g_MusicNrgIsActive) {
-		music_start_nrg(2);
+		musicStartNrg(2);
 	} else {
-		music_start_primary(2);
+		musicStartPrimary(2);
 	}
 
 	g_MusicMpDeathIsPlaying = false;
@@ -565,22 +571,22 @@ void music_end_death(void)
  *
  * The track type used is primary.
  */
-void music_play_track_isolated(s32 tracknum)
+void musicPlayTrackIsolated(s32 tracknum)
 {
 #if VERSION >= VERSION_NTSC_1_0
-	music_save_interval();
+	musicSaveInterval();
 #endif
 
-	music_queue_stop_event(TRACKTYPE_MENU);
-	music_queue_stop_event(TRACKTYPE_DEATH);
-	music_unset_x_reason(-1);
-	music_queue_stop_event(TRACKTYPE_NRG);
-	music_queue_stop_event(TRACKTYPE_PRIMARY);
-	music_queue_stop_event(TRACKTYPE_AMBIENT);
-	music_queue_start_event(TRACKTYPE_PRIMARY, tracknum, 0, music_get_volume());
+	musicQueueStopEvent(TRACKTYPE_MENU);
+	musicQueueStopEvent(TRACKTYPE_DEATH);
+	musicUnsetXReason(-1);
+	musicQueueStopEvent(TRACKTYPE_NRG);
+	musicQueueStopEvent(TRACKTYPE_PRIMARY);
+	musicQueueStopEvent(TRACKTYPE_AMBIENT);
+	musicQueueStartEvent(TRACKTYPE_PRIMARY, tracknum, 0, musicGetVolume());
 
 #if VERSION >= VERSION_NTSC_1_0
-	music_restore_interval();
+	musicRestoreInterval();
 #endif
 }
 
@@ -589,23 +595,23 @@ void music_play_track_isolated(s32 tracknum)
  *
  * It's used by the AI scripting language, specifically when ending CI training.
  */
-void music_play_default_tracks(void)
+void musicPlayDefaultTracks(void)
 {
-	music_queue_stop_event(TRACKTYPE_PRIMARY);
-	music_queue_stop_event(TRACKTYPE_AMBIENT);
-	music_start_primary(0.5f);
+	musicQueueStopEvent(TRACKTYPE_PRIMARY);
+	musicQueueStopEvent(TRACKTYPE_AMBIENT);
+	musicStartPrimary(0.5f);
 }
 
 /**
  * Used by the title screen, as well as AF1's NRG theme which never ends.
  */
-void music_start_temporary_primary(s32 tracknum)
+void musicStartTemporaryPrimary(s32 tracknum)
 {
-	music_queue_stop_event(TRACKTYPE_PRIMARY);
+	musicQueueStopEvent(TRACKTYPE_PRIMARY);
 
 	g_TemporaryPrimaryTrack = tracknum;
 
-	music_start_primary(0.5f);
+	musicStartPrimary(0.5f);
 }
 
 /**
@@ -615,23 +621,23 @@ void music_start_temporary_primary(s32 tracknum)
  *
  * The NRG theme will not play while a cutscene theme is active.
  */
-void music_start_cutscene(s32 tracknum)
+void musicStartCutscene(s32 tracknum)
 {
 	u32 volume;
 
-	music_queue_stop_event(TRACKTYPE_MENU);
-	music_queue_stop_event(TRACKTYPE_DEATH);
-	music_unset_x_reason(-1);
-	music_queue_stop_event(TRACKTYPE_NRG);
-	music_queue_stop_event(TRACKTYPE_PRIMARY);
+	musicQueueStopEvent(TRACKTYPE_MENU);
+	musicQueueStopEvent(TRACKTYPE_DEATH);
+	musicUnsetXReason(-1);
+	musicQueueStopEvent(TRACKTYPE_NRG);
+	musicQueueStopEvent(TRACKTYPE_PRIMARY);
 
-	if (g_SfxVolume < music_get_volume()) {
-		volume = music_get_volume();
+	if (g_SfxVolume < musicGetVolume()) {
+		volume = musicGetVolume();
 	} else {
 		volume = g_SfxVolume;
 	}
 
-	music_queue_start_event(TRACKTYPE_PRIMARY, tracknum, 0, volume);
+	musicQueueStartEvent(TRACKTYPE_PRIMARY, tracknum, 0, volume);
 
 	g_Vars.dontplaynrg = true;
 }
@@ -639,14 +645,14 @@ void music_start_cutscene(s32 tracknum)
 /**
  * Used by AI scripting on each stage.
  */
-void music_end_cutscene(void)
+void musicEndCutscene(void)
 {
 	g_Vars.dontplaynrg = false;
 
 	if (!g_IsTitleDemo) {
-		music_queue_stop_event(TRACKTYPE_PRIMARY);
-		music_queue_stop_event(TRACKTYPE_AMBIENT);
-		music_start_primary(0.5f);
+		musicQueueStopEvent(TRACKTYPE_PRIMARY);
+		musicQueueStopEvent(TRACKTYPE_AMBIENT);
+		musicStartPrimary(0.5f);
 	}
 }
 
@@ -654,21 +660,21 @@ void music_end_cutscene(void)
  * Used by AI scripting, and only to set the ambient track during the Defection
  * intro and Extraction outro to traffic noises.
  */
-void music_start_temporary_ambient(s32 tracknum)
+void musicStartTemporaryAmbient(s32 tracknum)
 {
 	g_TemporaryAmbientTrack = tracknum;
-	music_queue_stop_event(TRACKTYPE_AMBIENT);
+	musicQueueStopEvent(TRACKTYPE_AMBIENT);
 
-	music_queue_start_event(TRACKTYPE_AMBIENT, tracknum, 0, VOLUME(g_SfxVolume));
+	musicQueueStartEvent(TRACKTYPE_AMBIENT, tracknum, 0, VOLUME(g_SfxVolume));
 }
 
-void music_end_temporary_ambient(void)
+void musicEndTemporaryAmbient(void)
 {
 	g_TemporaryAmbientTrack = -1;
-	music_queue_stop_event(TRACKTYPE_AMBIENT);
+	musicQueueStopEvent(TRACKTYPE_AMBIENT);
 }
 
-void music_set_x_reason(s32 reason, u32 minsecs, u32 maxsecs)
+void musicSetXReason(s32 reason, u32 minsecs, u32 maxsecs)
 {
 	if (g_AudioXReasonsActive[reason] == false) {
 		g_AudioXReasonsActive[reason] = true;
@@ -677,7 +683,7 @@ void music_set_x_reason(s32 reason, u32 minsecs, u32 maxsecs)
 	}
 }
 
-void music_unset_x_reason(s32 reason)
+void musicUnsetXReason(s32 reason)
 {
 	s32 i;
 
@@ -692,25 +698,25 @@ void music_unset_x_reason(s32 reason)
 
 #if VERSION >= VERSION_NTSC_1_0
 		if (g_MusicNrgIsActive) {
-			music_deactivate_nrg();
+			musicDeactivateNrg();
 		}
 #endif
 	}
 }
 
 /**
- * Called by music_tick every 0.25 seconds.
+ * Called by musicTick every 0.25 seconds.
  */
-void music_tick_ambient(void)
+void musicTickAmbient(void)
 {
 	if (g_TemporaryAmbientTrack == -1) {
-		if (music_is_any_player_in_ambient_room()) {
-			music_start_ambient(1);
-		} else if (music_get_track_state(TRACKTYPE_AMBIENT) == AL_PLAYING) {
-			music_queue_fade_event(TRACKTYPE_AMBIENT, 1, FADETYPE_PAUSE);
+		if (musicIsAnyPlayerInAmbientRoom()) {
+			musicStartAmbient(1);
+		} else if (musicGetTrackState(TRACKTYPE_AMBIENT) == AL_PLAYING) {
+			musicQueueFadeEvent(TRACKTYPE_AMBIENT, 1, FADETYPE_PAUSE);
 		}
-	} else if (stage_get_ambient_track(g_MusicStageNum) >= 0) {
-		music_start_ambient(1);
+	} else if (stageGetAmbientTrack(g_MusicStageNum) >= 0) {
+		musicStartAmbient(1);
 	}
 }
 

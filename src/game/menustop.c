@@ -26,13 +26,20 @@
 #include "lib/snd.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "input.h"
+#endif
 
-void menu_stop(void)
+void menuStop(void)
 {
+#ifndef PLATFORM_N64
+	inputAutoLockMouse(true);
+#endif
+
 	if (var80062944) {
 		var80062944 = 0;
 		var80062948 = 0;
-		joy_set_default_pfs_poll_interval();
+		joySetDefaultPfsPollInterval();
 		func0f110bf8();
 	}
 }

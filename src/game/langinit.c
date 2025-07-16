@@ -7,15 +7,24 @@
 
 u16 *g_FrameBuffers[NUM_FRAMEBUFFERS];
 
-void lang_init(void)
+#ifndef PLATFORM_N64
+#if VERSION >= VERSION_JPN_FINAL
+u32 var8009d010pf[4];
+s32 g_JpnMaxCacheItems;
+#elif VERSION >= VERSION_PAL_BETA
+u32 var8009d010pf[4];
+#endif
+#endif
+
+void langInit(void)
 {
 	s32 i;
 
 #if VERSION >= VERSION_JPN_FINAL
 	g_JpnMaxCacheItems = IS4MB() ? 124 : 174;
 
-	g_JpnCharCachePixels = memp_alloc(MAX_JPN_CACHE_ITEMS() * (sizeof(struct jpncharpixels) * 8), MEMPOOL_PERMANENT);
-	g_JpnCacheCacheItems = memp_alloc(ALIGN16(MAX_JPN_CACHE_ITEMS() * sizeof(struct jpncacheitem)), MEMPOOL_PERMANENT);
+	g_JpnCharCachePixels = mempAlloc(MAX_JPN_CACHE_ITEMS() * (sizeof(struct jpncharpixels) * 8), MEMPOOL_PERMANENT);
+	g_JpnCacheCacheItems = mempAlloc(ALIGN16(MAX_JPN_CACHE_ITEMS() * sizeof(struct jpncacheitem)), MEMPOOL_PERMANENT);
 
 	for (i = 0; i < MAX_JPN_CACHE_ITEMS(); i++) {
 		g_JpnCacheCacheItems[i].ttl = 0;
@@ -23,8 +32,8 @@ void lang_init(void)
 	}
 #else
 	if (g_Jpn) {
-		g_JpnCharCachePixels = memp_alloc(MAX_JPN_CACHE_ITEMS() * (sizeof(struct jpncharpixels) * 8), MEMPOOL_PERMANENT);
-		g_JpnCacheCacheItems = memp_alloc(ALIGN16(MAX_JPN_CACHE_ITEMS() * sizeof(struct jpncacheitem)), MEMPOOL_PERMANENT);
+		g_JpnCharCachePixels = mempAlloc(MAX_JPN_CACHE_ITEMS() * (sizeof(struct jpncharpixels) * 8), MEMPOOL_PERMANENT);
+		g_JpnCacheCacheItems = mempAlloc(ALIGN16(MAX_JPN_CACHE_ITEMS() * sizeof(struct jpncacheitem)), MEMPOOL_PERMANENT);
 
 		for (i = 0; i < MAX_JPN_CACHE_ITEMS(); i++) {
 			g_JpnCacheCacheItems[i].ttl = 0;

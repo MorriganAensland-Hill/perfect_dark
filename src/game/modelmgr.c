@@ -7,6 +7,8 @@
 #include "data.h"
 #include "types.h"
 
+#include "system.h"
+
 struct model *g_ModelSlots;
 struct anim *g_AnimSlots;
 s32 g_ModelNumObjs;
@@ -26,13 +28,13 @@ s32 g_ModelMostAnims = 0;
 #define NUMTYPE2() (IS4MB() ? 24 : 25)
 #define NUMTYPE3() (IS4MB() ? 0 : 20)
 
-bool modelmgr_can_slot_fit_rwdata(struct model *modelslot, struct modeldef *modeldef)
+bool modelmgrCanSlotFitRwdata(struct model *modelslot, struct modeldef *modeldef)
 {
 	return modeldef->rwdatalen <= 0
 		|| (modelslot->rwdatas != NULL && modelslot->rwdatalen >= modeldef->rwdatalen);
 }
 
-void modelmgr_print_counts(void)
+void modelmgrPrintCounts(void)
 {
 	s32 i;
 	s32 numtype1 = 0;
@@ -102,18 +104,22 @@ void modelmgr_print_counts(void)
 	if (IS4MB());
 }
 
-struct model *modelmgr_instantiate_model(struct modeldef *modeldef, bool withanim)
+struct model *modelmgrInstantiateModel(struct modeldef *modeldef, bool withanim)
 {
 	struct model *model = NULL;
 	u32 *rwdatas = NULL;
 	s16 datalen = -1;
+	s16 extra = 0;
+#ifdef PLATFORM_64BIT
+	extra = 128;
+#endif
 	s32 i;
 
 	if (!g_ModelIsLvResetting) {
 		// If it's being allocated mid-gameplay, look through all slots
 		// and find any slot that's big enough.
 		for (i = 0; i < g_MaxModels; i++) {
-			if (g_ModelSlots[i].definition == NULL && modelmgr_can_slot_fit_rwdata(&g_ModelSlots[i], modeldef)) {
+			if (g_ModelSlots[i].definition == NULL && modelmgrCanSlotFitRwdata(&g_ModelSlots[i], modeldef)) {
 				model = &g_ModelSlots[i];
 				rwdatas = g_ModelSlots[i].rwdatas;
 				datalen = g_ModelSlots[i].rwdatalen;
@@ -135,18 +141,18 @@ struct model *modelmgr_instantiate_model(struct modeldef *modeldef, bool withani
 
 		if (model == NULL) {
 			osSyncPrintf("Allocating %d bytes for objinst structure\n", ALIGN16(sizeof(struct model)));
-			model = memp_alloc(ALIGN16(sizeof(struct model)), MEMPOOL_STAGE);
+			model = mempAlloc(ALIGN16(sizeof(struct model)), MEMPOOL_STAGE);
 		}
 
 		if (g_ModelIsLvResetting) {
 			if (modeldef->rwdatalen > 0) {
 				datalen = modeldef->rwdatalen;
-				rwdatas = memp_alloc(ALIGN16(datalen * 4), MEMPOOL_STAGE);
+				rwdatas = mempAlloc(ALIGN16(datalen * 4), MEMPOOL_STAGE);
 			}
 		} else {
 			// At this point, it's during gameplay. A model instance slot has
 			// been found or allocated, but rwdata needs to be allocated.
-			if (modeldef->rwdatalen < 256) {
+			if (modeldef->rwdatalen < 256+extra) {
 				bool done = false;
 				u32 stack;
 
@@ -179,7 +185,7 @@ struct model *modelmgr_instantiate_model(struct modeldef *modeldef, bool withani
 
 				// 256 words (0x400 bytes) or less -> try type 3
 				// First looking for unused slots with an existing rwdata allocation
-				if (!done && modeldef->rwdatalen <= 256) {
+				if (!done && modeldef->rwdatalen <= 256+extra) {
 					for (i = 0; i < NUMTYPE3(); i++) {
 						if (g_ModelRwdataBindings[2][i].model == NULL && g_ModelRwdataBindings[2][i].rwdata != NULL) {
 							osSyncPrintf("MotInst: Using cache entry type 3 %d (0x%08x) - Bytes=%d\n");
@@ -193,10 +199,10 @@ struct model *modelmgr_instantiate_model(struct modeldef *modeldef, bool withani
 				}
 
 				// Type 3 again, but looking for null rwdata allocations
-				if (!done && modeldef->rwdatalen <= 256) {
+				if (!done && modeldef->rwdatalen <= 256+extra) {
 					for (i = 0; i < NUMTYPE3(); i++) {
 						if (g_ModelRwdataBindings[2][i].model == NULL && g_ModelRwdataBindings[2][i].rwdata == NULL) {
-							g_ModelRwdataBindings[2][i].rwdata = memp_alloc(256 * 4, MEMPOOL_STAGE);
+							g_ModelRwdataBindings[2][i].rwdata = mempAlloc((256+128) * 4, MEMPOOL_STAGE);
 							rwdatas = g_ModelRwdataBindings[2][i].rwdata;
 							g_ModelRwdataBindings[2][i].model = model;
 							break;
@@ -204,7 +210,7 @@ struct model *modelmgr_instantiate_model(struct modeldef *modeldef, bool withani
 					}
 				}
 			} else {
-				// empty
+				sysLogPrintf(LOG_WARNING, "Unable to allocate rwdata");
 			}
 
 			if (withanim) {
@@ -213,24 +219,26 @@ struct model *modelmgr_instantiate_model(struct modeldef *modeldef, bool withani
 				datalen = IS4MB() ? 52 : 256;
 			}
 
+			datalen += extra;
+
 			if (datalen < modeldef->rwdatalen) {
 				datalen = modeldef->rwdatalen;
 			}
 
 			if (rwdatas == NULL) {
-				rwdatas = memp_alloc(ALIGN16(datalen * 4), MEMPOOL_STAGE);
+				rwdatas = mempAlloc(ALIGN16(datalen * 4), MEMPOOL_STAGE);
 			}
 		}
 	}
 
 	if (model) {
 		if (withanim) {
-			model->anim = modelmgr_instantiate_anim();
+			model->anim = modelmgrInstantiateAnim();
 
 			if (model->anim) {
-				anim_init(model->anim);
+				animInit(model->anim);
 			} else {
-				modelmgr_free_model(model);
+				modelmgrFreeModel(model);
 				model = NULL;
 			}
 		} else {
@@ -239,7 +247,7 @@ struct model *modelmgr_instantiate_model(struct modeldef *modeldef, bool withani
 	}
 
 	if (model) {
-		model_init(model, modeldef, rwdatas, false);
+		modelInit(model, modeldef, rwdatas, false);
 		model->rwdatalen = datalen;
 	}
 
@@ -249,12 +257,12 @@ struct model *modelmgr_instantiate_model(struct modeldef *modeldef, bool withani
 	return model;
 }
 
-struct model *modelmgr_instantiate_model_without_anim(struct modeldef *modeldef)
+struct model *modelmgrInstantiateModelWithoutAnim(struct modeldef *modeldef)
 {
-	return modelmgr_instantiate_model(modeldef, false);
+	return modelmgrInstantiateModel(modeldef, false);
 }
 
-void modelmgr_free_model(struct model *model)
+void modelmgrFreeModel(struct model *model)
 {
 	bool done = false;
 	s32 i;
@@ -307,25 +315,25 @@ void modelmgr_free_model(struct model *model)
 	}
 
 	if (model->anim) {
-		modelmgr_free_anim(model->anim);
+		modelmgrFreeAnim(model->anim);
 		model->anim = NULL;
 	}
 
 	model->definition = NULL;
 }
 
-struct model *modelmgr_instantiate_model_with_anim(struct modeldef *modeldef)
+struct model *modelmgrInstantiateModelWithAnim(struct modeldef *modeldef)
 {
-	return modelmgr_instantiate_model(modeldef, true);
+	return modelmgrInstantiateModel(modeldef, true);
 }
 
-void modelmgr_attach_head(struct model *model, struct modelnode *node, struct modeldef *headmodeldef)
+void modelmgrAttachHead(struct model *model, struct modelnode *node, struct modeldef *headmodeldef)
 {
-	model_attach_head(model, model->definition, node, headmodeldef);
-	model_init_rw_data(model, headmodeldef->rootnode);
+	modelAttachHead(model, model->definition, node, headmodeldef);
+	modelInitRwData(model, headmodeldef->rootnode);
 }
 
-struct anim *modelmgr_instantiate_anim(void)
+struct anim *modelmgrInstantiateAnim(void)
 {
 	s32 i;
 	struct anim *anim = NULL;
@@ -340,7 +348,7 @@ struct anim *modelmgr_instantiate_anim(void)
 	return anim;
 }
 
-void modelmgr_free_anim(struct anim *anim)
+void modelmgrFreeAnim(struct anim *anim)
 {
 	anim->animnum = -1;
 }

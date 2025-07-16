@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <stdlib.h>
 #include "constants.h"
 #include "game/bondgun.h"
 #include "game/bossfile.h"
@@ -6,8 +7,8 @@
 #include "game/cheats.h"
 #include "game/debug.h"
 #include "game/filemgr.h"
-#include "game/gset.h"
-#include "game/text.h"
+#include "game/game_0b0fd0.h"
+#include "game/game_1531a0.h"
 #include "game/gamefile.h"
 #include "game/inv.h"
 #include "game/lang.h"
@@ -38,31 +39,32 @@ u8 g_InventoryWeapon;
 struct menudialogdef g_2PMissionControlStyleMenuDialog;
 struct menudialogdef g_CiControlPlayer2MenuDialog;
 struct menudialogdef g_CinemaMenuDialog;
+#ifndef PLATFORM_N64
+extern struct menudialogdef g_ExtendedMenuDialog;
+#endif
 
-MenuItemHandlerResult menuhandler_fr_inventory_list(s32 operation, struct menuitem *item, union handlerdata *data);
-
-char *menu_text_current_stage_name(struct menuitem *item)
+char *menuTextCurrentStageName(struct menuitem *item)
 {
-	sprintf(g_StringPointer, "%s\n", lang_get(g_SoloStages[g_MissionConfig.stageindex].name3));
+	sprintf(g_StringPointer, "%s\n", langGet(g_SoloStages[g_MissionConfig.stageindex].name3));
 	return g_StringPointer;
 }
 
-char *solo_menu_text_difficulty(struct menuitem *item)
+char *soloMenuTextDifficulty(struct menuitem *item)
 {
 #if VERSION >= VERSION_NTSC_1_0
 	if (g_MissionConfig.pdmode) {
-		return lang_get(L_MPWEAPONS_221);
+		return langGet(L_MPWEAPONS_221);
 	}
 #endif
 
 	switch (g_MissionConfig.difficulty) {
 	case DIFF_SA:
-		return lang_get(L_OPTIONS_252);
+		return langGet(L_OPTIONS_252);
 	case DIFF_PA:
-		return lang_get(L_OPTIONS_253);
+		return langGet(L_OPTIONS_253);
 	case DIFF_A:
 	default:
-		return lang_get(L_OPTIONS_251);
+		return langGet(L_OPTIONS_251);
 	}
 }
 
@@ -77,7 +79,7 @@ u16 g_ControlStyleOptions[] = {
 	L_OPTIONS_246, // "2.4"
 };
 
-MenuItemHandlerResult menuhandler_control_style_impl(s32 operation, struct menuitem *item, union handlerdata *data, s32 mpindex)
+MenuItemHandlerResult menuhandlerControlStyleImpl(s32 operation, struct menuitem *item, union handlerdata *data, s32 mpindex)
 {
 	u16 categories[] = {
 		L_OPTIONS_237, // "Single"
@@ -89,28 +91,39 @@ MenuItemHandlerResult menuhandler_control_style_impl(s32 operation, struct menui
 	}
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
-		data->list.value = 8;
+	case MENUOP_GETOPTIONCOUNT:
+		data->list.value = 9;
 		break;
-	case MENUOP_GET_OPTGROUP_COUNT:
-		data->list.value = 2;
+	case MENUOP_GETOPTGROUPCOUNT:
+		data->list.value = 3;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
-		return (s32) lang_get(g_ControlStyleOptions[data->list.value]);
-	case MENUOP_GET_OPTGROUP_TEXT:
-		return (s32) lang_get(categories[data->list.value]);
-	case MENUOP_GET_OPTGROUP_START_INDEX:
-		data->list.groupstartindex = data->list.value == 0 ? 0 : 4;
+	case MENUOP_GETOPTIONTEXT:
+		if (data->list.value > 7) {
+			return (uintptr_t) "Ext";
+		} else {
+			return (uintptr_t) langGet(g_ControlStyleOptions[data->list.value]);
+		}
+	case MENUOP_GETOPTGROUPTEXT:
+		if (data->list.value > 1) {
+			return (uintptr_t) "Port";
+		} else {
+			return (uintptr_t) langGet(categories[data->list.value]);
+		}
+	case MENUOP_GETGROUPSTARTINDEX:
+		data->list.groupstartindex = data->list.value * 4;
 		break;
-	case MENUOP_CONFIRM:
-		options_set_control_mode(mpindex, data->list.value);
+	case MENUOP_SET:
+		optionsSetControlMode(mpindex, data->list.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
+#ifndef PLATFORM_N64
+		g_PlayerExtCfg[mpindex & 3].extcontrols = (data->list.value == CONTROLMODE_PC);
+#endif
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
-		data->list.value = options_get_control_mode(mpindex);
+	case MENUOP_GETSELECTEDINDEX:
+		data->list.value = optionsGetControlMode(mpindex);
 		g_Menus[g_MpPlayerNum].main.mpindex = mpindex;
 		break;
-	case MENUOP_ON_OPTION_FOCUS:
+	case MENUOP_LISTITEMFOCUS:
 		if (g_MenuData.root == MENUROOT_MAINMENU) {
 			g_Menus[g_MpPlayerNum].main.controlmode = data->list.value;
 		}
@@ -120,17 +133,17 @@ MenuItemHandlerResult menuhandler_control_style_impl(s32 operation, struct menui
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_control_style_p1(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandler001024dc(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	return menuhandler_control_style_impl(operation, item, data, 4);
+	return menuhandlerControlStyleImpl(operation, item, data, 4);
 }
 
-MenuItemHandlerResult menuhandler_control_style_p2(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandler001024fc(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	return menuhandler_control_style_impl(operation, item, data, 5);
+	return menuhandlerControlStyleImpl(operation, item, data, 5);
 }
 
-MenuItemHandlerResult menuhandler_reverse_pitch(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerReversePitch(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u32 mpchrnum;
 
@@ -141,17 +154,17 @@ MenuItemHandlerResult menuhandler_reverse_pitch(s32 operation, struct menuitem *
 	}
 
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
-		return !options_get_forward_pitch(mpchrnum);
-	case MENUOP_CONFIRM:
-		options_set_forward_pitch(mpchrnum, data->checkbox.value == 0);
+	case MENUOP_GET:
+		return !optionsGetForwardPitch(mpchrnum);
+	case MENUOP_SET:
+		optionsSetForwardPitch(mpchrnum, data->checkbox.value == 0);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_aim_control(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerAimControl(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u32 playernum = (g_Vars.coopplayernum >= 0 || g_Vars.antiplayernum >= 0)
 		? g_Vars.currentplayerstats->mpindex : item->param3;
@@ -164,7 +177,7 @@ MenuItemHandlerResult menuhandler_aim_control(s32 operation, struct menuitem *it
 		{ L_MPWEAPONS_276, L_MPWEAPONS_277 }, // "Hold", "Toggle"
 	};
 
-	if (options_get_screen_split() == SCREENSPLIT_VERTICAL && PLAYERCOUNT() >= 2) {
+	if (optionsGetScreenSplit() == SCREENSPLIT_VERTICAL && PLAYERCOUNT() >= 2) {
 		index = 1;
 	}
 #else
@@ -175,27 +188,27 @@ MenuItemHandlerResult menuhandler_aim_control(s32 operation, struct menuitem *it
 #endif
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 		data->dropdown.value = 2;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
+	case MENUOP_GETOPTIONTEXT:
 #if VERSION >= VERSION_PAL_FINAL
-		return (s32) lang_get(options[index][data->dropdown.value]);
+		return (uintptr_t) langGet(options[index][data->dropdown.value]);
 #else
-		return (s32) lang_get(options[data->dropdown.value]);
+		return (uintptr_t) langGet(options[data->dropdown.value]);
 #endif
-	case MENUOP_CONFIRM:
-		options_set_aim_control(playernum, data->dropdown.value);
+	case MENUOP_SET:
+		optionsSetAimControl(playernum, data->dropdown.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
-		data->dropdown.value = options_get_aim_control(playernum);
+	case MENUOP_GETSELECTEDINDEX:
+		data->dropdown.value = optionsGetAimControl(playernum);
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_sound_mode(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerSoundMode(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u16 options[] = {
 		L_OPTIONS_232, // "Mono"
@@ -205,23 +218,23 @@ MenuItemHandlerResult menuhandler_sound_mode(s32 operation, struct menuitem *ite
 	};
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 		data->dropdown.value = 4;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
-		return (s32) lang_get(options[data->dropdown.value]);
-	case MENUOP_CONFIRM:
-		snd_set_sound_mode(data->dropdown.value);
+	case MENUOP_GETOPTIONTEXT:
+		return (uintptr_t) langGet(options[data->dropdown.value]);
+	case MENUOP_SET:
+		sndSetSoundMode(data->dropdown.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		data->dropdown.value = g_SoundMode;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_screen_size(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerScreenSize(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u16 options[] = {
 		L_OPTIONS_220, // "Full"
@@ -230,23 +243,23 @@ MenuItemHandlerResult menuhandler_screen_size(s32 operation, struct menuitem *it
 	};
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 		data->dropdown.value = 3;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
-		return (s32) lang_get(options[data->dropdown.value]);
-	case MENUOP_CONFIRM:
-		options_set_screen_size(data->dropdown.value);
+	case MENUOP_GETOPTIONTEXT:
+		return (uintptr_t) langGet(options[data->dropdown.value]);
+	case MENUOP_SET:
+		optionsSetScreenSize(data->dropdown.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
-		data->dropdown.value = options_get_effective_screen_size();
+	case MENUOP_GETSELECTEDINDEX:
+		data->dropdown.value = optionsGetEffectiveScreenSize();
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_screen_ratio(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerScreenRatio(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u16 options[] = {
 		L_OPTIONS_223, // "Normal"
@@ -254,24 +267,24 @@ MenuItemHandlerResult menuhandler_screen_ratio(s32 operation, struct menuitem *i
 	};
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 		data->dropdown.value = 2;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
-		return (s32) lang_get(options[data->dropdown.value]);
-	case MENUOP_CONFIRM:
-		options_set_screen_ratio(data->dropdown.value);
+	case MENUOP_GETOPTIONTEXT:
+		return (uintptr_t) langGet(options[data->dropdown.value]);
+	case MENUOP_SET:
+		optionsSetScreenRatio(data->dropdown.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
-		data->dropdown.value = options_get_screen_ratio();
+	case MENUOP_GETSELECTEDINDEX:
+		data->dropdown.value = optionsGetScreenRatio();
 	}
 
 	return 0;
 }
 
 #if PAL
-MenuItemHandlerResult menuhandler_language(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerLanguage(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u16 labels[] = {
 		L_MPWEAPONS_262, // English
@@ -282,17 +295,17 @@ MenuItemHandlerResult menuhandler_language(s32 operation, struct menuitem *item,
 	};
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 		data->dropdown.value = 5;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
-		return (s32)lang_get(labels[data->dropdown.value]);
-	case MENUOP_CONFIRM:
+	case MENUOP_GETOPTIONTEXT:
+		return (uintptr_t)langGet(labels[data->dropdown.value]);
+	case MENUOP_SET:
 		g_Vars.language = data->dropdown.value;
-		lang_set_european(g_Vars.language);
+		langSetEuropean(g_Vars.language);
 		g_Vars.modifiedfiles |= MODFILE_GAME | MODFILE_BOSS;
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		data->dropdown.value = g_Vars.language;
 
 		if (data->dropdown.value > LANGUAGE_PAL_ES) {
@@ -305,7 +318,7 @@ MenuItemHandlerResult menuhandler_language(s32 operation, struct menuitem *item,
 }
 #endif
 
-MenuItemHandlerResult menuhandler_screen_split(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerScreenSplit(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u16 options[] = {
 		L_OPTIONS_225, // "Horizontal"
@@ -313,36 +326,36 @@ MenuItemHandlerResult menuhandler_screen_split(s32 operation, struct menuitem *i
 	};
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 		data->dropdown.value = 2;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
-		return (s32) lang_get(options[data->dropdown.value]);
-	case MENUOP_CONFIRM:
-		if (data->dropdown.value != (u32)options_get_screen_split()) {
-			options_set_screen_split(data->dropdown.value);
+	case MENUOP_GETOPTIONTEXT:
+		return (uintptr_t) langGet(options[data->dropdown.value]);
+	case MENUOP_SET:
+		if (data->dropdown.value != (u32)optionsGetScreenSplit()) {
+			optionsSetScreenSplit(data->dropdown.value);
 
 			g_Vars.modifiedfiles |= MODFILE_GAME;
 
 			if (PLAYERCOUNT() > 1) {
 				u32 prevplayernum = g_MpPlayerNum;
 				g_MpPlayerNum = 0;
-				menu_save_and_close_all();
+				func0f0f8120();
 				g_MpPlayerNum = 1;
-				menu_save_and_close_all();
+				func0f0f8120();
 				g_MpPlayerNum = prevplayernum;
 			}
 		}
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
-		data->dropdown.value = options_get_screen_split();
+	case MENUOP_GETSELECTEDINDEX:
+		data->dropdown.value = optionsGetScreenSplit();
 		break;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_look_ahead(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerLookAhead(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u32 mpchrnum;
 
@@ -353,17 +366,17 @@ MenuItemHandlerResult menuhandler_look_ahead(s32 operation, struct menuitem *ite
 	}
 
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
-		return options_get_look_ahead(mpchrnum);
-	case MENUOP_CONFIRM:
-		options_set_look_ahead(mpchrnum, data->checkbox.value);
+	case MENUOP_GET:
+		return optionsGetLookAhead(mpchrnum);
+	case MENUOP_SET:
+		optionsSetLookAhead(mpchrnum, data->checkbox.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_head_roll(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerHeadRoll(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u32 mpchrnum;
 
@@ -374,53 +387,53 @@ MenuItemHandlerResult menuhandler_head_roll(s32 operation, struct menuitem *item
 	}
 
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
-		return options_get_head_roll(mpchrnum);
-	case MENUOP_CONFIRM:
-		options_set_head_roll(mpchrnum, data->checkbox.value);
+	case MENUOP_GET:
+		return optionsGetHeadRoll(mpchrnum);
+	case MENUOP_SET:
+		optionsSetHeadRoll(mpchrnum, data->checkbox.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_in_game_subtitles(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerInGameSubtitles(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
-		return options_get_in_game_subtitles();
-	case MENUOP_CONFIRM:
-		options_set_in_game_subtitles(data->checkbox.value);
+	case MENUOP_GET:
+		return optionsGetInGameSubtitles();
+	case MENUOP_SET:
+		optionsSetInGameSubtitles(data->checkbox.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_cutscene_subtitles(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerCutsceneSubtitles(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
-		return options_get_cutscene_subtitles();
-	case MENUOP_CONFIRM:
-		options_set_cutscene_subtitles(data->checkbox.value);
+	case MENUOP_GET:
+		return optionsGetCutsceneSubtitles();
+	case MENUOP_SET:
+		optionsSetCutsceneSubtitles(data->checkbox.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_alternative_title(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerAlternativeTitle(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_IS_HIDDEN:
+	case MENUOP_CHECKHIDDEN:
 		if (g_Vars.stagenum != STAGE_CITRAINING || (u8)g_AltTitleUnlocked == false) {
 			return true;
 		}
 		break;
-	case MENUOP_IS_CHECKED:
+	case MENUOP_GET:
 		return g_AltTitleEnabled;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_AltTitleEnabled = data->checkbox.value;
 		g_Vars.modifiedfiles |= MODFILE_BOSS;
 	}
@@ -428,10 +441,10 @@ MenuItemHandlerResult menuhandler_alternative_title(s32 operation, struct menuit
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_hi_res(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerHiRes(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_IS_HIDDEN:
+	case MENUOP_CHECKHIDDEN:
 		if (IS4MB()) {
 			return true;
 		}
@@ -441,17 +454,17 @@ MenuItemHandlerResult menuhandler_hi_res(s32 operation, struct menuitem *item, u
 			}
 		}
 		break;
-	case MENUOP_IS_CHECKED:
+	case MENUOP_GET:
 		return g_HiResEnabled == true;
-	case MENUOP_CONFIRM:
-		player_set_hi_res_enabled(data->checkbox.value ? 1 : 0);
+	case MENUOP_SET:
+		playerSetHiResEnabled(data->checkbox.value ? 1 : 0);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_ammo_on_screen(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerAmmoOnScreen(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u32 mpchrnum;
 
@@ -462,17 +475,17 @@ MenuItemHandlerResult menuhandler_ammo_on_screen(s32 operation, struct menuitem 
 	}
 
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
-		return options_get_ammo_on_screen(mpchrnum);
-	case MENUOP_CONFIRM:
-		options_set_ammo_on_screen(mpchrnum, data->checkbox.value);
+	case MENUOP_GET:
+		return optionsGetAmmoOnScreen(mpchrnum);
+	case MENUOP_SET:
+		optionsSetAmmoOnScreen(mpchrnum, data->checkbox.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_show_gun_function(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerShowGunFunction(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u32 mpchrnum;
 
@@ -483,22 +496,22 @@ MenuItemHandlerResult menuhandler_show_gun_function(s32 operation, struct menuit
 	}
 
 	switch (operation) {
-	case MENUOP_IS_DISABLED:
-		if (options_get_ammo_on_screen(mpchrnum) == 0) {
+	case MENUOP_CHECKDISABLED:
+		if (optionsGetAmmoOnScreen(mpchrnum) == 0) {
 			return true;
 		}
 		break;
-	case MENUOP_IS_CHECKED:
-		return options_get_show_gun_function(mpchrnum);
-	case MENUOP_CONFIRM:
-		options_set_show_gun_function(mpchrnum, data->checkbox.value);
+	case MENUOP_GET:
+		return optionsGetShowGunFunction(mpchrnum);
+	case MENUOP_SET:
+		optionsSetShowGunFunction(mpchrnum, data->checkbox.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_show_mission_time(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerShowMissionTime(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u32 mpchrnum;
 
@@ -509,17 +522,17 @@ MenuItemHandlerResult menuhandler_show_mission_time(s32 operation, struct menuit
 	}
 
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
-		return options_get_show_mission_time(mpchrnum);
-	case MENUOP_CONFIRM:
-		options_set_show_mission_time(mpchrnum, data->checkbox.value);
+	case MENUOP_GET:
+		return optionsGetShowMissionTime(mpchrnum);
+	case MENUOP_SET:
+		optionsSetShowMissionTime(mpchrnum, data->checkbox.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_always_show_target(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerAlwaysShowTarget(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u32 mpchrnum;
 
@@ -530,22 +543,22 @@ MenuItemHandlerResult menuhandler_always_show_target(s32 operation, struct menui
 	}
 
 	switch (operation) {
-	case MENUOP_IS_DISABLED:
-		if (options_get_sight_on_screen(mpchrnum) == 0) {
+	case MENUOP_CHECKDISABLED:
+		if (optionsGetSightOnScreen(mpchrnum) == 0) {
 			return true;
 		}
 		break;
-	case MENUOP_IS_CHECKED:
-		return options_get_always_show_target(mpchrnum);
-	case MENUOP_CONFIRM:
-		options_set_always_show_target(mpchrnum, data->checkbox.value);
+	case MENUOP_GET:
+		return optionsGetAlwaysShowTarget(mpchrnum);
+	case MENUOP_SET:
+		optionsSetAlwaysShowTarget(mpchrnum, data->checkbox.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_show_zoom_range(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerShowZoomRange(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u32 mpchrnum;
 
@@ -556,22 +569,22 @@ MenuItemHandlerResult menuhandler_show_zoom_range(s32 operation, struct menuitem
 	}
 
 	switch (operation) {
-	case MENUOP_IS_DISABLED:
-		if (options_get_sight_on_screen(mpchrnum) == 0) {
+	case MENUOP_CHECKDISABLED:
+		if (optionsGetSightOnScreen(mpchrnum) == 0) {
 			return true;
 		}
 		break;
-	case MENUOP_IS_CHECKED:
-		return options_get_show_zoom_range(mpchrnum);
-	case MENUOP_CONFIRM:
-		options_set_show_zoom_range(mpchrnum, data->checkbox.value);
+	case MENUOP_GET:
+		return optionsGetShowZoomRange(mpchrnum);
+	case MENUOP_SET:
+		optionsSetShowZoomRange(mpchrnum, data->checkbox.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_paintball(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerPaintball(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u32 mpchrnum;
 
@@ -582,17 +595,17 @@ MenuItemHandlerResult menuhandler_paintball(s32 operation, struct menuitem *item
 	}
 
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
-		return options_get_paintball(mpchrnum);
-	case MENUOP_CONFIRM:
-		options_set_paintball(mpchrnum, data->checkbox.value);
+	case MENUOP_GET:
+		return optionsGetPaintball(mpchrnum);
+	case MENUOP_SET:
+		optionsSetPaintball(mpchrnum, data->checkbox.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_sight_on_screen(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerSightOnScreen(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u32 mpchrnum;
 
@@ -603,17 +616,17 @@ MenuItemHandlerResult menuhandler_sight_on_screen(s32 operation, struct menuitem
 	}
 
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
-		return options_get_sight_on_screen(mpchrnum);
-	case MENUOP_CONFIRM:
-		options_set_sight_on_screen(mpchrnum, data->checkbox.value);
+	case MENUOP_GET:
+		return optionsGetSightOnScreen(mpchrnum);
+	case MENUOP_SET:
+		optionsSetSightOnScreen(mpchrnum, data->checkbox.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_autoaim(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerAutoAim(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u32 mpchrnum;
 
@@ -624,53 +637,53 @@ MenuItemHandlerResult menuhandler_autoaim(s32 operation, struct menuitem *item, 
 	}
 
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
-		return options_get_autoaim(mpchrnum);
-	case MENUOP_CONFIRM:
-		options_set_autoaim(mpchrnum, data->checkbox.value);
+	case MENUOP_GET:
+		return optionsGetAutoAim(mpchrnum);
+	case MENUOP_SET:
+		optionsSetAutoAim(mpchrnum, data->checkbox.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_music_volume(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMusicVolume(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_GET_SLIDER_VALUE:
-		data->slider.value = options_get_music_volume();
+	case MENUOP_GETSLIDER:
+		data->slider.value = optionsGetMusicVolume();
 		break;
-	case MENUOP_CONFIRM:
-		options_set_music_volume(data->slider.value);
+	case MENUOP_SET:
+		optionsSetMusicVolume(data->slider.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_sfx_volume(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerSfxVolume(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_GET_SLIDER_VALUE:
+	case MENUOP_GETSLIDER:
 		data->slider.value = VOLUME(g_SfxVolume);
 		break;
-	case MENUOP_CONFIRM:
-		snd_set_sfx_volume(data->slider.value);
+	case MENUOP_SET:
+		sndSetSfxVolume(data->slider.value);
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
 
 	return 0;
 }
 
-MenuDialogHandlerResult menudialog_briefing(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialogBriefing(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
-	if (operation == MENUOP_ON_TICK) {
+	if (operation == MENUOP_TICK) {
 		if (g_Menus[g_MpPlayerNum].curdialog
 				&& g_Menus[g_MpPlayerNum].curdialog->definition == dialogdef) {
 			struct menuinputs *inputs = data->dialog2.inputs;
 
 			if (inputs->start) {
-				menuhandler_accept_mission(MENUOP_CONFIRM, NULL, data);
+				menuhandlerAcceptMission(MENUOP_SET, NULL, data);
 			}
 
 			inputs->start = false;
@@ -696,21 +709,21 @@ struct menudialogdef g_PreAndPostMissionBriefingMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_OPTIONS_247, // "Briefing"
 	g_PreAndPostMissionBriefingMenuItems,
-	menudialog_briefing,
+	menudialogBriefing,
 	MENUDIALOGFLAG_DISABLEITEMSCROLL,
 	NULL,
 };
 
-MenuItemHandlerResult menuhandler_accept_mission(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerAcceptMission(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		menu_stop();
+	if (operation == MENUOP_SET) {
+		menuStop();
 
 		if (g_Vars.stagenum == g_MissionConfig.stagenum) {
 			g_Vars.restartlevel = true;
 		}
 
-		title_set_next_stage(g_MissionConfig.stagenum);
+		titleSetNextStage(g_MissionConfig.stagenum);
 
 		if (g_MissionConfig.iscoop) {
 			if (g_Vars.numaibuddies == 0) {
@@ -718,13 +731,13 @@ MenuItemHandlerResult menuhandler_accept_mission(s32 operation, struct menuitem 
 				g_Vars.bondplayernum = 0;
 				g_Vars.coopplayernum = 1;
 				g_Vars.antiplayernum = -1;
-				set_num_players(2);
+				setNumPlayers(2);
 			} else {
 				// Coop with AI buddies
 				g_Vars.bondplayernum = 0;
 				g_Vars.coopplayernum = -1;
 				g_Vars.antiplayernum = -1;
-				set_num_players(1);
+				setNumPlayers(1);
 			}
 		} else if (g_MissionConfig.isanti) {
 			if (g_Vars.pendingantiplayernum == 1) {
@@ -736,52 +749,52 @@ MenuItemHandlerResult menuhandler_accept_mission(s32 operation, struct menuitem 
 			}
 
 			g_Vars.coopplayernum = -1;
-			set_num_players(2);
+			setNumPlayers(2);
 		} else {
 			// Solo
 			g_Vars.bondplayernum = 0;
 			g_Vars.coopplayernum = -1;
 			g_Vars.antiplayernum = -1;
-			set_num_players(1);
+			setNumPlayers(1);
 		}
 
-		lv_set_difficulty(g_MissionConfig.difficulty);
-		title_set_next_mode(TITLEMODE_SKIP);
-		main_change_to_stage(g_MissionConfig.stagenum);
+		lvSetDifficulty(g_MissionConfig.difficulty);
+		titleSetNextMode(TITLEMODE_SKIP);
+		mainChangeToStage(g_MissionConfig.stagenum);
 
 #if VERSION >= VERSION_NTSC_1_0
-		vi_black(true);
+		viBlack(true);
 #endif
 	}
 
 	return 0;
 }
 
-char *solo_menu_title_stage_overview(struct menudialogdef *dialogdef)
+char *soloMenuTitleStageOverview(struct menudialogdef *dialogdef)
 {
 	if (dialogdef != g_Menus[g_MpPlayerNum].curdialog->definition) {
-		return lang_get(L_OPTIONS_273); // "Overview"
+		return langGet(L_OPTIONS_273); // "Overview"
 	}
 
 	sprintf(g_StringPointer, "%s: %s\n",
-			lang_get(g_SoloStages[g_MissionConfig.stageindex].name3),
-			lang_get(L_OPTIONS_273));
+			langGet(g_SoloStages[g_MissionConfig.stageindex].name3),
+			langGet(L_OPTIONS_273));
 
 	return g_StringPointer;
 }
 
-MenuDialogHandlerResult menudialog_accept_mission(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialog00103608(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_ON_OPEN:
+	case MENUOP_OPEN:
 		g_Menus[g_MpPlayerNum].menumodel.curparams = 0;
 
-		setup_load_briefing(g_MissionConfig.stagenum,
+		setupLoadBriefing(g_MissionConfig.stagenum,
 				g_Menus[g_MpPlayerNum].menumodel.allocstart,
 				g_Menus[g_MpPlayerNum].menumodel.alloclen, &g_Briefing);
 		break;
-	case MENUOP_ON_CLOSE:
-		lang_clear_bank(g_Briefing.langbank);
+	case MENUOP_CLOSE:
+		langClearBank(g_Briefing.langbank);
 		break;
 	}
 
@@ -803,7 +816,7 @@ struct menuitem g_AcceptMissionMenuItems[] = {
 		0,
 		L_OPTIONS_274, // "Accept"
 		0,
-		menuhandler_accept_mission,
+		menuhandlerAcceptMission,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -818,23 +831,23 @@ struct menuitem g_AcceptMissionMenuItems[] = {
 
 struct menudialogdef g_AcceptMissionMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
-	(uintptr_t)&solo_menu_title_stage_overview,
+	(uintptr_t)&soloMenuTitleStageOverview,
 	g_AcceptMissionMenuItems,
-	menudialog_accept_mission,
+	menudialog00103608,
 	MENUDIALOGFLAG_STARTSELECTS | MENUDIALOGFLAG_DISABLEITEMSCROLL,
 	&g_PreAndPostMissionBriefingMenuDialog,
 };
 
-f32 mainmenu_pdmode_handicap_to_value(u8 handicap, s32 prop)
+f32 func0f1036ac(u8 value, s32 prop)
 {
 	if (prop == PDMODEPROP_REACTION) {
-		return handicap / 255.0f;
+		return value / 255.0f;
 	}
 
-	return mp_handicap_to_value(handicap);
+	return mpHandicapToDamageScale(value);
 }
 
-MenuItemHandlerResult menuhandler_pd_mode_setting(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerPdModeSetting(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u8 *property;
 	f32 fvalue;
@@ -848,14 +861,14 @@ MenuItemHandlerResult menuhandler_pd_mode_setting(s32 operation, struct menuitem
 	}
 
 	switch (operation) {
-	case MENUOP_GET_SLIDER_VALUE:
+	case MENUOP_GETSLIDER:
 		data->slider.value = *property;
 		break;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		*property = (u16)data->slider.value;
 		break;
-	case MENUOP_GET_SLIDER_LABEL:
-		fvalue = mainmenu_pdmode_handicap_to_value(*property, item->param);
+	case MENUOP_GETSLIDERLABEL:
+		fvalue = func0f1036ac(*property, item->param);
 		if (item->param == 0) {
 			fvalue = fvalue * 4 + 1.0f;
 		}
@@ -866,18 +879,18 @@ MenuItemHandlerResult menuhandler_pd_mode_setting(s32 operation, struct menuitem
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_accept_pd_mode_settings(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerAcceptPdModeSettings(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		g_MissionConfig.pdmode = true;
-		g_MissionConfig.pdmodehealthf = mainmenu_pdmode_handicap_to_value(g_MissionConfig.pdmodehealth, PDMODEPROP_HEALTH);
-		g_MissionConfig.pdmodedamagef = mainmenu_pdmode_handicap_to_value(g_MissionConfig.pdmodedamage, PDMODEPROP_DAMAGE);
-		g_MissionConfig.pdmodeaccuracyf = mainmenu_pdmode_handicap_to_value(g_MissionConfig.pdmodeaccuracy, PDMODEPROP_ACCURACY);
+		g_MissionConfig.pdmodehealthf = func0f1036ac(g_MissionConfig.pdmodehealth, PDMODEPROP_HEALTH);
+		g_MissionConfig.pdmodedamagef = func0f1036ac(g_MissionConfig.pdmodedamage, PDMODEPROP_DAMAGE);
+		g_MissionConfig.pdmodeaccuracyf = func0f1036ac(g_MissionConfig.pdmodeaccuracy, PDMODEPROP_ACCURACY);
 		g_MissionConfig.difficulty = DIFF_PA;
-		lv_set_difficulty(g_MissionConfig.difficulty);
-		menu_pop_dialog();
-		menu_pop_dialog();
-		menu_push_dialog(&g_AcceptMissionMenuDialog);
+		lvSetDifficulty(g_MissionConfig.difficulty);
+		menuPopDialog();
+		menuPopDialog();
+		menuPushDialog(&g_AcceptMissionMenuDialog);
 	}
 
 	return 0;
@@ -898,7 +911,7 @@ struct menuitem g_PdModeSettingsMenuItems[] = {
 		MENUITEMFLAG_SLIDER_ALTSIZE,
 		L_MPWEAPONS_224, // "Enemy Health:"
 		0x000000ff,
-		menuhandler_pd_mode_setting,
+		menuhandlerPdModeSetting,
 	},
 	{
 		MENUITEMTYPE_SLIDER,
@@ -906,7 +919,7 @@ struct menuitem g_PdModeSettingsMenuItems[] = {
 		MENUITEMFLAG_SLIDER_ALTSIZE,
 		L_MPWEAPONS_225, // "Enemy Damage:"
 		0x000000ff,
-		menuhandler_pd_mode_setting,
+		menuhandlerPdModeSetting,
 	},
 	{
 		MENUITEMTYPE_SLIDER,
@@ -914,7 +927,7 @@ struct menuitem g_PdModeSettingsMenuItems[] = {
 		MENUITEMFLAG_SLIDER_ALTSIZE,
 		L_MPWEAPONS_226, // "Enemy Accuracy:"
 		0x000000ff,
-		menuhandler_pd_mode_setting,
+		menuhandlerPdModeSetting,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -930,7 +943,7 @@ struct menuitem g_PdModeSettingsMenuItems[] = {
 		0,
 		L_MPWEAPONS_227, // "OK"
 		0,
-		menuhandler_accept_pd_mode_settings,
+		menuhandlerAcceptPdModeSettings,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -958,7 +971,7 @@ struct menudialogdef g_PdModeSettingsMenuDialog = {
  *
  * This function does not test for PD mode being unlocked.
  */
-bool is_stage_difficulty_unlocked(s32 stageindex, s32 difficulty)
+bool isStageDifficultyUnlocked(s32 stageindex, s32 difficulty)
 {
 	s32 s;
 	s32 d;
@@ -1099,12 +1112,12 @@ bool is_stage_difficulty_unlocked(s32 stageindex, s32 difficulty)
 	return false;
 }
 
-MenuItemHandlerResult menuhandler_solo_difficulty(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerSoloDifficulty(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_IS_PREFOCUSED:
+	case MENUOP_CHECKPREFOCUSED:
 #if VERSION >= VERSION_NTSC_1_0
-		if (is_stage_difficulty_unlocked(g_MissionConfig.stageindex, item->param)) {
+		if (isStageDifficultyUnlocked(g_MissionConfig.stageindex, item->param)) {
 			if (item->param3 == 0) {
 				return true;
 			}
@@ -1121,15 +1134,15 @@ MenuItemHandlerResult menuhandler_solo_difficulty(s32 operation, struct menuitem
 		}
 #endif
 		break;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_MissionConfig.pdmode = false;
 		g_MissionConfig.difficulty = item->param;
-		lv_set_difficulty(g_MissionConfig.difficulty);
-		menu_pop_dialog();
-		menu_push_dialog(&g_AcceptMissionMenuDialog);
+		lvSetDifficulty(g_MissionConfig.difficulty);
+		menuPopDialog();
+		menuPushDialog(&g_AcceptMissionMenuDialog);
 		break;
-	case MENUOP_IS_DISABLED:
-		if (!is_stage_difficulty_unlocked(g_MissionConfig.stageindex, item->param)) {
+	case MENUOP_CHECKDISABLED:
+		if (!isStageDifficultyUnlocked(g_MissionConfig.stageindex, item->param)) {
 			return true;
 		}
 	}
@@ -1137,13 +1150,13 @@ MenuItemHandlerResult menuhandler_solo_difficulty(s32 operation, struct menuitem
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_pd_mode(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerPdMode(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_CONFIRM:
-		menu_push_dialog(&g_PdModeSettingsMenuDialog);
+	case MENUOP_SET:
+		menuPushDialog(&g_PdModeSettingsMenuDialog);
 		break;
-	case MENUOP_IS_HIDDEN:
+	case MENUOP_CHECKHIDDEN:
 		if (g_GameFile.besttimes[SOLOSTAGEINDEX_SKEDARRUINS][DIFF_PA] == 0) {
 			return true;
 		}
@@ -1152,7 +1165,7 @@ MenuItemHandlerResult menuhandler_pd_mode(s32 operation, struct menuitem *item, 
 	return 0;
 }
 
-char *solo_menu_text_best_time(struct menuitem *item)
+char *soloMenuTextBestTime(struct menuitem *item)
 {
 	u16 time = g_GameFile.besttimes[g_MissionConfig.stageindex][item->param];
 	s32 hours = time / 3600;
@@ -1190,24 +1203,24 @@ struct menuitem g_SoloMissionDifficultyMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_251, // "Agent"
-		(uintptr_t)&solo_menu_text_best_time,
-		menuhandler_solo_difficulty,
+		(uintptr_t)&soloMenuTextBestTime,
+		menuhandlerSoloDifficulty,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		1,
 		0,
 		L_OPTIONS_252, // "Special Agent"
-		(uintptr_t)&solo_menu_text_best_time,
-		menuhandler_solo_difficulty,
+		(uintptr_t)&soloMenuTextBestTime,
+		menuhandlerSoloDifficulty,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		2,
 		0,
 		L_OPTIONS_253, // "Perfect Agent"
-		(uintptr_t)&solo_menu_text_best_time,
-		menuhandler_solo_difficulty,
+		(uintptr_t)&soloMenuTextBestTime,
+		menuhandlerSoloDifficulty,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -1215,7 +1228,7 @@ struct menuitem g_SoloMissionDifficultyMenuItems[] = {
 		0,
 		L_MPWEAPONS_221, // "Perfect Dark"
 		0,
-		menuhandler_pd_mode,
+		menuhandlerPdMode,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -1245,14 +1258,14 @@ struct menudialogdef g_SoloMissionDifficultyMenuDialog = {
 	NULL,
 };
 
-MenuItemHandlerResult menuhandler_buddy_options_continue(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerBuddyOptionsContinue(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		menu_pop_dialog();
-		menu_push_dialog(&g_AcceptMissionMenuDialog);
+	if (operation == MENUOP_SET) {
+		menuPopDialog();
+		menuPushDialog(&g_AcceptMissionMenuDialog);
 	}
 
-	if (operation == MENUOP_IS_PREFOCUSED) {
+	if (operation == MENUOP_CHECKPREFOCUSED) {
 		return true;
 	}
 
@@ -1260,7 +1273,7 @@ MenuItemHandlerResult menuhandler_buddy_options_continue(s32 operation, struct m
 }
 
 #if VERSION >= VERSION_NTSC_1_0
-s32 get_max_ai_buddies(void)
+s32 getMaxAiBuddies(void)
 {
 	u32 stack;
 	s32 extra = 0;
@@ -1285,7 +1298,7 @@ s32 get_max_ai_buddies(void)
 
 #if VERSION == VERSION_PAL_BETA
 #ifdef DEBUG
-	if (debug_is_all_buddies_enabled()) {
+	if (debugIsAllBuddiesEnabled()) {
 		max = 4;
 	}
 #endif
@@ -1295,11 +1308,11 @@ s32 get_max_ai_buddies(void)
 }
 #endif
 
-MenuDialogHandlerResult menudialog_coop_anti_options(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialogCoopAntiOptions(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
 #if VERSION >= VERSION_NTSC_1_0
-	if (operation == MENUOP_ON_OPEN) {
-		s32 max = get_max_ai_buddies();
+	if (operation == MENUOP_OPEN) {
+		s32 max = getMaxAiBuddies();
 
 		if (g_Vars.numaibuddies > max) {
 			g_Vars.numaibuddies = max;
@@ -1307,12 +1320,12 @@ MenuDialogHandlerResult menudialog_coop_anti_options(s32 operation, struct menud
 	}
 #endif
 
-	if (operation == MENUOP_ON_TICK) {
+	if (operation == MENUOP_TICK) {
 		if (g_Menus[g_MpPlayerNum].curdialog && g_Menus[g_MpPlayerNum].curdialog->definition == dialogdef) {
 			struct menuinputs *inputs = data->dialog2.inputs;
 
 			if (inputs->start) {
-				menuhandler_buddy_options_continue(MENUOP_CONFIRM, NULL, NULL);
+				menuhandlerBuddyOptionsContinue(MENUOP_SET, NULL, NULL);
 			}
 
 			inputs->start = false;
@@ -1322,12 +1335,12 @@ MenuDialogHandlerResult menudialog_coop_anti_options(s32 operation, struct menud
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_coop_radar(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerCoopRadar(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
+	case MENUOP_GET:
 		return g_Vars.coopradaron;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_Vars.coopradaron = data->checkbox.value ? true : false;
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
@@ -1335,12 +1348,12 @@ MenuItemHandlerResult menuhandler_coop_radar(s32 operation, struct menuitem *ite
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_coop_friendly_fire(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerCoopFriendlyFire(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
+	case MENUOP_GET:
 		return g_Vars.coopfriendlyfire;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_Vars.coopfriendlyfire = data->checkbox.value ? true : false;
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
@@ -1348,7 +1361,7 @@ MenuItemHandlerResult menuhandler_coop_friendly_fire(s32 operation, struct menui
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_coop_buddy(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerCoopBuddy(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	const u16 labels[] = {
 		L_OPTIONS_261, // "Human"
@@ -1359,13 +1372,13 @@ MenuItemHandlerResult menuhandler_coop_buddy(s32 operation, struct menuitem *ite
 	};
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 #if VERSION >= VERSION_NTSC_1_0
 		{
-			s32 maxaibuddies = get_max_ai_buddies();
+			s32 maxaibuddies = getMaxAiBuddies();
 			s32 human = 0;
 
-			if (joy_get_connected_controllers() & 2) {
+			if (joyGetConnectedControllers() & 2) {
 				human = 1;
 			}
 
@@ -1378,7 +1391,7 @@ MenuItemHandlerResult menuhandler_coop_buddy(s32 operation, struct menuitem *ite
 			s32 maxbuddies = 1 - g_MissionConfig.difficulty;
 			s32 human = 0;
 
-			if (joy_get_connected_controllers() & 2) {
+			if (joyGetConnectedControllers() & 2) {
 				human = 1;
 			}
 
@@ -1399,7 +1412,7 @@ MenuItemHandlerResult menuhandler_coop_buddy(s32 operation, struct menuitem *ite
 			}
 
 #ifdef DEBUG
-			if (debug_is_all_buddies_enabled()) {
+			if (debugIsAllBuddiesEnabled()) {
 				maxbuddies = 4;
 			}
 #endif
@@ -1408,21 +1421,21 @@ MenuItemHandlerResult menuhandler_coop_buddy(s32 operation, struct menuitem *ite
 		}
 #endif
 		break;
-	case MENUOP_GET_OPTION_TEXT:
+	case MENUOP_GETOPTIONTEXT:
 		{
 			s32 extra = 1;
 
-			if (joy_get_connected_controllers() & 2) {
+			if (joyGetConnectedControllers() & 2) {
 				extra = 0;
 			}
 
-			return (s32)lang_get(labels[data->dropdown.value + extra]);
+			return (uintptr_t)langGet(labels[data->dropdown.value + extra]);
 		}
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		{
 			s32 extra = 1;
 
-			if (joy_get_connected_controllers() & 2) {
+			if (joyGetConnectedControllers() & 2) {
 				extra = 0;
 			}
 
@@ -1430,11 +1443,11 @@ MenuItemHandlerResult menuhandler_coop_buddy(s32 operation, struct menuitem *ite
 			g_Vars.modifiedfiles |= MODFILE_GAME;
 		}
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		{
 			s32 extra = 1;
 
-			if (joy_get_connected_controllers() & 2) {
+			if (joyGetConnectedControllers() & 2) {
 				extra = 0;
 			}
 
@@ -1457,7 +1470,7 @@ struct menuitem g_CoopOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_256, // "Radar On"
 		0,
-		menuhandler_coop_radar,
+		menuhandlerCoopRadar,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -1465,7 +1478,7 @@ struct menuitem g_CoopOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_257, // "Friendly Fire"
 		0,
-		menuhandler_coop_friendly_fire,
+		menuhandlerCoopFriendlyFire,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -1473,7 +1486,7 @@ struct menuitem g_CoopOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_258, // "Perfect Buddy"
 		0,
-		menuhandler_coop_buddy,
+		menuhandlerCoopBuddy,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -1489,7 +1502,7 @@ struct menuitem g_CoopOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_259, // "Continue"
 		0,
-		menuhandler_buddy_options_continue,
+		menuhandlerBuddyOptionsContinue,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -1506,17 +1519,17 @@ struct menudialogdef g_CoopOptionsMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_OPTIONS_255, // "Co-Operative Options"
 	g_CoopOptionsMenuItems,
-	menudialog_coop_anti_options,
+	menudialogCoopAntiOptions,
 	MENUDIALOGFLAG_STARTSELECTS,
 	NULL,
 };
 
-MenuItemHandlerResult menuhandler_anti_radar(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerAntiRadar(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
+	case MENUOP_GET:
 		return g_Vars.antiradaron;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_Vars.antiradaron = data->checkbox.value ? 1 : 0;
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
@@ -1524,21 +1537,21 @@ MenuItemHandlerResult menuhandler_anti_radar(s32 operation, struct menuitem *ite
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_anti_player(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerAntiPlayer(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	const u16 labels[] = {L_OPTIONS_271, L_OPTIONS_272};
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 		data->dropdown.value = 2;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
-		return (s32) lang_get(labels[data->dropdown.value]);
-	case MENUOP_CONFIRM:
+	case MENUOP_GETOPTIONTEXT:
+		return (uintptr_t) langGet(labels[data->dropdown.value]);
+	case MENUOP_SET:
 		g_Vars.pendingantiplayernum = data->dropdown.value;
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		data->dropdown.value = g_Vars.pendingantiplayernum;
 		break;
 	}
@@ -1553,7 +1566,7 @@ struct menuitem g_AntiOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_267, // "Radar On"
 		0,
-		menuhandler_anti_radar,
+		menuhandlerAntiRadar,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -1561,7 +1574,7 @@ struct menuitem g_AntiOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_268, // "Counter-Operative"
 		0,
-		menuhandler_anti_player,
+		menuhandlerAntiPlayer,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -1577,7 +1590,7 @@ struct menuitem g_AntiOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_269, // "Continue"
 		0,
-		menuhandler_buddy_options_continue,
+		menuhandlerBuddyOptionsContinue,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -1594,23 +1607,23 @@ struct menudialogdef g_AntiOptionsMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_OPTIONS_266, // "Counter-Operative Options"
 	g_AntiOptionsMenuItems,
-	menudialog_coop_anti_options,
+	menudialogCoopAntiOptions,
 	MENUDIALOGFLAG_STARTSELECTS,
 	NULL,
 };
 
-MenuItemHandlerResult menuhandler_coop_difficulty(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerCoopDifficulty(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_MissionConfig.pdmode = false;
 		g_MissionConfig.difficulty = item->param;
-		lv_set_difficulty(g_MissionConfig.difficulty);
-		menu_pop_dialog();
-		menu_push_dialog(&g_CoopOptionsMenuDialog);
+		lvSetDifficulty(g_MissionConfig.difficulty);
+		menuPopDialog();
+		menuPushDialog(&g_CoopOptionsMenuDialog);
 		break;
-	case MENUOP_IS_DISABLED:
-		if (!is_stage_difficulty_unlocked(g_MissionConfig.stageindex, item->param)) {
+	case MENUOP_CHECKDISABLED:
+		if (!isStageDifficultyUnlocked(g_MissionConfig.stageindex, item->param)) {
 			return true;
 		}
 	}
@@ -1625,7 +1638,7 @@ struct menuitem g_CoopMissionDifficultyMenuItems[] = {
 		0,
 		L_OPTIONS_251, // "Agent"
 		0,
-		menuhandler_coop_difficulty,
+		menuhandlerCoopDifficulty,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -1633,7 +1646,7 @@ struct menuitem g_CoopMissionDifficultyMenuItems[] = {
 		0,
 		L_OPTIONS_252, // "Special Agent"
 		0,
-		menuhandler_coop_difficulty,
+		menuhandlerCoopDifficulty,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -1641,7 +1654,7 @@ struct menuitem g_CoopMissionDifficultyMenuItems[] = {
 		0,
 		L_OPTIONS_253, // "Perfect Agent"
 		0,
-		menuhandler_coop_difficulty,
+		menuhandlerCoopDifficulty,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -1671,15 +1684,15 @@ struct menudialogdef g_CoopMissionDifficultyMenuDialog = {
 	NULL,
 };
 
-MenuItemHandlerResult menuhandler_anti_difficulty(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerAntiDifficulty(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_MissionConfig.pdmode = false;
 		g_MissionConfig.difficulty = item->param;
-		lv_set_difficulty(g_MissionConfig.difficulty);
-		menu_pop_dialog();
-		menu_push_dialog(&g_AntiOptionsMenuDialog);
+		lvSetDifficulty(g_MissionConfig.difficulty);
+		menuPopDialog();
+		menuPushDialog(&g_AntiOptionsMenuDialog);
 	}
 
 	return 0;
@@ -1692,7 +1705,7 @@ struct menuitem g_AntiMissionDifficultyMenuItems[] = {
 		0,
 		L_OPTIONS_251, // "Agent"
 		0,
-		menuhandler_anti_difficulty,
+		menuhandlerAntiDifficulty,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -1700,7 +1713,7 @@ struct menuitem g_AntiMissionDifficultyMenuItems[] = {
 		0,
 		L_OPTIONS_252, // "Special Agent"
 		0,
-		menuhandler_anti_difficulty,
+		menuhandlerAntiDifficulty,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -1708,7 +1721,7 @@ struct menuitem g_AntiMissionDifficultyMenuItems[] = {
 		0,
 		L_OPTIONS_253, // "Perfect Agent"
 		0,
-		menuhandler_anti_difficulty,
+		menuhandlerAntiDifficulty,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -1763,7 +1776,7 @@ struct solostage g_SoloStages[NUM_SOLOSTAGES] = {
 	{ STAGE_DUEL,          0x1c, L_OPTIONS_171, L_OPTIONS_003, L_OPTIONS_171   },
 };
 
-s32 get_num_unlocked_special_stages(void)
+s32 getNumUnlockedSpecialStages(void)
 {
 	s32 count = 0;
 	s32 offsetforduel = 1;
@@ -1779,7 +1792,7 @@ s32 get_num_unlocked_special_stages(void)
 		offsetforduel = 0;
 	} else {
 		for (i = 0; i < (VERSION >= VERSION_NTSC_1_0 ? 32 : 33); i++) {
-			if (fr_get_score(i) <= FRSCORE_INCOMPLETE) {
+			if (ciGetFiringRangeScore(i) <= 0) {
 				offsetforduel = 0;
 			}
 		}
@@ -1788,31 +1801,25 @@ s32 get_num_unlocked_special_stages(void)
 	return count + offsetforduel;
 }
 
-/**
- * Convert a special stage index (0 = MBR, 3 = Duel) to a regular stage index (17-20).
- *
- * If the special stage index isn't unlocked then the stage index for Duel will be returned.
- * This never happens though, so this function is needlessly complicated.
- */
-s32 mainmenu_specialindex_to_stageindex(s32 specialindex)
+s32 func0f104720(s32 value)
 {
-	s32 completed = 0;
+	s32 next = 0;
 	s32 d;
 
 	for (d = 0; d < ARRAYCOUNT(g_GameFile.besttimes[0]); d++) {
 		if (g_GameFile.besttimes[SOLOSTAGEINDEX_SKEDARRUINS][d]) {
-			completed = d + 1;
+			next = d + 1;
 		}
 	}
 
-	if (completed > specialindex) {
-		return 17 + specialindex;
+	if (next > value) {
+		return 17 + value;
 	}
 
 	return 20;
 }
 
-MenuItemHandlerResult menuhandler_mission_list(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMissionList(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	struct optiongroup groups[] = {
 		{  0, L_OPTIONS_123 }, // "Mission 1"
@@ -1831,11 +1838,11 @@ MenuItemHandlerResult menuhandler_mission_list(s32 operation, struct menuitem *i
 	s32 j;
 	bool stageiscomplete;
 	union handlerdata sp18c;
-	u32 stageindex2;
+	u32 sp188;
 	union handlerdata sp178;
 	union handlerdata sp168;
-	s32 numspecial;
-	s32 specialindex;
+	s32 sp164;
+	s32 sp160;
 	union handlerdata sp150;
 	s32 k;
 	union handlerdata sp13c;
@@ -1850,7 +1857,7 @@ MenuItemHandlerResult menuhandler_mission_list(s32 operation, struct menuitem *i
 	union handlerdata spdc;
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 		data->list.value = 0;
 
 		for (i = 0; i <= SOLOSTAGEINDEX_SKEDARRUINS; i++) {
@@ -1874,71 +1881,71 @@ MenuItemHandlerResult menuhandler_mission_list(s32 operation, struct menuitem *i
 			}
 		}
 
-		data->list.value += get_num_unlocked_special_stages();
+		data->list.value += getNumUnlockedSpecialStages();
 		break;
-	case MENUOP_GET_OPTION_TEXT:
+	case MENUOP_GETOPTIONTEXT:
 		if (data->list.unk04u32 == 0) {
-			menuhandler_mission_list(MENUOP_GET_OPTION_COUNT, item, &sp18c);
-			data->list.unk04u32 = sp18c.list.value - get_num_unlocked_special_stages();
+			menuhandlerMissionList(MENUOP_GETOPTIONCOUNT, item, &sp18c);
+			data->list.unk04u32 = sp18c.list.value - getNumUnlockedSpecialStages();
 		}
 
 		if (data->list.value < data->list.unk04u32) {
 			// Regular stage such as "dataDyne Central - Defection"
 			// Return the name before the dash, such as "dataDyne Central"
-			return (intptr_t) lang_get(g_SoloStages[data->list.value].name1);
+			return (uintptr_t) langGet(g_SoloStages[data->list.value].name1);
 		}
 
 		// Special stages have no dash and suffix, so just return the name
-		return (intptr_t) lang_get(g_SoloStages[mainmenu_specialindex_to_stageindex(data->list.value - data->list.unk04u32)].name1);
-	case MENUOP_CONFIRM:
-		stageindex2 = data->list.value;
-		menuhandler_mission_list(MENUOP_GET_OPTION_COUNT, item, &sp178);
-		sp178.list.value -= get_num_unlocked_special_stages();
+		return (uintptr_t) langGet(g_SoloStages[func0f104720(data->list.value - data->list.unk04u32)].name1);
+	case MENUOP_SET:
+		sp188 = data->list.value;
+		menuhandlerMissionList(MENUOP_GETOPTIONCOUNT, item, &sp178);
+		sp178.list.value -= getNumUnlockedSpecialStages();
 
 		if (data->list.value >= sp178.list.value) {
-			stageindex2 = mainmenu_specialindex_to_stageindex(data->list.value - sp178.list.value);
+			sp188 = func0f104720(data->list.value - sp178.list.value);
 		}
 
 		g_Vars.mplayerisrunning = false;
 		g_Vars.normmplayerisrunning = false;
-		g_MissionConfig.stagenum = g_SoloStages[stageindex2].stagenum;
-		g_MissionConfig.stageindex = stageindex2;
+		g_MissionConfig.stagenum = g_SoloStages[sp188].stagenum;
+		g_MissionConfig.stageindex = sp188;
 
 		if (g_MissionConfig.iscoop) {
-			menu_push_dialog(&g_CoopMissionDifficultyMenuDialog);
+			menuPushDialog(&g_CoopMissionDifficultyMenuDialog);
 		} else if (g_MissionConfig.isanti) {
-			menu_push_dialog(&g_AntiMissionDifficultyMenuDialog);
+			menuPushDialog(&g_AntiMissionDifficultyMenuDialog);
 		} else {
-			menu_push_dialog(&g_SoloMissionDifficultyMenuDialog);
+			menuPushDialog(&g_SoloMissionDifficultyMenuDialog);
 		}
 
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		data->list.value = 0xfffff;
 		break;
-	case MENUOP_GET_OPTION_INDEX2:
+	case MENUOP_25:
 		if (data->list.unk04 == 0 && !g_MissionConfig.iscoop && !g_MissionConfig.isanti) {
 			data->list.value = g_GameFile.autostageindex;
 
-			menuhandler_mission_list(MENUOP_GET_OPTION_COUNT, item, &sp168);
-			sp168.list.value -= get_num_unlocked_special_stages();
+			menuhandlerMissionList(MENUOP_GETOPTIONCOUNT, item, &sp168);
+			sp168.list.value -= getNumUnlockedSpecialStages();
 
 			if (data->list.value >= sp168.list.value) {
-				numspecial = get_num_unlocked_special_stages();
+				sp164 = getNumUnlockedSpecialStages();
 
 				data->list.value = sp168.list.value - 1;
 
-				for (specialindex = 0; specialindex < numspecial; specialindex++) {
-					if (mainmenu_specialindex_to_stageindex(specialindex) == g_GameFile.autostageindex) {
-						data->list.value = sp168.list.values32 + specialindex;
+				for (sp160 = 0; sp160 < sp164; sp160++) {
+					if (func0f104720(sp160) == g_GameFile.autostageindex) {
+						data->list.value = sp168.list.values32 + sp160;
 					}
 				}
 			}
 		}
 		break;
-	case MENUOP_GET_OPTGROUP_COUNT:
-		menuhandler_mission_list(MENUOP_GET_OPTION_COUNT, item, &sp150);
-		sp150.list.value -= get_num_unlocked_special_stages();
+	case MENUOP_GETOPTGROUPCOUNT:
+		menuhandlerMissionList(MENUOP_GETOPTIONCOUNT, item, &sp150);
+		sp150.list.value -= getNumUnlockedSpecialStages();
 
 		data->list.unk0c = 0;
 
@@ -1950,15 +1957,15 @@ MenuItemHandlerResult menuhandler_mission_list(s32 operation, struct menuitem *i
 
 		data->list.value = data->list.unk0c + 1;
 		break;
-	case MENUOP_GET_OPTGROUP_TEXT:
+	case MENUOP_GETOPTGROUPTEXT:
 		if (data->list.unk0c == data->list.value) {
-			return (s32) lang_get(groups[9].name); // "Special Assignments"
+			return (uintptr_t) langGet(groups[9].name); // "Special Assignments"
 		}
-		return (s32) lang_get(groups[data->list.value].name);
-	case MENUOP_GET_OPTGROUP_START_INDEX:
+		return (uintptr_t) langGet(groups[data->list.value].name);
+	case MENUOP_GETGROUPSTARTINDEX:
 		if (data->list.unk0c == data->list.value) {
-			menuhandler_mission_list(MENUOP_GET_OPTION_COUNT, item, &sp13c);
-			data->list.groupstartindex = sp13c.list.value - get_num_unlocked_special_stages();
+			menuhandlerMissionList(MENUOP_GETOPTIONCOUNT, item, &sp13c);
+			data->list.groupstartindex = sp13c.list.value - getNumUnlockedSpecialStages();
 		} else {
 			data->list.groupstartindex = groups[data->list.value].offset;
 		}
@@ -1970,12 +1977,12 @@ MenuItemHandlerResult menuhandler_mission_list(s32 operation, struct menuitem *i
 		stageindex = data->type19.unk04u32;
 
 		if (data->type19.unk0c == 0) {
-			menuhandler_mission_list(MENUOP_GET_OPTION_COUNT, item, &spdc);
-			data->type19.unk0c = spdc.list.value - get_num_unlocked_special_stages();
+			menuhandlerMissionList(MENUOP_GETOPTIONCOUNT, item, &spdc);
+			data->type19.unk0c = spdc.list.value - getNumUnlockedSpecialStages();
 		}
 
 		if (data->type19.unk04u32 >= data->type19.unk0c) {
-			stageindex = mainmenu_specialindex_to_stageindex(data->type19.unk04u32 - data->type19.unk0c);
+			stageindex = func0f104720(data->type19.unk04u32 - data->type19.unk0c);
 		}
 
 		// Draw the thumbnail
@@ -1986,27 +1993,27 @@ MenuItemHandlerResult menuhandler_mission_list(s32 operation, struct menuitem *i
 		gDPSetTextureConvert(gdl++, G_TC_FILT);
 
 #if VERSION >= VERSION_NTSC_1_0
-		tex_select(&gdl, g_TexGeneralConfigs + TEX_GENERAL_DEFECTION + stageindex, 2, 0, 2, true, NULL);
+		texSelect(&gdl, g_TexGeneralConfigs + 13 + stageindex, 2, 0, 2, true, NULL);
 		gDPSetCycleType(gdl++, G_CYC_1CYCLE);
 		gDPSetCombineMode(gdl++, G_CC_CUSTOM_00, G_CC_CUSTOM_00);
 		gDPSetTextureFilter(gdl++, G_TF_POINT);
 		gDPSetEnvColorViaWord(gdl++, 0xffffff00 | ((renderdata->colour & 0xff) * 255 / 256));
 #else
-		tex_select(&gdl, g_TexGeneralConfigs + TEX_GENERAL_DEFECTION + stageindex, 1, 0, 2, true, NULL);
+		texSelect(&gdl, g_TexGeneralConfigs + 13 + stageindex, 1, 0, 2, true, NULL);
 		gDPSetCycleType(gdl++, G_CYC_1CYCLE);
 		gDPSetCombineMode(gdl++, G_CC_DECALRGBA, G_CC_DECALRGBA);
 		gDPSetTextureFilter(gdl++, G_TF_POINT);
 #endif
 
 		gSPTextureRectangle(gdl++,
-				((renderdata->x + 4) << 2) * g_UiScaleX, (renderdata->y + 3) << 2,
-				((renderdata->x + 60) << 2) * g_UiScaleX, (renderdata->y + 39) << 2,
-				G_TX_RENDERTILE, 0, 0x0480, 1024 / g_UiScaleX, -1024);
+				((renderdata->x + 4) << 2) * g_ScaleX, (renderdata->y + 3) << 2,
+				((renderdata->x + 60) << 2) * g_ScaleX, (renderdata->y + 39) << 2,
+				G_TX_RENDERTILE, 0, 0x0480, 1024 / g_ScaleX, -1024);
 
 		if (g_MissionConfig.isanti) {
 			// No stars
 		} else if (g_MissionConfig.iscoop) {
-			tex_select(&gdl, &g_TexGeneralConfigs[TEX_GENERAL_SILVERSTAR], 2, 0, 2, true, NULL);
+			texSelect(&gdl, &g_TexGeneralConfigs[36], 2, 0, 2, true, NULL);
 
 			gDPSetCycleType(gdl++, G_CYC_1CYCLE);
 			gDPSetTextureFilter(gdl++, G_TF_POINT);
@@ -2033,12 +2040,12 @@ MenuItemHandlerResult menuhandler_mission_list(s32 operation, struct menuitem *i
 				}
 
 				gSPTextureRectangle(gdl++,
-						((renderdata->x + relx) << 2) * g_UiScaleX, (renderdata->y + 25) << 2,
-						((renderdata->x + relx + 14) << 2) * g_UiScaleX, (renderdata->y + 39) << 2,
-						G_TX_RENDERTILE, 0x0010, 0x01c0, 1024 / g_UiScaleX, -1024);
+						((renderdata->x + relx) << 2) * g_ScaleX, (renderdata->y + 25) << 2,
+						((renderdata->x + relx + 14) << 2) * g_ScaleX, (renderdata->y + 39) << 2,
+						G_TX_RENDERTILE, 0x0010, 0x01c0, 1024 / g_ScaleX, -1024);
 			}
 		} else {
-			tex_select(&gdl, &g_TexGeneralConfigs[TEX_GENERAL_GOLDSTAR], 2, 0, 2, true, NULL);
+			texSelect(&gdl, &g_TexGeneralConfigs[34], 2, 0, 2, true, NULL);
 
 			gDPSetCycleType(gdl++, G_CYC_1CYCLE);
 			gDPSetTextureFilter(gdl++, G_TF_POINT);
@@ -2072,34 +2079,34 @@ MenuItemHandlerResult menuhandler_mission_list(s32 operation, struct menuitem *i
 				}
 
 				gSPTextureRectangle(gdl++,
-						((renderdata->x + relx) << 2) * g_UiScaleX, (renderdata->y + 25) << 2,
-						((renderdata->x + relx + 14) << 2) * g_UiScaleX, (renderdata->y + 39) << 2,
-						G_TX_RENDERTILE, 0x0010, 0x01c0, 1024 / g_UiScaleX, -1024);
+						((renderdata->x + relx) << 2) * g_ScaleX, (renderdata->y + 25) << 2,
+						((renderdata->x + relx + 14) << 2) * g_ScaleX, (renderdata->y + 39) << 2,
+						G_TX_RENDERTILE, 0x0010, 0x01c0, 1024 / g_ScaleX, -1024);
 			}
 		}
 
 		x = renderdata->x + 62;
 		y = renderdata->y + 3;
 
-		gdl = text_begin(gdl);
+		gdl = text0f153628(gdl);
 
 		// Draw first part of name
-		strcpy(text, lang_get(g_SoloStages[stageindex].name1));
+		strcpy(text, langGet(g_SoloStages[stageindex].name1));
 		strcat(text, "\n");
 
-		gdl = text_render_v2(gdl, &x, &y, text, g_CharsHandelGothicMd, g_FontHandelGothicMd,
-				renderdata->colour, vi_get_width(), vi_get_height(), 0, 0);
+		gdl = textRenderProjected(gdl, &x, &y, text, g_CharsHandelGothicMd, g_FontHandelGothicMd,
+				renderdata->colour, viGetWidth(), viGetHeight(), 0, 0);
 
 		// Draw last part of name
-		strcpy(text, lang_get(g_SoloStages[stageindex].name2));
+		strcpy(text, langGet(g_SoloStages[stageindex].name2));
 
-		gdl = text_render_v2(gdl, &x, &y, text, g_CharsHandelGothicSm, g_FontHandelGothicSm,
-				renderdata->colour, vi_get_width(), vi_get_height(), 0, 0);
+		gdl = textRenderProjected(gdl, &x, &y, text, g_CharsHandelGothicSm, g_FontHandelGothicSm,
+				renderdata->colour, viGetWidth(), viGetHeight(), 0, 0);
 
-		gdl = text_end(gdl);
+		gdl = text0f153780(gdl);
 
-		return (s32) gdl;
-	case MENUOP_GET_OPTION_HEIGHT:
+		return (uintptr_t) gdl;
+	case MENUOP_GETOPTIONHEIGHT:
 		data->list.value = 42;
 		break;
 	}
@@ -2107,14 +2114,14 @@ MenuItemHandlerResult menuhandler_mission_list(s32 operation, struct menuitem *i
 	return 0;
 }
 
-MenuDialogHandlerResult menudialog_mainmenu_options(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialog0010559c(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_ON_OPEN:
+	case MENUOP_OPEN:
 		break;
-	case MENUOP_ON_CLOSE:
+	case MENUOP_CLOSE:
 		if ((g_Vars.modifiedfiles & MODFILE_GAME) && g_Vars.coopplayernum < 0 && g_Vars.antiplayernum < 0) {
-			if (filemgr_save_or_load(&g_GameFileGuid, FILEOP_SAVE_GAME_001, 0) == 0) {
+			if (filemgrSaveOrLoad(&g_GameFileGuid, FILEOP_SAVE_GAME_001, 0) == 0) {
 				data->dialog1.preventclose = true;
 			}
 
@@ -2122,7 +2129,7 @@ MenuDialogHandlerResult menudialog_mainmenu_options(s32 operation, struct menudi
 		}
 
 		if (g_Vars.modifiedfiles & MODFILE_BOSS) {
-			bossfile_save();
+			bossfileSave();
 			g_Vars.modifiedfiles &= ~MODFILE_BOSS;
 		}
 		break;
@@ -2182,30 +2189,30 @@ struct menudialogdef g_2PMissionBriefingVMenuDialog = {
 	NULL,
 };
 
-char *menutext_control_style_p1(struct menuitem *item)
+char *func0f105664(struct menuitem *item)
 {
 	union handlerdata data;
 
-	menuhandler_control_style_p1(MENUOP_GET_SELECTED_INDEX, item, &data);
+	menuhandler001024dc(MENUOP_GETSELECTEDINDEX, item, &data);
 
-	return (char *)menuhandler_control_style_p1(MENUOP_GET_OPTION_TEXT, item, &data);
+	return (char *)menuhandler001024dc(MENUOP_GETOPTIONTEXT, item, &data);
 }
 
-char *menutext_control_style_p2(struct menuitem *item)
+char *func0f1056a0(struct menuitem *item)
 {
 	union handlerdata data;
 
-	menuhandler_control_style_p2(MENUOP_GET_SELECTED_INDEX, item, &data);
+	menuhandler001024fc(MENUOP_GETSELECTEDINDEX, item, &data);
 
-	return (char *)menuhandler_control_style_p2(MENUOP_GET_OPTION_TEXT, item, &data);
+	return (char *)menuhandler001024fc(MENUOP_GETOPTIONTEXT, item, &data);
 }
 
-MenuItemHandlerResult menuhandler_lang_filter(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerLangFilter(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
+	case MENUOP_GET:
 		return g_Vars.langfilteron;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_Vars.langfilteron = data->checkbox.value;
 		g_Vars.modifiedfiles |= MODFILE_GAME;
 	}
@@ -2213,42 +2220,47 @@ MenuItemHandlerResult menuhandler_lang_filter(s32 operation, struct menuitem *it
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_control_style(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerControlStyle(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		if (PLAYERCOUNT() >= 2) {
-			menu_push_dialog(&g_2PMissionControlStyleMenuDialog);
+			menuPushDialog(&g_2PMissionControlStyleMenuDialog);
 		} else {
-			menu_push_dialog(&g_SoloMissionControlStyleMenuDialog);
+			menuPushDialog(&g_SoloMissionControlStyleMenuDialog);
 		}
 	}
 
 	return 0;
 }
 
-/**
- * This function is not used.
- *
- * The filemgr will show a "file saved" dialog when using FILEOP_SAVE_GAME_002,
- * so this is likely the handler for a manual Save Game option which was removed.
- */
-MenuItemHandlerResult menuhandler_save_game(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandler001057ec(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		filemgr_save_or_load(&g_GameFileGuid, FILEOP_SAVE_GAME_002, 0);
+	if (operation == MENUOP_SET) {
+		filemgrSaveOrLoad(&g_GameFileGuid, FILEOP_SAVE_GAME_002, 0);
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_change_agent(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerChangeAgent(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		menu_save_and_push_root_dialog(NULL, MENUROOT_CHANGE_AGENT);
+	if (operation == MENUOP_SET) {
+		func0f0f820c(NULL, -7);
 	}
 
 	return 0;
 }
+
+#ifndef PLATFORM_N64
+MenuItemHandlerResult menuhandlerExitGame(s32 operation, struct menuitem *item, union handlerdata *data)
+{
+	if (operation == MENUOP_SET) {
+		exit(0);
+	}
+
+	return 0;
+}
+#endif
 
 struct menuitem g_2PMissionControlStyleMenuItems[] = {
 	{
@@ -2257,7 +2269,7 @@ struct menuitem g_2PMissionControlStyleMenuItems[] = {
 		MENUITEMFLAG_LIST_AUTOWIDTH,
 		0x00000050,
 		0,
-		menuhandler_control_style_p1,
+		menuhandler001024dc,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -2267,7 +2279,7 @@ struct menudialogdef g_2PMissionControlStyleMenuDialog = {
 	L_OPTIONS_236, // "Control"
 	g_2PMissionControlStyleMenuItems,
 	NULL,
-	MENUDIALOGFLAG_NOVERTICALBORDERS,
+	MENUDIALOGFLAG_0400,
 	NULL,
 };
 
@@ -2284,7 +2296,7 @@ struct menuitem g_SoloMissionControlStyleMenuItems[] = {
 #else
 		0x96,
 #endif
-		menuhandler_control_style_p1,
+		menuhandler001024dc,
 	},
 	{
 		MENUITEMTYPE_CONTROLLER,
@@ -2302,7 +2314,7 @@ struct menudialogdef g_SoloMissionControlStyleMenuDialog = {
 	L_OPTIONS_236, // "Control"
 	g_SoloMissionControlStyleMenuItems,
 	NULL,
-	MENUDIALOGFLAG_NOVERTICALBORDERS,
+	MENUDIALOGFLAG_0400,
 	NULL,
 };
 
@@ -2319,7 +2331,7 @@ struct menuitem g_CiControlStyleMenuItems[] = {
 #else
 		0x96,
 #endif
-		menuhandler_control_style_p1,
+		menuhandler001024dc,
 	},
 	{
 		MENUITEMTYPE_CONTROLLER,
@@ -2337,7 +2349,7 @@ struct menudialogdef g_CiControlStyleMenuDialog = {
 	L_OPTIONS_236, // "Control"
 	g_CiControlStyleMenuItems,
 	NULL,
-	MENUDIALOGFLAG_NOVERTICALBORDERS,
+	MENUDIALOGFLAG_0400,
 	NULL,
 };
 
@@ -2354,7 +2366,7 @@ struct menuitem g_CiControlStylePlayer2MenuItems[] = {
 #else
 		0x96,
 #endif
-		menuhandler_control_style_p2,
+		menuhandler001024fc,
 	},
 	{
 		MENUITEMTYPE_CONTROLLER,
@@ -2372,7 +2384,7 @@ struct menudialogdef g_CiControlStylePlayer2MenuDialog = {
 	L_OPTIONS_236, // "Control"
 	g_CiControlStylePlayer2MenuItems,
 	NULL,
-	MENUDIALOGFLAG_NOVERTICALBORDERS,
+	MENUDIALOGFLAG_0400,
 	NULL,
 };
 
@@ -2387,7 +2399,7 @@ struct menuitem g_AudioOptionsMenuItems[] = {
 #else
 		0x7fff,
 #endif
-		menuhandler_sfx_volume,
+		menuhandlerSfxVolume,
 	},
 	{
 		MENUITEMTYPE_SLIDER,
@@ -2399,7 +2411,7 @@ struct menuitem g_AudioOptionsMenuItems[] = {
 #else
 		0x7fff,
 #endif
-		menuhandler_music_volume,
+		menuhandlerMusicVolume,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -2407,7 +2419,7 @@ struct menuitem g_AudioOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_230, // "Sound Mode"
 		0,
-		menuhandler_sound_mode,
+		menuhandlerSoundMode,
 	},
 #if VERSION != VERSION_JPN_FINAL
 	{
@@ -2416,7 +2428,7 @@ struct menuitem g_AudioOptionsMenuItems[] = {
 		0,
 		L_MPWEAPONS_218, // "Language Filter"
 		0,
-		menuhandler_lang_filter,
+		menuhandlerLangFilter,
 	},
 #endif
 	{
@@ -2458,7 +2470,7 @@ struct menuitem g_2PMissionAudioOptionsVMenuItems[] = {
 #else
 		0x7fff,
 #endif
-		menuhandler_sfx_volume,
+		menuhandlerSfxVolume,
 	},
 	{
 		MENUITEMTYPE_SLIDER,
@@ -2470,7 +2482,7 @@ struct menuitem g_2PMissionAudioOptionsVMenuItems[] = {
 #else
 		0x7fff,
 #endif
-		menuhandler_music_volume,
+		menuhandlerMusicVolume,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -2478,7 +2490,7 @@ struct menuitem g_2PMissionAudioOptionsVMenuItems[] = {
 		0,
 		L_MPWEAPONS_153, // "Mode"
 		0,
-		menuhandler_sound_mode,
+		menuhandlerSoundMode,
 	},
 #if VERSION != VERSION_JPN_FINAL
 	{
@@ -2487,7 +2499,7 @@ struct menuitem g_2PMissionAudioOptionsVMenuItems[] = {
 		0,
 		L_MPWEAPONS_218, // "Language Filter"
 		0,
-		menuhandler_lang_filter,
+		menuhandlerLangFilter,
 	},
 #endif
 	{
@@ -2525,15 +2537,16 @@ struct menuitem g_VideoOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_215, // "Screen Size"
 		0,
-		menuhandler_screen_size,
+		menuhandlerScreenSize,
 	},
+#ifdef PLATFORM_N64
 	{
 		MENUITEMTYPE_DROPDOWN,
 		0,
 		0,
 		L_OPTIONS_216, // "Ratio"
 		0,
-		menuhandler_screen_ratio,
+		menuhandlerScreenRatio,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2541,8 +2554,9 @@ struct menuitem g_VideoOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_217, // "Hi-Res"
 		0,
-		menuhandler_hi_res,
+		menuhandlerHiRes,
 	},
+#endif
 #if PAL
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -2550,7 +2564,7 @@ struct menuitem g_VideoOptionsMenuItems[] = {
 		0,
 		L_MPWEAPONS_269, // ""
 		0,
-		menuhandler_language,
+		menuhandlerLanguage,
 	},
 #endif
 	{
@@ -2559,7 +2573,7 @@ struct menuitem g_VideoOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_218, // "2-Player Screen Split"
 		0,
-		menuhandler_screen_split,
+		menuhandlerScreenSplit,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2567,7 +2581,7 @@ struct menuitem g_VideoOptionsMenuItems[] = {
 		0,
 		L_MPWEAPONS_170, // "Alternative Title Screen"
 		0,
-		menuhandler_alternative_title,
+		menuhandlerAlternativeTitle,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -2589,13 +2603,14 @@ struct menuitem g_VideoOptionsMenuItems[] = {
 };
 
 struct menuitem g_2PMissionVideoOptionsMenuItems[] = {
+#ifdef PLATFORM_N64
 	{
 		MENUITEMTYPE_DROPDOWN,
 		0,
 		0,
 		L_OPTIONS_216, // "Ratio"
 		0,
-		menuhandler_screen_ratio,
+		menuhandlerScreenRatio,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2603,8 +2618,9 @@ struct menuitem g_2PMissionVideoOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_217, // "Hi-Res"
 		0,
-		menuhandler_hi_res,
+		menuhandlerHiRes,
 	},
+#endif
 #if PAL
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -2612,7 +2628,7 @@ struct menuitem g_2PMissionVideoOptionsMenuItems[] = {
 		0,
 		L_MPWEAPONS_269, // ""
 		0,
-		menuhandler_language,
+		menuhandlerLanguage,
 	},
 #endif
 	{
@@ -2621,7 +2637,7 @@ struct menuitem g_2PMissionVideoOptionsMenuItems[] = {
 		0,
 		L_MPWEAPONS_154, // "Split"
 		0,
-		menuhandler_screen_split,
+		menuhandlerScreenSplit,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -2667,7 +2683,7 @@ struct menuitem g_MissionDisplayOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_205, // "Sight on Screen"
 		0x00000004,
-		menuhandler_sight_on_screen,
+		menuhandlerSightOnScreen,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2675,7 +2691,7 @@ struct menuitem g_MissionDisplayOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_206, // "Always Show Target"
 		0x00000004,
-		menuhandler_always_show_target,
+		menuhandlerAlwaysShowTarget,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2683,7 +2699,7 @@ struct menuitem g_MissionDisplayOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_207, // "Show Zoom Range"
 		0x00000004,
-		menuhandler_show_zoom_range,
+		menuhandlerShowZoomRange,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2691,7 +2707,7 @@ struct menuitem g_MissionDisplayOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_208, // "Ammo on Screen"
 		0x00000004,
-		menuhandler_ammo_on_screen,
+		menuhandlerAmmoOnScreen,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2699,7 +2715,7 @@ struct menuitem g_MissionDisplayOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_209, // "Show Gun Function"
 		0x00000004,
-		menuhandler_show_gun_function,
+		menuhandlerShowGunFunction,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2707,7 +2723,7 @@ struct menuitem g_MissionDisplayOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_210, // "Paintball"
 		0x00000004,
-		menuhandler_paintball,
+		menuhandlerPaintball,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2715,7 +2731,7 @@ struct menuitem g_MissionDisplayOptionsMenuItems[] = {
 		0,
 		L_MPWEAPONS_169, // "In-Game Subtitles"
 		0x00000004,
-		menuhandler_in_game_subtitles,
+		menuhandlerInGameSubtitles,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2723,7 +2739,7 @@ struct menuitem g_MissionDisplayOptionsMenuItems[] = {
 		0,
 		L_MPWEAPONS_168, // "Cutscene Subtitles"
 		0x00000004,
-		menuhandler_cutscene_subtitles,
+		menuhandlerCutsceneSubtitles,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2731,7 +2747,7 @@ struct menuitem g_MissionDisplayOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_212, // "Show Mission Time"
 		0x00000004,
-		menuhandler_show_mission_time,
+		menuhandlerShowMissionTime,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -2768,7 +2784,7 @@ struct menuitem g_2PMissionDisplayOptionsVMenuItems[] = {
 		0,
 		L_MPWEAPONS_145, // "Sight on Screen"
 		0x00000004,
-		menuhandler_sight_on_screen,
+		menuhandlerSightOnScreen,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2776,7 +2792,7 @@ struct menuitem g_2PMissionDisplayOptionsVMenuItems[] = {
 		0,
 		L_MPWEAPONS_146, // "Target"
 		0x00000004,
-		menuhandler_always_show_target,
+		menuhandlerAlwaysShowTarget,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2784,7 +2800,7 @@ struct menuitem g_2PMissionDisplayOptionsVMenuItems[] = {
 		0,
 		L_MPWEAPONS_147, // "Zoom Range"
 		0x00000004,
-		menuhandler_show_zoom_range,
+		menuhandlerShowZoomRange,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2792,7 +2808,7 @@ struct menuitem g_2PMissionDisplayOptionsVMenuItems[] = {
 		0,
 		L_MPWEAPONS_148, // "Show Ammo"
 		0x00000004,
-		menuhandler_ammo_on_screen,
+		menuhandlerAmmoOnScreen,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2800,7 +2816,7 @@ struct menuitem g_2PMissionDisplayOptionsVMenuItems[] = {
 		0,
 		L_MPWEAPONS_149, // "Gun Function"
 		0x00000004,
-		menuhandler_show_gun_function,
+		menuhandlerShowGunFunction,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2808,7 +2824,7 @@ struct menuitem g_2PMissionDisplayOptionsVMenuItems[] = {
 		0,
 		L_MPWEAPONS_150, // "Paintball"
 		0x00000004,
-		menuhandler_paintball,
+		menuhandlerPaintball,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2820,7 +2836,7 @@ struct menuitem g_2PMissionDisplayOptionsVMenuItems[] = {
 		L_MPWEAPONS_169, // "In-Game Subtitles"
 #endif
 		0x00000004,
-		menuhandler_in_game_subtitles,
+		menuhandlerInGameSubtitles,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2832,7 +2848,7 @@ struct menuitem g_2PMissionDisplayOptionsVMenuItems[] = {
 		L_MPWEAPONS_168, // "Cutscene Subtitles"
 #endif
 		0x00000004,
-		menuhandler_cutscene_subtitles,
+		menuhandlerCutsceneSubtitles,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2840,7 +2856,7 @@ struct menuitem g_2PMissionDisplayOptionsVMenuItems[] = {
 		0,
 		L_MPWEAPONS_152, // "Mission Time"
 		0x00000004,
-		menuhandler_show_mission_time,
+		menuhandlerShowMissionTime,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -2877,7 +2893,7 @@ struct menuitem g_CiDisplayMenuItems[] = {
 		0,
 		L_OPTIONS_205, // "Sight on Screen"
 		0x00000004,
-		menuhandler_sight_on_screen,
+		menuhandlerSightOnScreen,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2885,7 +2901,7 @@ struct menuitem g_CiDisplayMenuItems[] = {
 		0,
 		L_OPTIONS_206, // "Always Show Target"
 		0x00000004,
-		menuhandler_always_show_target,
+		menuhandlerAlwaysShowTarget,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2893,7 +2909,7 @@ struct menuitem g_CiDisplayMenuItems[] = {
 		0,
 		L_OPTIONS_207, // "Show Zoom Range"
 		0x00000004,
-		menuhandler_show_zoom_range,
+		menuhandlerShowZoomRange,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2901,7 +2917,7 @@ struct menuitem g_CiDisplayMenuItems[] = {
 		0,
 		L_OPTIONS_208, // "Ammo on Screen"
 		0x00000004,
-		menuhandler_ammo_on_screen,
+		menuhandlerAmmoOnScreen,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2909,7 +2925,7 @@ struct menuitem g_CiDisplayMenuItems[] = {
 		0,
 		L_OPTIONS_209, // "Show Gun Function"
 		0x00000004,
-		menuhandler_show_gun_function,
+		menuhandlerShowGunFunction,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2917,7 +2933,7 @@ struct menuitem g_CiDisplayMenuItems[] = {
 		0,
 		L_OPTIONS_210, // "Paintball"
 		0x00000004,
-		menuhandler_paintball,
+		menuhandlerPaintball,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2925,7 +2941,7 @@ struct menuitem g_CiDisplayMenuItems[] = {
 		0,
 		L_MPWEAPONS_169, // "In-Game Subtitles"
 		0x00000004,
-		menuhandler_in_game_subtitles,
+		menuhandlerInGameSubtitles,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2933,7 +2949,7 @@ struct menuitem g_CiDisplayMenuItems[] = {
 		0,
 		L_MPWEAPONS_168, // "Cutscene Subtitles"
 		0x00000004,
-		menuhandler_cutscene_subtitles,
+		menuhandlerCutsceneSubtitles,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2941,7 +2957,7 @@ struct menuitem g_CiDisplayMenuItems[] = {
 		0,
 		L_OPTIONS_212, // "Show Mission Time"
 		0x00000004,
-		menuhandler_show_mission_time,
+		menuhandlerShowMissionTime,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -2980,7 +2996,7 @@ struct menuitem g_CiDisplayPlayer2MenuItems[] = {
 		0,
 		L_OPTIONS_205, // "Sight on Screen"
 		0x00000005,
-		menuhandler_sight_on_screen,
+		menuhandlerSightOnScreen,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2988,7 +3004,7 @@ struct menuitem g_CiDisplayPlayer2MenuItems[] = {
 		0,
 		L_OPTIONS_206, // "Always Show Target"
 		0x00000005,
-		menuhandler_always_show_target,
+		menuhandlerAlwaysShowTarget,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -2996,7 +3012,7 @@ struct menuitem g_CiDisplayPlayer2MenuItems[] = {
 		0,
 		L_OPTIONS_207, // "Show Zoom Range"
 		0x00000005,
-		menuhandler_show_zoom_range,
+		menuhandlerShowZoomRange,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3004,7 +3020,7 @@ struct menuitem g_CiDisplayPlayer2MenuItems[] = {
 		0,
 		L_OPTIONS_208, // "Ammo on Screen"
 		0x00000005,
-		menuhandler_ammo_on_screen,
+		menuhandlerAmmoOnScreen,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3012,7 +3028,7 @@ struct menuitem g_CiDisplayPlayer2MenuItems[] = {
 		0,
 		L_OPTIONS_209, // "Show Gun Function"
 		0x00000005,
-		menuhandler_show_gun_function,
+		menuhandlerShowGunFunction,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3020,7 +3036,7 @@ struct menuitem g_CiDisplayPlayer2MenuItems[] = {
 		0,
 		L_OPTIONS_210, // "Paintball"
 		0x00000005,
-		menuhandler_paintball,
+		menuhandlerPaintball,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3028,7 +3044,7 @@ struct menuitem g_CiDisplayPlayer2MenuItems[] = {
 		0,
 		L_MPWEAPONS_169, // "In-Game Subtitles"
 		0x00000005,
-		menuhandler_in_game_subtitles,
+		menuhandlerInGameSubtitles,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3036,7 +3052,7 @@ struct menuitem g_CiDisplayPlayer2MenuItems[] = {
 		0,
 		L_MPWEAPONS_168, // "Cutscene Subtitles"
 		0x00000005,
-		menuhandler_cutscene_subtitles,
+		menuhandlerCutsceneSubtitles,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3044,7 +3060,7 @@ struct menuitem g_CiDisplayPlayer2MenuItems[] = {
 		0,
 		L_OPTIONS_212, // "Show Mission Time"
 		0x00000005,
-		menuhandler_show_mission_time,
+		menuhandlerShowMissionTime,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -3080,8 +3096,8 @@ struct menuitem g_MissionControlOptionsMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_194, // "Control Style"
-		(uintptr_t)&menutext_control_style_p1,
-		menuhandler_control_style,
+		(uintptr_t)&func0f105664,
+		menuhandlerControlStyle,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3089,7 +3105,7 @@ struct menuitem g_MissionControlOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_195, // "Reverse Pitch"
 		0x00000004,
-		menuhandler_reverse_pitch,
+		menuhandlerReversePitch,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3097,7 +3113,7 @@ struct menuitem g_MissionControlOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_196, // "Look Ahead"
 		0x00000004,
-		menuhandler_look_ahead,
+		menuhandlerLookAhead,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3105,7 +3121,7 @@ struct menuitem g_MissionControlOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_197, // "Head Roll"
 		0x00000004,
-		menuhandler_head_roll,
+		menuhandlerHeadRoll,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3113,7 +3129,7 @@ struct menuitem g_MissionControlOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_198, // "Auto-Aim"
 		0x00000004,
-		menuhandler_autoaim,
+		menuhandlerAutoAim,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -3121,7 +3137,7 @@ struct menuitem g_MissionControlOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_199, // "Aim Control"
 		0x00000004,
-		menuhandler_aim_control,
+		menuhandlerAimControl,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -3158,8 +3174,8 @@ struct menuitem g_CiControlOptionsMenuItems2[] = {
 		0,
 		0,
 		L_MPWEAPONS_270, // ""
-		(uintptr_t)&menutext_control_style_p1,
-		menuhandler_control_style,
+		(uintptr_t)&func0f105664,
+		menuhandlerControlStyle,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3167,7 +3183,7 @@ struct menuitem g_CiControlOptionsMenuItems2[] = {
 		0,
 		L_MPWEAPONS_271, // ""
 		0x00000004,
-		menuhandler_reverse_pitch,
+		menuhandlerReversePitch,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3175,7 +3191,7 @@ struct menuitem g_CiControlOptionsMenuItems2[] = {
 		0,
 		L_MPWEAPONS_272, // ""
 		0x00000004,
-		menuhandler_look_ahead,
+		menuhandlerLookAhead,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3183,7 +3199,7 @@ struct menuitem g_CiControlOptionsMenuItems2[] = {
 		0,
 		L_MPWEAPONS_273, // ""
 		0x00000004,
-		menuhandler_head_roll,
+		menuhandlerHeadRoll,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3191,7 +3207,7 @@ struct menuitem g_CiControlOptionsMenuItems2[] = {
 		0,
 		L_MPWEAPONS_274, // ""
 		0x00000004,
-		menuhandler_autoaim,
+		menuhandlerAutoAim,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -3199,7 +3215,7 @@ struct menuitem g_CiControlOptionsMenuItems2[] = {
 		0,
 		L_MPWEAPONS_275, // ""
 		0x00000004,
-		menuhandler_aim_control,
+		menuhandlerAimControl,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -3236,7 +3252,7 @@ struct menuitem g_CiControlOptionsMenuItems[] = {
 		0,
 		MENUITEMFLAG_SELECTABLE_OPENSDIALOG,
 		L_OPTIONS_194, // "Control Style"
-		(uintptr_t)&menutext_control_style_p1,
+		(uintptr_t)&func0f105664,
 		(void *)&g_CiControlStyleMenuDialog,
 	},
 	{
@@ -3245,7 +3261,7 @@ struct menuitem g_CiControlOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_195, // "Reverse Pitch"
 		0x00000004,
-		menuhandler_reverse_pitch,
+		menuhandlerReversePitch,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3253,7 +3269,7 @@ struct menuitem g_CiControlOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_196, // "Look Ahead"
 		0x00000004,
-		menuhandler_look_ahead,
+		menuhandlerLookAhead,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3261,7 +3277,7 @@ struct menuitem g_CiControlOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_197, // "Head Roll"
 		0x00000004,
-		menuhandler_head_roll,
+		menuhandlerHeadRoll,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3269,7 +3285,7 @@ struct menuitem g_CiControlOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_198, // "Auto-Aim"
 		0x00000004,
-		menuhandler_autoaim,
+		menuhandlerAutoAim,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -3277,7 +3293,7 @@ struct menuitem g_CiControlOptionsMenuItems[] = {
 		0,
 		L_OPTIONS_199, // "Aim Control"
 		0x00000004,
-		menuhandler_aim_control,
+		menuhandlerAimControl,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -3313,7 +3329,7 @@ struct menuitem g_CiControlPlayer2MenuItems[] = {
 		0,
 		MENUITEMFLAG_SELECTABLE_OPENSDIALOG,
 		L_OPTIONS_194, // "Control Style"
-		(uintptr_t)&menutext_control_style_p2,
+		(uintptr_t)&func0f1056a0,
 		(void *)&g_CiControlStylePlayer2MenuDialog,
 	},
 	{
@@ -3322,7 +3338,7 @@ struct menuitem g_CiControlPlayer2MenuItems[] = {
 		0,
 		L_OPTIONS_195, // "Reverse Pitch"
 		0x00000005,
-		menuhandler_reverse_pitch,
+		menuhandlerReversePitch,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3330,7 +3346,7 @@ struct menuitem g_CiControlPlayer2MenuItems[] = {
 		0,
 		L_OPTIONS_196, // "Look Ahead"
 		0x00000005,
-		menuhandler_look_ahead,
+		menuhandlerLookAhead,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3338,7 +3354,7 @@ struct menuitem g_CiControlPlayer2MenuItems[] = {
 		0,
 		L_OPTIONS_197, // "Head Roll"
 		0x00000005,
-		menuhandler_head_roll,
+		menuhandlerHeadRoll,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -3346,7 +3362,7 @@ struct menuitem g_CiControlPlayer2MenuItems[] = {
 		0,
 		L_OPTIONS_198, // "Auto-Aim"
 		0x00000005,
-		menuhandler_autoaim,
+		menuhandlerAutoAim,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -3354,7 +3370,7 @@ struct menuitem g_CiControlPlayer2MenuItems[] = {
 		0,
 		L_OPTIONS_199, // "Aim Control"
 		0x00000005,
-		menuhandler_aim_control,
+		menuhandlerAimControl,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -3399,7 +3415,7 @@ struct menuitem g_ChangeAgentMenuItems[] = {
 		0,
 		L_OPTIONS_190, // "Yes"
 		0,
-		menuhandler_change_agent,
+		menuhandlerChangeAgent,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -3420,6 +3436,55 @@ struct menudialogdef g_ChangeAgentMenuDialog = {
 	0,
 	NULL,
 };
+
+#ifndef PLATFORM_N64
+
+struct menuitem g_ExitGameMenuItems[] = {
+	{
+		MENUITEMTYPE_LABEL,
+		0,
+		MENUITEMFLAG_SELECTABLE_CENTRE | MENUITEMFLAG_LESSHEIGHT | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Are you sure you want to exit?\n",
+		0,
+		NULL,
+	},
+	{
+		MENUITEMTYPE_SEPARATOR,
+		0,
+		0,
+		0x00000082,
+		0,
+		NULL,
+	},
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_CENTRE,
+		L_OPTIONS_190, // "Yes"
+		0,
+		menuhandlerExitGame,
+	},
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_CENTRE | MENUITEMFLAG_SELECTABLE_CLOSESDIALOG,
+		L_OPTIONS_191, // "No"
+		0,
+		NULL,
+	},
+	{ MENUITEMTYPE_END },
+};
+
+struct menudialogdef g_ExitGameMenuDialog = {
+	MENUDIALOGTYPE_DANGER,
+	L_OPTIONS_188, // "Warning"
+	g_ExitGameMenuItems,
+	NULL,
+	0,
+	NULL,
+};
+
+#endif
 
 struct menuitem g_SoloMissionOptionsMenuItems[] = {
 	{
@@ -3454,6 +3519,16 @@ struct menuitem g_SoloMissionOptionsMenuItems[] = {
 		0,
 		(void *)&g_MissionDisplayOptionsMenuDialog,
 	},
+#ifndef PLATFORM_N64
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_BIGFONT | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Extended\n",
+		0,
+		(void *)&g_ExtendedMenuDialog,
+	},
+#endif
 	{ MENUITEMTYPE_END },
 };
 
@@ -3490,6 +3565,16 @@ struct menuitem g_2PMissionOptionsHMenuItems[] = {
 		0,
 		(void *)&g_MissionDisplayOptionsMenuDialog,
 	},
+#ifndef PLATFORM_N64
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Extended\n",
+		0,
+		(void *)&g_ExtendedMenuDialog,
+	},
+#endif
 	{
 		MENUITEMTYPE_SEPARATOR,
 		0,
@@ -3502,9 +3587,9 @@ struct menuitem g_2PMissionOptionsHMenuItems[] = {
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		0,
-		(uintptr_t)&menutext_pause_or_unpause,
+		(uintptr_t)&menutextPauseOrUnpause,
 		0,
-		menuhandler_mp_pause,
+		menuhandlerMpPause,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -3546,6 +3631,16 @@ struct menuitem g_2PMissionOptionsVMenuItems[] = {
 		0,
 		(void *)&g_2PMissionDisplayOptionsVMenuDialog,
 	},
+#ifndef PLATFORM_N64
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Extended\n",
+		0,
+		(void *)&g_ExtendedMenuDialog,
+	},
+#endif
 	{
 		MENUITEMTYPE_SEPARATOR,
 		0,
@@ -3558,9 +3653,9 @@ struct menuitem g_2PMissionOptionsVMenuItems[] = {
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		0,
-		(uintptr_t)&menutext_pause_or_unpause,
+		(uintptr_t)&menutextPauseOrUnpause,
 		0,
-		menuhandler_mp_pause,
+		menuhandlerMpPause,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -3614,6 +3709,16 @@ struct menuitem g_CiOptionsMenuItems[] = {
 		6,
 		(void *)&g_CinemaMenuDialog,
 	},
+#ifndef PLATFORM_N64
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_BIGFONT | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Extended\n",
+		7,
+		(void *)&g_ExtendedMenuDialog,
+	},
+#endif
 	{ MENUITEMTYPE_END },
 };
 
@@ -3621,7 +3726,7 @@ struct menudialogdef g_SoloMissionOptionsMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_OPTIONS_180, // "Options"
 	g_SoloMissionOptionsMenuItems,
-	menudialog_mainmenu_options,
+	menudialog0010559c,
 	0,
 	&g_SoloMissionBriefingMenuDialog,
 };
@@ -3630,7 +3735,7 @@ struct menudialogdef g_CiOptionsViaPcMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_OPTIONS_180, // "Options"
 	g_CiOptionsMenuItems,
-	menudialog_mainmenu_options,
+	menudialog0010559c,
 	0,
 	NULL,
 };
@@ -3639,7 +3744,7 @@ struct menudialogdef g_CiOptionsViaPauseMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_OPTIONS_180, // "Options"
 	g_CiOptionsMenuItems,
-	menudialog_mainmenu_options,
+	menudialog0010559c,
 	0,
 	NULL,
 };
@@ -3648,7 +3753,7 @@ struct menudialogdef g_2PMissionOptionsHMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_OPTIONS_180, // "Options"
 	g_2PMissionOptionsHMenuItems,
-	menudialog_mainmenu_options,
+	menudialog0010559c,
 	0,
 	&g_2PMissionBriefingHMenuDialog,
 };
@@ -3657,42 +3762,42 @@ struct menudialogdef g_2PMissionOptionsVMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_OPTIONS_180, // "Options"
 	g_2PMissionOptionsVMenuItems,
-	menudialog_mainmenu_options,
+	menudialog0010559c,
 	0,
 	&g_2PMissionBriefingVMenuDialog,
 };
 
-u8 g_PrevInventoryWeapon = 255;
+u8 var80072d88 = 255;
 
-char *inv_menu_text_primary_function(struct menuitem *item)
+char *invMenuTextPrimaryFunction(struct menuitem *item)
 {
-	struct funcdef *primaryfunc = gset_get_funcdef_by_weaponnum_funcnum(g_InventoryWeapon, FUNC_PRIMARY);
-	struct funcdef *secondaryfunc = gset_get_funcdef_by_weaponnum_funcnum(g_InventoryWeapon, FUNC_SECONDARY);
+	struct weaponfunc *primaryfunc = weaponGetFunctionById(g_InventoryWeapon, 0);
+	struct weaponfunc *secondaryfunc = weaponGetFunctionById(g_InventoryWeapon, 1);
 
 	if (primaryfunc && secondaryfunc) {
-		return lang_get(primaryfunc->name);
+		return langGet(primaryfunc->name);
 	}
 
-	return lang_get(L_OPTIONS_003); // "\n"
+	return langGet(L_OPTIONS_003); // "\n"
 }
 
-char *inv_menu_text_secondary_function(struct menuitem *item)
+char *invMenuTextSecondaryFunction(struct menuitem *item)
 {
-	struct funcdef *primaryfunc = gset_get_funcdef_by_weaponnum_funcnum(g_InventoryWeapon, FUNC_PRIMARY);
-	struct funcdef *secondaryfunc = gset_get_funcdef_by_weaponnum_funcnum(g_InventoryWeapon, FUNC_SECONDARY);
+	struct weaponfunc *primaryfunc = weaponGetFunctionById(g_InventoryWeapon, 0);
+	struct weaponfunc *secondaryfunc = weaponGetFunctionById(g_InventoryWeapon, 1);
 
 	if (secondaryfunc) {
-		return lang_get(secondaryfunc->name);
+		return langGet(secondaryfunc->name);
 	}
 
 	if (primaryfunc) {
-		return lang_get(primaryfunc->name);
+		return langGet(primaryfunc->name);
 	}
 
-	return lang_get(L_OPTIONS_003); // "\n"
+	return langGet(L_OPTIONS_003); // "\n"
 }
 
-void mainmenu_prepare_weapon_menumodel(s32 weaponnum)
+void func0f105948(s32 weaponnum)
 {
 	f32 gunconfig[][5] = {
 		{ 23.299999237061f,   -16.799999237061f,  -153.39999389648f,  6.4140100479126f, 0.48769000172615f },
@@ -3779,7 +3884,7 @@ void mainmenu_prepare_weapon_menumodel(s32 weaponnum)
 	};
 
 	s32 useindex;
-	struct weapondef *weapon;
+	struct weapon *weapon;
 	u32 stack;
 	s32 wantindex;
 
@@ -3790,12 +3895,12 @@ void mainmenu_prepare_weapon_menumodel(s32 weaponnum)
 		useindex = 0;
 	}
 
-	if (gset_has_weapon_flag(weaponnum, WEAPONFLAG_HIDEMENUMODEL) == false && (u32)wantindex >= 0 && useindex >= 0) {
-		weapon = gset_get_weapondef(weaponnum);
+	if (weaponHasFlag(weaponnum, WEAPONFLAG_HIDEMENUMODEL) == false && (u32)wantindex >= 0 && useindex >= 0) {
+		weapon = weaponFindById(weaponnum);
 
 		g_Menus[g_MpPlayerNum].menumodel.loaddelay = 8;
 		g_Menus[g_MpPlayerNum].menumodel.curparams = 0;
-		g_Menus[g_MpPlayerNum].menumodel.newparams = MENUMODELPARAMS_SET_FILENUM(gset_get_filenum(weaponnum));
+		g_Menus[g_MpPlayerNum].menumodel.newparams = MENUMODELPARAMS_SET_FILENUM(weaponGetFileNum(weaponnum));
 
 		g_Menus[g_MpPlayerNum].menumodel.curposx = g_Menus[g_MpPlayerNum].menumodel.newposx = 0;
 		g_Menus[g_MpPlayerNum].menumodel.curposy = g_Menus[g_MpPlayerNum].menumodel.newposy = 0;
@@ -3810,7 +3915,7 @@ void mainmenu_prepare_weapon_menumodel(s32 weaponnum)
 		g_Menus[g_MpPlayerNum].menumodel.newrotx = gunconfig[useindex][3];
 		g_Menus[g_MpPlayerNum].menumodel.currotx = gunconfig[useindex][3];
 
-		menu_configure_model(&g_Menus[g_MpPlayerNum].menumodel, 0, 0, 0, 0, 0, 0, gunconfig[useindex][4], MENUMODELFLAG_HASSCALE);
+		menuConfigureModel(&g_Menus[g_MpPlayerNum].menumodel, 0, 0, 0, 0, 0, 0, gunconfig[useindex][4], MENUMODELFLAG_HASSCALE);
 
 		g_Menus[g_MpPlayerNum].menumodel.curscale = 0;
 		g_Menus[g_MpPlayerNum].menumodel.partvisibility = weapon->partvisibility;
@@ -3827,7 +3932,7 @@ void mainmenu_prepare_weapon_menumodel(s32 weaponnum)
 			g_Menus[g_MpPlayerNum].menumodel.partvisibility = NULL;
 			g_Menus[g_MpPlayerNum].menumodel.removingpiece = false;
 
-			menu_configure_model(&g_Menus[g_MpPlayerNum].menumodel, 0, 0, 0, 0, 0, 0, 1, MENUMODELFLAG_HASSCALE);
+			menuConfigureModel(&g_Menus[g_MpPlayerNum].menumodel, 0, 0, 0, 0, 0, 0, 1, MENUMODELFLAG_HASSCALE);
 
 			g_Menus[g_MpPlayerNum].menumodel.rottimer60 = TICKS(60);
 			g_Menus[g_MpPlayerNum].menumodel.zoomtimer60 = TICKS(120);
@@ -3840,9 +3945,9 @@ void mainmenu_prepare_weapon_menumodel(s32 weaponnum)
 	}
 }
 
-MenuDialogHandlerResult inventory_menu_dialog(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult inventoryMenuDialog(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
-	if (operation == MENUOP_ON_TICK) {
+	if (operation == MENUOP_TICK) {
 		if (g_Menus[g_MpPlayerNum].curdialog && g_Menus[g_MpPlayerNum].curdialog->definition == dialogdef) {
 			g_Menus[g_MpPlayerNum].menumodel.zoomtimer60 -= g_Vars.diffframe60;
 			g_Menus[g_MpPlayerNum].menumodel.newroty = 18.849555969238f * g_20SecIntervalFrac;
@@ -3850,9 +3955,9 @@ MenuDialogHandlerResult inventory_menu_dialog(s32 operation, struct menudialogde
 			g_Menus[g_MpPlayerNum].menumodel.currotz = 0;
 			g_Menus[g_MpPlayerNum].menumodel.newrotz = 0;
 
-			if (g_PrevInventoryWeapon != g_InventoryWeapon) {
-				mainmenu_prepare_weapon_menumodel(g_InventoryWeapon);
-				g_PrevInventoryWeapon = g_InventoryWeapon;
+			if (var80072d88 != g_InventoryWeapon) {
+				func0f105948(g_InventoryWeapon);
+				var80072d88 = g_InventoryWeapon;
 			}
 
 			if (g_InventoryWeapon == WEAPON_DISGUISE40 || g_InventoryWeapon == WEAPON_DISGUISE41) {
@@ -3861,7 +3966,7 @@ MenuDialogHandlerResult inventory_menu_dialog(s32 operation, struct menudialogde
 				g_Menus[g_MpPlayerNum].menumodel.zoomtimer60 = TICKS(120);
 			}
 		} else {
-			g_PrevInventoryWeapon = 255;
+			var80072d88 = 255;
 		}
 	}
 
@@ -3872,27 +3977,27 @@ MenuDialogHandlerResult inventory_menu_dialog(s32 operation, struct menudialogde
  * Return name, but if there is no manufacturer then return a blank value
  * because the name is being shown in the manufacturer slot.
  */
-char *inv_menu_text_weapon_name(struct menuitem *item)
+char *invMenuTextWeaponName(struct menuitem *item)
 {
-	struct weapondef *weapon = gset_get_weapondef(g_InventoryWeapon);
+	struct weapon *weapon = weaponFindById(g_InventoryWeapon);
 
 	if (weapon) {
 		if (weapon->manufacturer == L_GUN_000) { // "\n"
-			return lang_get(L_OPTIONS_003); // "\n"
+			return langGet(L_OPTIONS_003); // "\n"
 		}
 
-		return lang_get(weapon->name);
+		return langGet(weapon->name);
 	}
 
-	return lang_get(L_OPTIONS_003); // "\n"
+	return langGet(L_OPTIONS_003); // "\n"
 }
 
 /**
  * Return manufacturer, with fallback to weapon name if manufacturer is blank.
  */
-char *inv_menu_text_weapon_manufacturer(struct menuitem *item)
+char *invMenuTextWeaponManufacturer(struct menuitem *item)
 {
-	struct weapondef *weapon = gset_get_weapondef(g_InventoryWeapon);
+	struct weapon *weapon = weaponFindById(g_InventoryWeapon);
 	u32 textid = L_GUN_000; // "\n"
 
 	if (weapon) {
@@ -3900,36 +4005,36 @@ char *inv_menu_text_weapon_manufacturer(struct menuitem *item)
 	}
 
 	if (textid != L_GUN_000) {
-		return lang_get(textid);
+		return langGet(textid);
 	}
 
-	weapon = gset_get_weapondef(g_InventoryWeapon);
+	weapon = weaponFindById(g_InventoryWeapon);
 
 	if (weapon) {
-		return lang_get(weapon->name);
+		return langGet(weapon->name);
 	}
 
-	return lang_get(L_OPTIONS_003); // "\n"
+	return langGet(L_OPTIONS_003); // "\n"
 }
 
-char *inv_menu_text_weapon_description(struct menuitem *item)
+char *invMenuTextWeaponDescription(struct menuitem *item)
 {
-	struct weapondef *weapon = gset_get_weapondef(g_InventoryWeapon);
+	struct weapon *weapon = weaponFindById(g_InventoryWeapon);
 
 	if (weapon) {
 		if (g_InventoryWeapon == WEAPON_EYESPY && g_Vars.currentplayer->eyespy) {
 			if (g_Vars.currentplayer->eyespy->mode == EYESPYMODE_DRUGSPY) {
-				return lang_get(L_GUN_237); // Drugspy description
+				return langGet(L_GUN_237); // Drugspy description
 			}
 
 			if (g_Vars.currentplayer->eyespy->mode == EYESPYMODE_BOMBSPY) {
-				return lang_get(L_GUN_236); // Bombspy description
+				return langGet(L_GUN_236); // Bombspy description
 			}
 		}
 
 		if (g_InventoryWeapon == WEAPON_NECKLACE
 				&& g_Vars.stagenum == (VERSION >= VERSION_NTSC_1_0 ? STAGE_ATTACKSHIP : STAGE_SKEDARRUINS)
-				&& lv_get_difficulty() >= DIFF_PA) {
+				&& lvGetDifficulty() >= DIFF_PA) {
 #if VERSION >= VERSION_NTSC_1_0
 			// Phrases included here to assist people searching the code for them:
 			// CDV780322
@@ -3976,18 +4081,18 @@ char *inv_menu_text_weapon_description(struct menuitem *item)
 			}
 
 			// "Cassandra De Vries' replacement necklace.  Username: %s  Password: %s"
-			sprintf(g_StringPointer, lang_get(L_GUN_239), &username, &password);
+			sprintf(g_StringPointer, langGet(L_GUN_239), &username, &password);
 			return g_StringPointer;
 #else
 			// ntsc-beta stores the whole thing as a single plain text string
-			return lang_get(L_GUN_239);
+			return langGet(L_GUN_239);
 #endif
 		}
 
-		return lang_get(weapon->description);
+		return langGet(weapon->description);
 	}
 
-	return lang_get(L_OPTIONS_003); // "\n"
+	return langGet(L_OPTIONS_003); // "\n"
 }
 
 struct menuitem g_SoloMissionInventoryMenuItems[] = {
@@ -3997,14 +4102,14 @@ struct menuitem g_SoloMissionInventoryMenuItems[] = {
 		0,
 		0x0000006e,
 		(VERSION >= VERSION_JPN_FINAL ? 0x54 : 0x63),
-		menuhandler_inventory_list,
+		menuhandlerInventoryList,
 	},
 	{
 		MENUITEMTYPE_LABEL,
 		0,
 		MENUITEMFLAG_NEWCOLUMN | MENUITEMFLAG_00000002 | MENUITEMFLAG_SMALLFONT,
 		L_OPTIONS_003, // ""
-		(uintptr_t)&inv_menu_text_weapon_manufacturer,
+		(uintptr_t)&invMenuTextWeaponManufacturer,
 		NULL,
 	},
 	{
@@ -4012,7 +4117,7 @@ struct menuitem g_SoloMissionInventoryMenuItems[] = {
 		0,
 		MENUITEMFLAG_00000002 | MENUITEMFLAG_LABEL_ALTCOLOUR | MENUITEMFLAG_SMALLFONT,
 		L_OPTIONS_003, // ""
-		(uintptr_t)&inv_menu_text_weapon_name,
+		(uintptr_t)&invMenuTextWeaponName,
 		NULL,
 	},
 	{
@@ -4028,7 +4133,7 @@ struct menuitem g_SoloMissionInventoryMenuItems[] = {
 		0,
 		MENUITEMFLAG_00000002 | MENUITEMFLAG_SMALLFONT,
 		L_OPTIONS_003, // ""
-		(uintptr_t)&inv_menu_text_primary_function,
+		(uintptr_t)&invMenuTextPrimaryFunction,
 		NULL,
 	},
 	{
@@ -4036,14 +4141,14 @@ struct menuitem g_SoloMissionInventoryMenuItems[] = {
 		0,
 		MENUITEMFLAG_00000002 | MENUITEMFLAG_SMALLFONT,
 		L_OPTIONS_003, // ""
-		(uintptr_t)&inv_menu_text_secondary_function,
+		(uintptr_t)&invMenuTextSecondaryFunction,
 		NULL,
 	},
 	{
 		MENUITEMTYPE_MARQUEE,
 		0,
 		MENUITEMFLAG_SMALLFONT | MENUITEMFLAG_MARQUEE_FADEBOTHSIDES,
-		(uintptr_t)&inv_menu_text_weapon_description,
+		(uintptr_t)&invMenuTextWeaponDescription,
 		0,
 		NULL,
 	},
@@ -4057,14 +4162,14 @@ struct menuitem g_FrWeaponsAvailableMenuItems[] = {
 		0,
 		0x0000006e,
 		0x00000063,
-		menuhandler_fr_inventory_list,
+		menuhandlerFrInventoryList,
 	},
 	{
 		MENUITEMTYPE_LABEL,
 		0,
 		MENUITEMFLAG_NEWCOLUMN | MENUITEMFLAG_00000002 | MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_SMALLFONT,
 		L_OPTIONS_003, // ""
-		(uintptr_t)&inv_menu_text_weapon_manufacturer,
+		(uintptr_t)&invMenuTextWeaponManufacturer,
 		NULL,
 	},
 	{
@@ -4072,7 +4177,7 @@ struct menuitem g_FrWeaponsAvailableMenuItems[] = {
 		0,
 		MENUITEMFLAG_00000002 | MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_LABEL_ALTCOLOUR | MENUITEMFLAG_SMALLFONT,
 		L_OPTIONS_003, // ""
-		(uintptr_t)&inv_menu_text_weapon_name,
+		(uintptr_t)&invMenuTextWeaponName,
 		NULL,
 	},
 	{
@@ -4088,7 +4193,7 @@ struct menuitem g_FrWeaponsAvailableMenuItems[] = {
 		0,
 		MENUITEMFLAG_00000002 | MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_SMALLFONT,
 		L_OPTIONS_003, // ""
-		(uintptr_t)&inv_menu_text_primary_function,
+		(uintptr_t)&invMenuTextPrimaryFunction,
 		NULL,
 	},
 	{
@@ -4096,14 +4201,14 @@ struct menuitem g_FrWeaponsAvailableMenuItems[] = {
 		0,
 		MENUITEMFLAG_00000002 | MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_SMALLFONT,
 		L_OPTIONS_003, // ""
-		(uintptr_t)&inv_menu_text_secondary_function,
+		(uintptr_t)&invMenuTextSecondaryFunction,
 		NULL,
 	},
 	{
 		MENUITEMTYPE_MARQUEE,
 		0,
 		MENUITEMFLAG_SMALLFONT | MENUITEMFLAG_MARQUEE_FADEBOTHSIDES,
-		(uintptr_t)&inv_menu_text_weapon_description,
+		(uintptr_t)&invMenuTextWeaponDescription,
 		0,
 		NULL,
 	},
@@ -4114,11 +4219,11 @@ struct menudialogdef g_SoloMissionInventoryMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_OPTIONS_178, // "Inventory"
 	g_SoloMissionInventoryMenuItems,
-	inventory_menu_dialog,
+	inventoryMenuDialog,
 #if VERSION >= VERSION_JPN_FINAL
-	MENUDIALOGFLAG_ALLOW_MODELS | MENUDIALOGFLAG_DISABLERESIZE | MENUDIALOGFLAG_NOVERTICALBORDERS | MENUDIALOGFLAG_LESSHEIGHT,
+	MENUDIALOGFLAG_0002 | MENUDIALOGFLAG_DISABLERESIZE | MENUDIALOGFLAG_0400 | MENUDIALOGFLAG_1000,
 #else
-	MENUDIALOGFLAG_ALLOW_MODELS | MENUDIALOGFLAG_DISABLERESIZE | MENUDIALOGFLAG_NOVERTICALBORDERS,
+	MENUDIALOGFLAG_0002 | MENUDIALOGFLAG_DISABLERESIZE | MENUDIALOGFLAG_0400,
 #endif
 	&g_SoloMissionOptionsMenuDialog,
 };
@@ -4127,105 +4232,111 @@ struct menudialogdef g_FrWeaponsAvailableMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_OPTIONS_179, // "Weapons Available"
 	g_FrWeaponsAvailableMenuItems,
-	inventory_menu_dialog,
-	MENUDIALOGFLAG_ALLOW_MODELS | MENUDIALOGFLAG_DISABLERESIZE | MENUDIALOGFLAG_NOVERTICALBORDERS,
+	inventoryMenuDialog,
+	MENUDIALOGFLAG_0002 | MENUDIALOGFLAG_DISABLERESIZE | MENUDIALOGFLAG_0400,
 	NULL,
 };
 
-MenuItemHandlerResult menuhandler_fr_inventory_list(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerFrInventoryList(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	static u8 g_FrFocusedSlotIndex = 0;
 
 	switch (operation) {
-	case MENUOP_GET_OPTGROUP_COUNT:
+	case MENUOP_GETOPTGROUPCOUNT:
 		data->list.value = 0;
 		break;
-	case MENUOP_GET_OPTGROUP_TEXT:
+	case MENUOP_GETOPTGROUPTEXT:
 		return 0;
-	case MENUOP_GET_OPTGROUP_START_INDEX:
+	case MENUOP_GETGROUPSTARTINDEX:
 		data->list.groupstartindex = 0;
 		break;
-	case MENUOP_GET_OPTION_COUNT:
-		data->list.value = fr_get_num_weapons_available();
+	case MENUOP_GETOPTIONCOUNT:
+		data->list.value = frGetNumWeaponsAvailable();
 		break;
-	case MENUOP_GET_OPTION_TEXT:
+	case MENUOP_GETOPTIONTEXT:
 		g_FrFocusedSlotIndex = data->list.value;
-		return (s32)bgun_get_name(fr_get_weapon_by_slot(data->list.value));
-	case MENUOP_CONFIRM:
+		return (uintptr_t)bgunGetName(frGetWeaponBySlot(data->list.value));
+	case MENUOP_SET:
 		g_FrFocusedSlotIndex = data->list.value;
 		return 0;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		data->list.value = g_FrFocusedSlotIndex;
 		break;
-	case MENUOP_ON_OPTION_FOCUS:
-		g_InventoryWeapon = fr_get_weapon_by_slot(data->list.value);
+	case MENUOP_LISTITEMFOCUS:
+		g_InventoryWeapon = frGetWeaponBySlot(data->list.value);
 		g_Menus[g_MpPlayerNum].training.weaponnum = g_InventoryWeapon;
 		g_FrFocusedSlotIndex = data->list.value;
 
 		// These items are labels
-		menu_set_item_redraw_timer(&g_SoloMissionInventoryMenuItems[1], -1.0f); // manufacturer
-		menu_set_item_redraw_timer(&g_SoloMissionInventoryMenuItems[2], -1.0f); // weapon name
-		menu_set_item_redraw_timer(&g_SoloMissionInventoryMenuItems[4], -1.0f); // primary function
-		menu_set_item_redraw_timer(&g_SoloMissionInventoryMenuItems[5], -1.0f); // secondary function
+		func0f0f139c(&g_SoloMissionInventoryMenuItems[1], -1.0f); // manufacturer
+		func0f0f139c(&g_SoloMissionInventoryMenuItems[2], -1.0f); // weapon name
+		func0f0f139c(&g_SoloMissionInventoryMenuItems[4], -1.0f); // primary function
+		func0f0f139c(&g_SoloMissionInventoryMenuItems[5], -1.0f); // secondary function
 		break;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_inventory_list(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerInventoryList(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
-		data->list.value = inv_get_count();
+	case MENUOP_GETOPTIONCOUNT:
+		data->list.value = invGetCount();
 		break;
-	case MENUOP_GET_OPTION_TEXT:
-		return (s32)inv_get_name_by_index(data->list.value);
-	case MENUOP_CONFIRM:
+	case MENUOP_GETOPTIONTEXT:
+		return (uintptr_t)invGetNameByIndex(data->list.value);
+	case MENUOP_SET:
 		{
-			s32 weaponnum = inv_get_weapon_num_by_index(data->list.value);
+			s32 weaponnum = invGetWeaponNumByIndex(data->list.value);
 			bool equippable = true;
 
 			if (weaponnum != WEAPON_NONE) {
-				s32 state = gset_get_device_state(weaponnum);
+				s32 state = currentPlayerGetDeviceState(weaponnum);
 
 				if (state != DEVICESTATE_UNEQUIPPED) {
 					equippable = false;
 
 					if (data->list.unk04 == 0) {
 						if (state == DEVICESTATE_INACTIVE) {
-							gset_set_device_active(weaponnum, true);
+							currentPlayerSetDeviceActive(weaponnum, true);
 						} else {
-							gset_set_device_active(weaponnum, false);
+							currentPlayerSetDeviceActive(weaponnum, false);
 						}
 					}
 				}
 			}
 
 			if (equippable) {
-				inv_set_current_index(data->list.value);
+				invSetCurrentIndex(data->list.value);
 
-				if (inv_has_double_weapon_inc_all_guns(weaponnum, weaponnum)) {
-					bgun_equip_weapon2(HAND_RIGHT, weaponnum);
-					bgun_equip_weapon2(HAND_LEFT, weaponnum);
+				if (invHasDoubleWeaponIncAllGuns(weaponnum, weaponnum)) {
+					bgunEquipWeapon2(HAND_RIGHT, weaponnum);
+					bgunEquipWeapon2(HAND_LEFT, weaponnum);
 				} else {
-					bgun_equip_weapon2(HAND_RIGHT, weaponnum);
-					bgun_equip_weapon2(HAND_LEFT, WEAPON_NONE);
+					bgunEquipWeapon2(HAND_RIGHT, weaponnum);
+					// don't unequip detonator
+					// if we already have it equipped
+					if (weaponnum == WEAPON_REMOTEMINE) {
+						bgunEquipWeapon2(HAND_LEFT, weaponnum);
+					} else {
+						bgunEquipWeapon2(HAND_LEFT, WEAPON_NONE);
+					}
 				}
 			}
 
 			var800711f0 = data->list.value;
 		}
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
-		data->list.value = inv_get_current_index();
+	case MENUOP_GETSELECTEDINDEX:
+		data->list.value = invGetCurrentIndex();
 		break;
-	case MENUOP_IS_OPTION_CHECKED:
+	case MENUOP_GETLISTITEMCHECKBOX:
 		{
-			s32 weaponnum = inv_get_weapon_num_by_index(data->list.value);
+			s32 weaponnum = invGetWeaponNumByIndex(data->list.value);
 
 			if (weaponnum != WEAPON_NONE) {
-				s32 state = gset_get_device_state(weaponnum);
+				s32 state = currentPlayerGetDeviceState(weaponnum);
 
 				if (state != DEVICESTATE_UNEQUIPPED) {
 					data->list.unk04 = state;
@@ -4233,33 +4344,33 @@ MenuItemHandlerResult menuhandler_inventory_list(s32 operation, struct menuitem 
 			}
 		}
 		break;
-	case MENUOP_ON_OPTION_FOCUS:
-		g_InventoryWeapon = inv_get_weapon_num_by_index(data->list.value);
+	case MENUOP_LISTITEMFOCUS:
+		g_InventoryWeapon = invGetWeaponNumByIndex(data->list.value);
 		g_Menus[g_MpPlayerNum].training.weaponnum = g_InventoryWeapon;
 
-		menu_set_item_redraw_timer(&g_SoloMissionInventoryMenuItems[1], -1);
-		menu_set_item_redraw_timer(&g_SoloMissionInventoryMenuItems[2], -1);
-		menu_set_item_redraw_timer(&g_SoloMissionInventoryMenuItems[4], -1);
-		menu_set_item_redraw_timer(&g_SoloMissionInventoryMenuItems[5], -1);
+		func0f0f139c(&g_SoloMissionInventoryMenuItems[1], -1);
+		func0f0f139c(&g_SoloMissionInventoryMenuItems[2], -1);
+		func0f0f139c(&g_SoloMissionInventoryMenuItems[4], -1);
+		func0f0f139c(&g_SoloMissionInventoryMenuItems[5], -1);
 		break;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_abort_mission(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerAbortMission(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		g_Vars.currentplayer->aborted = true;
-		main_end_stage();
+		mainEndStage();
 	}
 
 	return 0;
 }
 
-MenuDialogHandlerResult menudialog_abort_mission(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialogAbortMission(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
-	if (operation == MENUOP_ON_TICK) {
+	if (operation == MENUOP_TICK) {
 		// empty
 	}
 
@@ -4289,7 +4400,7 @@ struct menuitem g_MissionAbortMenuItems[] = {
 		0,
 		L_OPTIONS_177, // "Abort"
 		0,
-		menuhandler_abort_mission,
+		menuhandlerAbortMission,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -4298,7 +4409,7 @@ struct menudialogdef g_MissionAbortMenuDialog = {
 	MENUDIALOGTYPE_DANGER,
 	L_OPTIONS_174, // "Warning"
 	g_MissionAbortMenuItems,
-	menudialog_abort_mission,
+	menudialogAbortMission,
 	0,
 	NULL,
 };
@@ -4326,7 +4437,7 @@ struct menuitem g_2PMissionAbortVMenuItems[] = {
 		0,
 		L_OPTIONS_177, // "Abort"
 		0,
-		menuhandler_abort_mission,
+		menuhandlerAbortMission,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -4335,24 +4446,24 @@ struct menudialogdef g_2PMissionAbortVMenuDialog = {
 	MENUDIALOGTYPE_DANGER,
 	L_OPTIONS_174, // "Warning"
 	g_2PMissionAbortVMenuItems,
-	menudialog_abort_mission,
+	menudialogAbortMission,
 	0,
 	NULL,
 };
 
-MenuDialogHandlerResult solo_menu_dialog_pause_status(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult soloMenuDialogPauseStatus(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
-	if (operation == MENUOP_ON_OPEN) {
+	if (operation == MENUOP_OPEN) {
 		struct briefingobj *briefing = g_BriefingObjs;
 		struct objective *objective;
 		s32 wanttype = BRIEFINGTYPE_TEXT_PA;
 		s32 i;
 
-		if (lv_get_difficulty() == DIFF_A) {
+		if (lvGetDifficulty() == DIFF_A) {
 			wanttype = BRIEFINGTYPE_TEXT_A;
 		}
 
-		if (lv_get_difficulty() == DIFF_SA) {
+		if (lvGetDifficulty() == DIFF_SA) {
 			wanttype = BRIEFINGTYPE_TEXT_SA;
 		}
 
@@ -4371,10 +4482,10 @@ MenuDialogHandlerResult solo_menu_dialog_pause_status(s32 operation, struct menu
 			briefing = briefing->next;
 		}
 
-		for (i = 0; i < objective_get_count(); i++) {
+		for (i = 0; i < objectiveGetCount(); i++) {
 			if (g_Objectives[i]) {
 				g_Briefing.objectivenames[i] = g_Objectives[i]->text;
-				g_Briefing.objectivedifficulties[i] = objective_get_difficulty_bits(i);
+				g_Briefing.objectivedifficulties[i] = objectiveGetDifficultyBits(i);
 			}
 		}
 	}
@@ -4382,15 +4493,15 @@ MenuDialogHandlerResult solo_menu_dialog_pause_status(s32 operation, struct menu
 	return 0;
 }
 
-char *solo_menu_title_pause_status(struct menudialogdef *dialogdef)
+char *soloMenuTitlePauseStatus(struct menudialogdef *dialogdef)
 {
 	if (dialogdef != g_Menus[g_MpPlayerNum].curdialog->definition) {
-		return lang_get(L_OPTIONS_172); // "Status"
+		return langGet(L_OPTIONS_172); // "Status"
 	}
 
 	sprintf(g_StringPointer, "%s: %s\n",
-			lang_get(g_SoloStages[g_MissionConfig.stageindex].name3),
-			lang_get(L_OPTIONS_172));
+			langGet(g_SoloStages[g_MissionConfig.stageindex].name3),
+			langGet(L_OPTIONS_172));
 
 	return g_StringPointer;
 }
@@ -4437,18 +4548,18 @@ struct menuitem g_MissionPauseMenuItems[] = {
 
 struct menudialogdef g_SoloMissionPauseMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
-	(uintptr_t)&solo_menu_title_pause_status,
+	(uintptr_t)&soloMenuTitlePauseStatus,
 	g_MissionPauseMenuItems,
-	solo_menu_dialog_pause_status,
+	soloMenuDialogPauseStatus,
 	MENUDIALOGFLAG_DISABLEITEMSCROLL | MENUDIALOGFLAG_SMOOTHSCROLLABLE,
 	&g_SoloMissionInventoryMenuDialog,
 };
 
 struct menudialogdef g_2PMissionPauseHMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
-	(uintptr_t)&solo_menu_title_pause_status,
+	(uintptr_t)&soloMenuTitlePauseStatus,
 	g_MissionPauseMenuItems,
-	solo_menu_dialog_pause_status,
+	soloMenuDialogPauseStatus,
 	MENUDIALOGFLAG_DISABLEITEMSCROLL | MENUDIALOGFLAG_SMOOTHSCROLLABLE,
 	&g_2PMissionInventoryHMenuDialog,
 };
@@ -4457,7 +4568,7 @@ struct menudialogdef g_2PMissionPauseVMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_OPTIONS_172, // "Status"
 	g_2PMissionPauseVMenuItems,
-	solo_menu_dialog_pause_status,
+	soloMenuDialogPauseStatus,
 	MENUDIALOGFLAG_DISABLEITEMSCROLL | MENUDIALOGFLAG_SMOOTHSCROLLABLE,
 	&g_2PMissionInventoryVMenuDialog,
 };
@@ -4547,7 +4658,7 @@ u32 g_CutsceneCountsByMission[] = {
 #endif
 };
 
-s32 get_num_completed_missions(void)
+s32 getNumCompletedMissions(void)
 {
 	s32 s;
 	s32 d;
@@ -4577,7 +4688,7 @@ struct cutscenegroup {
 	u16 name;
 };
 
-MenuItemHandlerResult menuhandler_cinema(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerCinema(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	struct cutscenegroup groups[] = {
 		{ /* 0*/  0, L_OPTIONS_436 }, // "Special"
@@ -4605,41 +4716,41 @@ MenuItemHandlerResult menuhandler_cinema(s32 operation, struct menuitem *item, u
 	};
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 		// Add one for Play All option
-		data->list.value = g_CutsceneCountsByMission[get_num_completed_missions()] + 1;
+		data->list.value = g_CutsceneCountsByMission[getNumCompletedMissions()] + 1;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
+	case MENUOP_GETOPTIONTEXT:
 		if (data->list.value == 0) {
-			sprintf(g_StringPointer, lang_get(L_OPTIONS_448)); // "Play All"
-			return (s32) g_StringPointer;
+			sprintf(g_StringPointer, langGet(L_OPTIONS_448)); // "Play All"
+			return (uintptr_t) g_StringPointer;
 		}
-		return (s32) lang_get(g_Cutscenes[data->list.value - 1].name);
-	case MENUOP_CONFIRM:
+		return (uintptr_t) langGet(g_Cutscenes[data->list.value - 1].name);
+	case MENUOP_SET:
 		if (data->list.value == 0) {
 			// Play all
-			s32 index = get_num_completed_missions();
+			s32 index = getNumCompletedMissions();
 			g_Vars.autocutgroupcur = 0;
 			g_Vars.autocutgroupleft = g_CutsceneCountsByMission[index];
-			menu_pop_dialog();
-			menu_stop();
+			menuPopDialog();
+			menuStop();
 		} else {
 			// Play specific cutscene
 			g_Vars.autocutgroupcur = data->list.value - 1;
 			g_Vars.autocutgroupleft = 1;
-			menu_pop_dialog();
-			menu_stop();
+			menuPopDialog();
+			menuStop();
 		}
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		data->list.value = 0xfffff;
 		break;
-	case MENUOP_GET_OPTGROUP_COUNT:
+	case MENUOP_GETOPTGROUPCOUNT:
 		data->list.value = ARRAYCOUNT(groups);
 		break;
-	case MENUOP_GET_OPTGROUP_TEXT:
-		return (s32) lang_get(groups[data->list.value].name);
-	case MENUOP_GET_OPTGROUP_START_INDEX:
+	case MENUOP_GETOPTGROUPTEXT:
+		return (uintptr_t) langGet(groups[data->list.value].name);
+	case MENUOP_GETGROUPSTARTINDEX:
 		data->list.groupstartindex = groups[data->list.value].first_cutscene_index;
 		break;
 	}
@@ -4654,7 +4765,7 @@ struct menuitem g_CinemaMenuItems[] = {
 		0,
 		0x000000eb,
 		0,
-		menuhandler_cinema,
+		menuhandlerCinema,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -4675,7 +4786,7 @@ struct menuitem g_SelectMissionMenuItems[] = {
 		MENUITEMFLAG_LIST_CUSTOMRENDER,
 		0x000000eb,
 		0,
-		menuhandler_mission_list,
+		menuhandlerMissionList,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -4689,16 +4800,16 @@ struct menudialogdef g_SelectMissionMenuDialog = {
 	NULL,
 };
 
-MenuItemHandlerResult menuhandler_main_menu_solo_missions(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMainMenuSoloMissions(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		g_MissionConfig.iscoop = false;
 		g_MissionConfig.isanti = false;
-		menu_push_dialog(&g_SelectMissionMenuDialog);
+		menuPushDialog(&g_SelectMissionMenuDialog);
 	}
 
-	if (operation == MENUOP_IS_PREFOCUSED) {
-		if (is_stage_difficulty_unlocked(SOLOSTAGEINDEX_INVESTIGATION, DIFF_A)) {
+	if (operation == MENUOP_CHECKPREFOCUSED) {
+		if (isStageDifficultyUnlocked(SOLOSTAGEINDEX_INVESTIGATION, DIFF_A)) {
 			return true;
 		}
 	}
@@ -4706,56 +4817,56 @@ MenuItemHandlerResult menuhandler_main_menu_solo_missions(s32 operation, struct 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_main_menu_combat_simulator(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMainMenuCombatSimulator(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		g_Vars.bondplayernum = 0;
 		g_Vars.coopplayernum = -1;
 		g_Vars.antiplayernum = -1;
-		challenge_determine_unlocked_features();
+		challengeDetermineUnlockedFeatures();
 		g_Vars.mpsetupmenu = MPSETUPMENU_GENERAL;
-		menu_save_and_push_root_dialog(&g_CombatSimulatorMenuDialog, MENUROOT_MPSETUP);
-		menu_hide_pressstart_labels();
+		func0f0f820c(&g_CombatSimulatorMenuDialog, MENUROOT_MPSETUP);
+		func0f0f8300();
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_main_menu_cooperative(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMainMenuCooperative(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		g_MissionConfig.iscoop = true;
 		g_MissionConfig.isanti = false;
-		menu_push_dialog(&g_SelectMissionMenuDialog);
+		menuPushDialog(&g_SelectMissionMenuDialog);
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_main_menu_counter_operative(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMainMenuCounterOperative(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_IS_DISABLED) {
-		if ((joy_get_connected_controllers() & 2) == 0) {
+	if (operation == MENUOP_CHECKDISABLED) {
+		if ((joyGetConnectedControllers() & 2) == 0) {
 			return true;
 		}
 	}
 
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		g_MissionConfig.iscoop = false;
 		g_MissionConfig.isanti = true;
-		menu_push_dialog(&g_SelectMissionMenuDialog);
+		menuPushDialog(&g_SelectMissionMenuDialog);
 	}
 
 	return 0;
 }
 
-MenuDialogHandlerResult menudialog_main_menu(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialogMainMenu(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_ON_OPEN:
+	case MENUOP_OPEN:
 		g_Menus[g_MpPlayerNum].main.unke2c = 0;
 		break;
-	case MENUOP_ON_TICK:
+	case MENUOP_TICK:
 		if (g_Menus[g_MpPlayerNum].curdialog &&
 				g_Menus[g_MpPlayerNum].curdialog->definition == dialogdef) {
 			g_MissionConfig.iscoop = false;
@@ -4767,7 +4878,7 @@ MenuDialogHandlerResult menudialog_main_menu(s32 operation, struct menudialogdef
 	return false;
 }
 
-char *main_menu_text_label(struct menuitem *item)
+char *mainMenuTextLabel(struct menuitem *item)
 {
 	u16 nocheats[] = {
 		L_OPTIONS_117, // "Solo Missions"
@@ -4784,10 +4895,10 @@ char *main_menu_text_label(struct menuitem *item)
 	};
 
 	if (g_CheatsEnabledBank0 || g_CheatsEnabledBank1) {
-		return lang_get(withcheats[item->param]);
+		return langGet(withcheats[item->param]);
 	}
 
-	return lang_get(nocheats[item->param]);
+	return langGet(nocheats[item->param]);
 }
 
 struct menuitem g_MainMenuMenuItems[] = {
@@ -4803,33 +4914,33 @@ struct menuitem g_MainMenuMenuItems[] = {
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		MENUITEMFLAG_BIGFONT,
-		(uintptr_t)&main_menu_text_label,
+		(uintptr_t)&mainMenuTextLabel,
 		0x00000002,
-		menuhandler_main_menu_solo_missions,
+		menuhandlerMainMenuSoloMissions,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		1,
 		MENUITEMFLAG_BIGFONT,
-		(uintptr_t)&main_menu_text_label,
+		(uintptr_t)&mainMenuTextLabel,
 		0x00000003,
-		menuhandler_main_menu_combat_simulator,
+		menuhandlerMainMenuCombatSimulator,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		2,
 		MENUITEMFLAG_BIGFONT,
-		(uintptr_t)&main_menu_text_label,
+		(uintptr_t)&mainMenuTextLabel,
 		0x00000004,
-		menuhandler_main_menu_cooperative,
+		menuhandlerMainMenuCooperative,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		3,
 		MENUITEMFLAG_BIGFONT,
-		(uintptr_t)&main_menu_text_label,
+		(uintptr_t)&mainMenuTextLabel,
 		0x00000005,
-		menuhandler_main_menu_counter_operative,
+		menuhandlerMainMenuCounterOperative,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -4839,6 +4950,16 @@ struct menuitem g_MainMenuMenuItems[] = {
 		0x00000006,
 		(void *)&g_ChangeAgentMenuDialog,
 	},
+#ifndef PLATFORM_N64
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_BIGFONT | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Exit Game",
+		0x00000007,
+		(void *)&g_ExitGameMenuDialog,
+	},
+#endif
 	{ MENUITEMTYPE_END },
 };
 
@@ -4846,7 +4967,7 @@ struct menudialogdef g_CiMenuViaPcMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_OPTIONS_116, // "Perfect Menu"
 	g_MainMenuMenuItems,
-	menudialog_main_menu,
+	menudialogMainMenu,
 	MENUDIALOGFLAG_STARTSELECTS,
 	&g_CiOptionsViaPcMenuDialog,
 };
@@ -4855,12 +4976,12 @@ struct menudialogdef g_CiMenuViaPauseMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_OPTIONS_116, // "Perfect Menu"
 	g_MainMenuMenuItems,
-	menudialog_main_menu,
+	menudialogMainMenu,
 	MENUDIALOGFLAG_STARTSELECTS,
 	&g_CiOptionsViaPauseMenuDialog,
 };
 
-bool solo_choose_pause_dialog(void)
+bool soloChoosePauseDialog(void)
 {
 	if (g_Menus[g_MpPlayerNum].openinhibit == 0) {
 		g_Menus[g_MpPlayerNum].playernum = 0;
@@ -4868,43 +4989,43 @@ bool solo_choose_pause_dialog(void)
 		if (g_Vars.stagenum == STAGE_CITRAINING) {
 			bool handled = false;
 
-			if (ci_is_tour_done()) {
-				struct trainingdata *dtdata = dt_get_data();
+			if (ciIsTourDone()) {
+				struct trainingdata *dtdata = dtGetData();
 				s32 room = g_Vars.currentplayer->prop->rooms[0];
 
 				if (room >= ROOM_DISH_HOLO1 && room <= ROOM_DISH_HOLO4) {
-					struct trainingdata *htdata = get_holo_training_data();
+					struct trainingdata *htdata = getHoloTrainingData();
 
 					if (htdata->intraining) {
-						menu_push_root_dialog(&g_HtDetailsMenuDialog, MENUROOT_TRAINING);
+						menuPushRootDialog(&g_HtDetailsMenuDialog, MENUROOT_TRAINING);
 					} else if (htdata->finished) {
-						ht_push_endscreen();
+						htPushEndscreen();
 					} else {
-						menu_push_root_dialog(&g_HtListMenuDialog, MENUROOT_TRAINING);
+						menuPushRootDialog(&g_HtListMenuDialog, MENUROOT_TRAINING);
 					}
 
 					handled = true;
 				} else if (room == ROOM_DISH_DEVICELAB) {
 					if (dtdata->intraining) {
-						menu_push_root_dialog(&g_DtDetailsMenuDialog, MENUROOT_TRAINING);
+						menuPushRootDialog(&g_DtDetailsMenuDialog, MENUROOT_TRAINING);
 					} else if (dtdata->finished) {
-						dt_push_endscreen();
+						dtPushEndscreen();
 					} else {
-						menu_push_root_dialog(&g_DtListMenuDialog, MENUROOT_TRAINING);
+						menuPushRootDialog(&g_DtListMenuDialog, MENUROOT_TRAINING);
 					}
 
 					handled = true;
 				} else if (dtdata->intraining) {
-					menu_push_root_dialog(&g_DtDetailsMenuDialog, MENUROOT_TRAINING);
+					menuPushRootDialog(&g_DtDetailsMenuDialog, MENUROOT_TRAINING);
 					handled = true;
 				} else if (dtdata->finished) {
-					dt_push_endscreen();
+					dtPushEndscreen();
 					handled = true;
 				} else if (room == ROOM_DISH_FIRINGRANGE) {
-					if (fr_is_in_training()) {
-						menu_push_root_dialog(&g_FrTrainingInfoInGameMenuDialog, MENUROOT_TRAINING);
+					if (frIsInTraining()) {
+						menuPushRootDialog(&g_FrTrainingInfoInGameMenuDialog, MENUROOT_TRAINING);
 					} else {
-						menu_push_root_dialog(&g_FrWeaponListMenuDialog, MENUROOT_TRAINING);
+						menuPushRootDialog(&g_FrWeaponListMenuDialog, MENUROOT_TRAINING);
 					}
 
 					handled = true;
@@ -4912,11 +5033,11 @@ bool solo_choose_pause_dialog(void)
 			}
 
 			if (!handled) {
-				menu_push_root_dialog(&g_CiMenuViaPauseMenuDialog, MENUROOT_MAINMENU);
+				menuPushRootDialog(&g_CiMenuViaPauseMenuDialog, MENUROOT_MAINMENU);
 				return true;
 			}
 		} else {
-			menu_push_root_dialog(&g_SoloMissionPauseMenuDialog, MENUROOT_MAINMENU);
+			menuPushRootDialog(&g_SoloMissionPauseMenuDialog, MENUROOT_MAINMENU);
 		}
 
 		return true;

@@ -9,6 +9,10 @@
 #include "lib/main.h"
 #include "data.h"
 #include "types.h"
+#include "platform.h"
+#ifndef PLATFORM_N64
+#include "video.h"
+#endif
 
 /**
  * Officially, the NTSC versions are American English only, while the PAL
@@ -55,12 +59,12 @@ bool g_Jpn = VERSION == VERSION_JPN_FINAL ? true : false;
 u8 *g_LangBuffer = NULL;
 u8 *g_LangBufferPos = NULL;
 s32 g_LangBufferSize = 0;
-u32 *g_LangBanks[69];
+uintptr_t *g_LangBanks[69];
 struct jpncharpixels *g_JpnCharCachePixels;
 struct jpncacheitem *g_JpnCacheCacheItems;
 s32 g_LanguageId = LANGUAGE_NTSC_EN;
 #else
-u32 *g_LangBanks[69];
+uintptr_t *g_LangBanks[69];
 struct jpncharpixels *g_JpnCharCachePixels;
 struct jpncacheitem *g_JpnCacheCacheItems;
 bool g_Jpn = false;
@@ -138,7 +142,7 @@ u16 g_LangFiles[] = {
 	/*68*/ FILE_LMP20E,
 };
 
-u32 lang_get_lang_bank_index_from_stagenum(s32 stagenum)
+u32 langGetLangBankIndexFromStagenum(s32 stagenum)
 {
 	u32 bank;
 
@@ -213,11 +217,11 @@ u32 lang_get_lang_bank_index_from_stagenum(s32 stagenum)
 	return bank;
 }
 
-extern u8 _fontjpnSegmentRomStart;
-extern u8 _fontjpnsingleSegmentRomStart;
-extern u8 _fontjpnmultiSegmentRomStart;
+extern u8 EXT_SEG _fontjpnSegmentRomStart;
+extern u8 EXT_SEG _fontjpnsingleSegmentRomStart;
+extern u8 EXT_SEG _fontjpnmultiSegmentRomStart;
 
-struct jpncharpixels *lang_get_jpn_char_pixels(s32 codepoint)
+struct jpncharpixels *langGetJpnCharPixels(s32 codepoint)
 {
 	s32 i;
 	s32 freeindexsingle = -1;
@@ -234,8 +238,8 @@ struct jpncharpixels *lang_get_jpn_char_pixels(s32 codepoint)
 	}
 
 #if VERSION == VERSION_JPN_FINAL
-	main_override_variable("tmul", &tmul);
-	main_override_variable("tload", &tload);
+	mainOverrideVariable("tmul", &tmul);
+	mainOverrideVariable("tload", &tload);
 
 	if (tload) {
 		codepoint = tload;
@@ -288,9 +292,14 @@ struct jpncharpixels *lang_get_jpn_char_pixels(s32 codepoint)
 		g_JpnCacheCacheItems[freeindexsingle].ttl = 2;
 		g_JpnCacheCacheItems[freeindexsingle].codepoint = codepoint;
 
-		dma_exec((u8 *) (freeindexsingle * (TMUL * 0x0c) + (romptr_t) &g_JpnCharCachePixels[0]),
-				(romptr_t) &_fontjpnSegmentRomStart + ((codepoint * TMUL) * 0xc + TMUL * (24 * 0xc)),
+		dmaExec((u8 *) (freeindexsingle * (TMUL * 0x0c) + (romptr_t) &g_JpnCharCachePixels[0]),
+				(romptr_t) REF_SEG _fontjpnSegmentRomStart + ((codepoint * TMUL) * 0xc + TMUL * (24 * 0xc)),
 				TMUL * 0x0c);
+
+#ifndef PLATFORM_N64
+		// indicate that this is a new texture
+		videoFreeCachedTexture(&g_JpnCharCachePixels[TMUL * freeindexsingle]);
+#endif
 
 		return &g_JpnCharCachePixels[TMUL * freeindexsingle];
 	}
@@ -310,7 +319,12 @@ struct jpncharpixels *lang_get_jpn_char_pixels(s32 codepoint)
 		g_JpnCacheCacheItems[freeindexsingle].ttl = 2;
 		g_JpnCacheCacheItems[freeindexsingle].codepoint = codepoint >> 1;
 
-		dma_exec(&g_JpnCharCachePixels[freeindexsingle * 8], (romptr_t) &_fontjpnsingleSegmentRomStart + (codepoint >> SHIFTAMOUNT) * 0x60, 0x60);
+		dmaExec(&g_JpnCharCachePixels[freeindexsingle * 8], (romptr_t) REF_SEG _fontjpnsingleSegmentRomStart + (codepoint >> SHIFTAMOUNT) * 0x60, 0x60);
+
+#ifndef PLATFORM_N64
+		// indicate that this is a new texture
+		videoFreeCachedTexture(&g_JpnCharCachePixels[freeindexsingle * 8]);
+#endif
 
 		return &g_JpnCharCachePixels[freeindexsingle * 8];
 	}
@@ -321,7 +335,12 @@ struct jpncharpixels *lang_get_jpn_char_pixels(s32 codepoint)
 		g_JpnCacheCacheItems[freeindexmulti + 0].codepoint = codepoint >> 1;
 		g_JpnCacheCacheItems[freeindexmulti + 1].codepoint = codepoint >> 1;
 
-		dma_exec(&g_JpnCharCachePixels[freeindexmulti * 8], (romptr_t) &_fontjpnmultiSegmentRomStart + ((codepoint & 0x1fff) >> SHIFTAMOUNT) * 0x80, 0x80);
+		dmaExec(&g_JpnCharCachePixels[freeindexmulti * 8], (romptr_t) REF_SEG _fontjpnmultiSegmentRomStart + ((codepoint & 0x1fff) >> SHIFTAMOUNT) * 0x80, 0x80);
+
+#ifndef PLATFORM_N64
+		// indicate that this is a new texture
+		videoFreeCachedTexture(&g_JpnCharCachePixels[freeindexmulti * 8]);
+#endif
 
 		return &g_JpnCharCachePixels[freeindexmulti * 8];
 	}
@@ -334,7 +353,7 @@ struct jpncharpixels *lang_get_jpn_char_pixels(s32 codepoint)
  * NTSC only supports English, while PAL supports 4 languages and JPN has its
  * own. Each English file is followed immediately by the other translations.
  */
-s32 lang_get_file_num_offset(void)
+s32 langGetFileNumOffset(void)
 {
 #if PAL
 	s32 offset = g_LanguageId;
@@ -350,37 +369,40 @@ s32 lang_get_file_num_offset(void)
 #endif
 }
 
-s32 lang_get_file_id(s32 bank)
+s32 langGetFileId(s32 bank)
 {
-	return g_LangFiles[bank] + lang_get_file_num_offset();
+	return g_LangFiles[bank] + langGetFileNumOffset();
 }
 
-void lang_load(s32 bank)
+void langLoad(s32 bank)
 {
 #if VERSION >= VERSION_PAL_BETA
-	s32 len = file_get_inflated_size(lang_get_file_id(bank));
+	s32 len = fileGetInflatedSize(langGetFileId(bank), LOADTYPE_LANG);
 
-	if ((s32)g_LangBuffer + len + g_LangBufferSize - (s32)g_LangBufferPos >= 0) {
-		s32 len2 = (s32)g_LangBuffer + g_LangBufferSize - (s32)g_LangBufferPos;
+	if ((uintptr_t)g_LangBuffer + len + g_LangBufferSize - (uintptr_t)g_LangBufferPos >= 0) {
+		s32 len2 = (uintptr_t)g_LangBuffer + g_LangBufferSize - (uintptr_t)g_LangBufferPos;
 		len2 = len2 / 32 * 32;
-		g_LangBanks[bank] = file_load_to_addr(lang_get_file_id(bank), FILELOADMETHOD_DEFAULT, (u8 *)g_LangBufferPos, len2);
-		g_LangBufferPos = (u8 *)(align32((s32)g_LangBufferPos + len));
+		g_LoadType = LOADTYPE_LANG;
+		g_LangBanks[bank] = fileLoadToAddr(langGetFileId(bank), FILELOADMETHOD_DEFAULT, (u8 *)g_LangBufferPos, len2);
+		g_LangBufferPos = (u8 *)(align32((uintptr_t)g_LangBufferPos + len));
 	} else {
 		CRASH();
 	}
 #else
-	s32 file_id = lang_get_file_id(bank);
-	g_LangBanks[bank] = file_load_to_new(file_id, FILELOADMETHOD_DEFAULT);
+	s32 file_id = langGetFileId(bank);
+	g_LoadType = LOADTYPE_LANG;
+	g_LangBanks[bank] = fileLoadToNew(file_id, FILELOADMETHOD_DEFAULT, LOADTYPE_LANG);
 #endif
 }
 
-void lang_load_to_addr(s32 bank, u8 *dst, s32 size)
+void langLoadToAddr(s32 bank, u8 *dst, s32 size)
 {
-	s32 file_id = lang_get_file_id(bank);
-	g_LangBanks[bank] = file_load_to_addr(file_id, FILELOADMETHOD_DEFAULT, dst, size);
+	s32 file_id = langGetFileId(bank);
+	g_LoadType = LOADTYPE_LANG;
+	g_LangBanks[bank] = fileLoadToAddr(file_id, FILELOADMETHOD_DEFAULT, dst, size);
 }
 
-void lang_clear_bank(s32 bank)
+void langClearBank(s32 bank)
 {
 	g_LangBanks[bank] = NULL;
 }
@@ -395,12 +417,12 @@ void lang_clear_bank(s32 bank)
  * The language file data consists of a variable-length array of offsets into
  * the file. Not to be confused with pointers.
  */
-char *lang_get(s32 textid)
+char *langGet(s32 textid)
 {
 	s32 bankindex = textid >> 9;
 	s32 textindex = textid & 0x1ff;
-	u32 *bank = g_LangBanks[bankindex];
-	u32 addr;
+	uintptr_t *bank = (uintptr_t*)g_LangBanks[bankindex];
+	uintptr_t addr;
 
 	if (bank && bank[textindex]) {
 		addr = (uintptr_t)bank + bank[textindex];
@@ -412,7 +434,7 @@ char *lang_get(s32 textid)
 }
 
 #if VERSION >= VERSION_PAL_BETA
-void lang_reload(void)
+void langReload(void)
 {
 	s32 i;
 
@@ -420,14 +442,14 @@ void lang_reload(void)
 
 	for (i = 0; i < ARRAYCOUNT(g_LangBanks); i++) {
 		if (g_LangBanks[i] != NULL) {
-			lang_load(i);
+			langLoad(i);
 		}
 	}
 }
 #endif
 
 #if VERSION >= VERSION_PAL_BETA
-void lang_set_european(u32 arg0)
+void langSetEuropean(u32 arg0)
 {
 	u8 teams;
 	bool hasoptionslang = false;
@@ -437,7 +459,7 @@ void lang_set_european(u32 arg0)
 	}
 
 	if (hasoptionslang) {
-		mp_get_teams_with_default_name(&teams);
+		mpGetTeamsWithDefaultName(&teams);
 	}
 
 	switch (arg0) {
@@ -461,19 +483,19 @@ void lang_set_european(u32 arg0)
 		break;
 	}
 
-	lang_reload();
+	langReload();
 
 	if (hasoptionslang) {
-		mp_set_team_names_to_default(teams);
+		mpSetTeamNamesToDefault(teams);
 	}
 }
 #endif
 
 #if VERSION == VERSION_JPN_FINAL
-void lang_set_jpn_enabled(bool enable)
+void langSetJpnEnabled(bool enable)
 {
 	g_Jpn = enable ? true : false;
 
-	lang_reload();
+	langReload();
 }
 #endif

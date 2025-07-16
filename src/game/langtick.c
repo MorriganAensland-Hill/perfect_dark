@@ -13,7 +13,7 @@ s32 var8009d370jf;
 
 extern s32 g_JpnMaxCacheItems;
 
-void lang_tick(void)
+void langTick(void)
 {
 	s32 i;
 
@@ -22,10 +22,10 @@ void lang_tick(void)
 
 	var8009d370jf = 0;
 
-	main_override_variable("jap", &language);
+	mainOverrideVariable("jap", &language);
 
 	if (language < 2) {
-		lang_set_jpn_enabled(language);
+		langSetJpnEnabled(language);
 		language = 99;
 	}
 
@@ -37,10 +37,10 @@ void lang_tick(void)
 #elif VERSION >= VERSION_PAL_BETA
 	static u32 language = 99;
 
-	main_override_variable("language", &language);
+	mainOverrideVariable("language", &language);
 
 	if (language < 5) {
-		lang_set_european(language);
+		langSetEuropean(language);
 		language = 99;
 	}
 

@@ -42,7 +42,7 @@ const char var7f1a85e0[] = "Live: %d\n";
 const char var7f1a85ec[] = "current:";
 const char var7f1a85f8[] = " numactive %d ";
 
-void menu_count_dialogs(void)
+void menuCountDialogs(void)
 {
 	s32 i;
 	g_MenuData.count = 0;
@@ -54,28 +54,28 @@ void menu_count_dialogs(void)
 	}
 }
 
-void menu_tick(void)
+void menuTick(void)
 {
 	s32 i;
 	s32 j;
 	s32 k;
-	s32 anyopen2;
-	s32 allready = true;
+	s32 isdialogopen;
+	s32 sp340 = true;
 	s32 anyopen = false;
 
 #if PAL
-	g_UiScaleX = 1;
+	g_ScaleX = 1;
 #else
-	g_UiScaleX = g_ViRes == VIRES_HI ? 2 : 1;
+	g_ScaleX = g_ViRes == VIRES_HI ? 2 : 1;
 #endif
 
-	menu_tick_timers();
+	menuTickTimers();
 
 	if (g_MenuData.count) {
 		// empty
 	}
 
-	menu_count_dialogs();
+	menuCountDialogs();
 
 	for (i = 0; i < ARRAYCOUNT(g_Menus); i++) {
 		if (i);
@@ -93,30 +93,28 @@ void menu_tick(void)
 		g_MenuData.nextbg = 0;
 	}
 
-	// If there are any pending file saves, wait up to 40 or 50 frames or until all
-	// dialogs are settled, then save one.
-	if (anyopen && g_MenuData.numpendingsaves > 0 && var8009dfc0) {
-		s32 maxwait = 50;
-		s32 busy = false;
+	if (anyopen && g_MenuData.unk66e > 0 && var8009dfc0) {
+		s32 bVar12 = 50;
+		s32 bVar11 = false;
 
 		for (j = 0; j < ARRAYCOUNT(g_Menus); j++) {
 			if (g_Menus[j].curdialog) {
 				if (g_Menus[j].curdialog->state == MENUDIALOGSTATE_OPENING
 						|| g_Menus[j].curdialog->state == MENUDIALOGSTATE_POPULATING
 						|| g_Menus[j].curdialog->state == MENUDIALOGSTATE_PREOPEN) {
-					busy = true;
+					bVar11 = true;
 				}
 			}
 		}
 
 		if (g_Vars.normmplayerisrunning) {
-			maxwait = 40;
+			bVar12 = 40;
 		}
 
-		if (g_MenuData.savetimer > maxwait || !busy) {
-			menu_save_file(g_MenuData.numpendingsaves - 1);
+		if (g_MenuData.unk66f > bVar12 || !bVar11) {
+			func0f0f3220(g_MenuData.unk66e - 1);
 		} else {
-			g_MenuData.savetimer++;
+			g_MenuData.unk66f++;
 		}
 	}
 
@@ -165,15 +163,15 @@ void menu_tick(void)
 					diffframe = 4;
 				}
 
-				g_MenuData.bgopacityfrac += mult * diffframe;
+				g_MenuData.unk010 += mult * diffframe;
 			}
 
-			if (g_MenuData.bgopacityfrac > 1) {
+			if (g_MenuData.unk010 > 1) {
 				if (g_MenuData.nextbg) {
 					var8009dfc0 = true;
 				}
 
-				g_MenuData.bgopacityfrac = 0;
+				g_MenuData.unk010 = 0;
 				g_MenuData.bg = g_MenuData.nextbg;
 				g_MenuData.nextbg = 255;
 
@@ -183,7 +181,7 @@ void menu_tick(void)
 					}
 
 					if (g_MenuData.bg == MENUBG_6) {
-						menugfx_free_particles();
+						menugfxFreeParticles();
 						g_MenuData.bg = MENUBG_BLUR;
 						g_MenuData.nextbg = MENUBG_8;
 					}
@@ -194,7 +192,7 @@ void menu_tick(void)
 				}
 
 				if (g_MenuData.bg == 0) {
-					menu_consider_unpause();
+					func0f0fa6ac();
 				}
 			}
 
@@ -203,21 +201,21 @@ void menu_tick(void)
 			}
 
 			if (var8009dfc0 && g_Vars.currentplayer->gunmem2) {
-				player_remove_chr_body();
+				playerRemoveChrBody();
 
 				if (g_Vars.currentplayer->gunmem2);
 			}
 		}
 	} else {
-		g_MenuData.bgopacityfrac = 0;
+		g_MenuData.unk010 = 0;
 		var8009dfc0 = g_MenuData.bg == 0 ? false : true;
 	}
 
 	// Check if returning from a multiplayer match
-	if (g_MpReturningFromMatch > 0) {
+	if (var80087260 > 0) {
 		if (g_Vars.lvframenum >= 4) {
 			if (g_Vars.stagenum == STAGE_CITRAINING || g_Vars.stagenum == STAGE_4MBMENU) {
-				vi_black(false);
+				viBlack(false);
 				g_MpNumJoined = 0;
 
 				if (g_Vars.usingadvsetup) {
@@ -234,14 +232,14 @@ void menu_tick(void)
 
 						if (g_Vars.mpsetupmenu == MPSETUPMENU_ADVSETUP) {
 							g_MpNumJoined++;
-							mp_open_advanced_setup(true);
+							func0f17fcb0(true);
 						} else if (g_MpNumJoined == 0) {
 							g_MpNumJoined++;
 
 							if (IS4MB()) {
-								menu_push_root_dialog(&g_MainMenu4MbMenuDialog, MENUROOT_4MBMAINMENU);
+								menuPushRootDialog(&g_MainMenu4MbMenuDialog, MENUROOT_4MBMAINMENU);
 							} else {
-								menu_push_root_dialog(&g_CombatSimulatorMenuDialog, MENUROOT_MPSETUP);
+								menuPushRootDialog(&g_CombatSimulatorMenuDialog, MENUROOT_MPSETUP);
 							}
 						} else {
 							g_Vars.waitingtojoin[i] = true;
@@ -252,15 +250,15 @@ void menu_tick(void)
 				g_MpPlayerNum = 0;
 
 				if (g_MpSetup.chrslots & 0xf) {
-					snd_start(var80095200, SFXMAP_8098_EXPLOSION, 0, -1, -1, -1, -1, -1);
+					sndStart(var80095200, SFX_EXPLOSION_8098, 0, -1, -1, -1, -1, -1);
 
-					player_pause(IS4MB() ? MENUROOT_4MBMAINMENU : MENUROOT_MPSETUP);
+					playerPause(IS4MB() ? MENUROOT_4MBMAINMENU : MENUROOT_MPSETUP);
 				}
 			}
 
-			g_MpReturningFromMatch = 0;
+			var80087260 = 0;
 		} else {
-			vi_black(true);
+			viBlack(true);
 			g_PlayersWithControl[0] = false;
 		}
 	}
@@ -276,7 +274,7 @@ void menu_tick(void)
 			g_Menus[2].openinhibit = 0;
 			g_Menus[3].openinhibit = 0;
 			g_Vars.currentplayer->pausemode = PAUSEMODE_UNPAUSED;
-			player_pause(MENUROOT_FILEMGR);
+			playerPause(MENUROOT_FILEMGR);
 			g_FileState = FILESTATE_SELECTED;
 		}
 	}
@@ -287,7 +285,7 @@ void menu_tick(void)
 		var8006294c = 1;
 
 		if (g_MenuData.root == MENUROOT_MPSETUP || g_MenuData.root == MENUROOT_4MBMAINMENU) {
-			if (g_MenuData.nextroot == -1) {
+			if (g_MenuData.prevmenuroot == -1) {
 				g_MpSetup.chrslots &= 0xfff0;
 			}
 
@@ -297,14 +295,14 @@ void menu_tick(void)
 				if (g_Menus[i].curdialog) {
 					g_Menus[i].playernum = g_MpNumJoined++;
 
-					if (g_MenuData.nextroot == -1) {
+					if (g_MenuData.prevmenuroot == -1) {
 						g_MpSetup.chrslots |= (1 << i);
 					}
 				}
 			}
 
-			mp_calculate_lock_if_last_winner_or_loser();
-			challenge_perform_sanity_checks();
+			mpCalculateLockIfLastWinnerOrLoser();
+			challengePerformSanityChecks();
 		}
 
 		for (i = 0; i < MAX_PLAYERS; i++) {
@@ -314,7 +312,7 @@ void menu_tick(void)
 				if (g_Menus[g_MpPlayerNum].curdialog->definition == &g_MpReadyMenuDialog) {
 					g_Vars.unk000498 = 1;
 				} else {
-					allready = false;
+					sp340 = false;
 				}
 			}
 		}
@@ -327,16 +325,16 @@ void menu_tick(void)
 				s32 prevplayernum = g_Vars.currentplayernum;
 
 				if (g_Menus[g_MpPlayerNum].playernum < PLAYERCOUNT()) {
-					set_current_player_num(g_Menus[g_MpPlayerNum].playernum);
+					setCurrentPlayerNum(g_Menus[g_MpPlayerNum].playernum);
 				}
 
-				menu_process_input();
-				set_current_player_num(prevplayernum);
+				menuProcessInput();
+				setCurrentPlayerNum(prevplayernum);
 			} else {
 				if (g_MenuData.root == MENUROOT_MPSETUP || g_MenuData.root == MENUROOT_4MBMAINMENU) {
 					// Check if player is joining the game
 					bool canjoin;
-					u16 buttons = joy_get_buttons_pressed_this_frame(i, 0xffff);
+					u32 buttons = joyGetButtonsPressedThisFrame(i, 0xffffffff);
 
 					if (g_MenuData.root == MENUROOT_4MBMAINMENU) {
 						if (g_Vars.mpsetupmenu == MPSETUPMENU_GENERAL) {
@@ -370,12 +368,12 @@ void menu_tick(void)
 							// players here, so they are waiting to join.
 #if VERSION >= VERSION_NTSC_1_0
 							if (!g_Vars.waitingtojoin[i]) {
-								snd_start(var80095200, SFXMAP_809A_EXPLOSION, 0, -1, -1, -1, -1, -1);
+								sndStart(var80095200, SFX_EXPLOSION_809A, 0, -1, -1, -1, -1, -1);
 							}
 							g_Vars.waitingtojoin[i] = true;
 #else
 							g_Vars.waitingtojoin[i] = true;
-							snd_start(var80095200, SFXMAP_809A_EXPLOSION, 0, -1, -1, -1, -1, -1);
+							sndStart(var80095200, SFX_EXPLOSION_809A, 0, -1, -1, -1, -1, -1);
 #endif
 
 						} else if (g_Vars.mpsetupmenu == MPSETUPMENU_QUICKGO) {
@@ -383,14 +381,14 @@ void menu_tick(void)
 							g_MpNumJoined++;
 
 							if (IS4MB()) {
-								menu_push_root_dialog(&g_MpQuickGo4MbMenuDialog, MENUROOT_4MBMAINMENU);
+								menuPushRootDialog(&g_MpQuickGo4MbMenuDialog, MENUROOT_4MBMAINMENU);
 							} else {
-								menu_push_root_dialog(&g_MpQuickGoMenuDialog, MENUROOT_MPSETUP);
+								menuPushRootDialog(&g_MpQuickGoMenuDialog, MENUROOT_MPSETUP);
 							}
 						} else {
 							// Joining from advanced setup
 							g_MpNumJoined++;
-							mp_open_advanced_setup(false);
+							func0f17fcb0(false);
 						}
 					}
 
@@ -409,16 +407,16 @@ void menu_tick(void)
 								g_MpNumJoined++;
 
 								if (IS4MB()) {
-									menu_push_root_dialog(&g_MpQuickGo4MbMenuDialog, MENUROOT_4MBMAINMENU);
+									menuPushRootDialog(&g_MpQuickGo4MbMenuDialog, MENUROOT_4MBMAINMENU);
 								} else {
-									menu_push_root_dialog(&g_MpQuickGoMenuDialog, MENUROOT_MPSETUP);
+									menuPushRootDialog(&g_MpQuickGoMenuDialog, MENUROOT_MPSETUP);
 								}
 							} else if (g_Vars.mpsetupmenu == MPSETUPMENU_ADVSETUP) {
 								// Player was waiting to join and we have just
 								// reached the adv setup layer - open the dialog
 								g_Vars.waitingtojoin[i] = false;
 								g_MpNumJoined++;
-								mp_open_advanced_setup(false);
+								func0f17fcb0(false);
 							}
 						}
 					}
@@ -430,7 +428,7 @@ void menu_tick(void)
 				// Note that MPENDSCREEN also refers to coop and anti modes.
 				// Handle re-opening the endscreen by pressing B.
 				if (g_MenuData.root == MENUROOT_MPENDSCREEN) {
-					u16 buttons2 = joy_get_buttons_pressed_this_frame(g_PlayerConfigsArray[i].contpad1, 0xffff);
+					u32 buttons2 = joyGetButtonsPressedThisFrame(g_PlayerConfigsArray[i].contpad1, 0xffffffff);
 
 					if (buttons2 & B_BUTTON) {
 						s32 playernum = -1;
@@ -445,16 +443,16 @@ void menu_tick(void)
 						if (playernum >= 0) {
 							if (g_Vars.coopplayernum >= 0) {
 								s32 prevplayernum = g_Vars.currentplayernum;
-								set_current_player_num(playernum);
-								endscreen_push_coop();
-								set_current_player_num(prevplayernum);
+								setCurrentPlayerNum(playernum);
+								endscreenPushCoop();
+								setCurrentPlayerNum(prevplayernum);
 							} else if (g_Vars.antiplayernum >= 0) {
 								s32 prevplayernum = g_Vars.currentplayernum;
-								set_current_player_num(playernum);
-								endscreen_push_anti();
-								set_current_player_num(prevplayernum);
+								setCurrentPlayerNum(playernum);
+								endscreenPushAnti();
+								setCurrentPlayerNum(prevplayernum);
 							} else {
-								mp_push_endscreen_dialog(playernum, i);
+								mpPushEndscreenDialog(playernum, i);
 							}
 						}
 					}
@@ -462,8 +460,9 @@ void menu_tick(void)
 			}
 		}
 
-		if (allready && (g_MenuData.root == MENUROOT_MPSETUP || g_MenuData.root == MENUROOT_4MBMAINMENU)) {
-			menu_save_and_push_root_dialog(NULL, MENUROOT_START_MP_MATCH);
+		if (sp340 &&
+				(g_MenuData.root == MENUROOT_MPSETUP || g_MenuData.root == MENUROOT_4MBMAINMENU)) {
+			func0f0f820c(NULL, -5);
 		}
 	} else {
 		var8006294c = 0;
@@ -473,59 +472,58 @@ void menu_tick(void)
 		if (var80062948 == 0 &&
 				(g_MenuData.root == MENUROOT_MPSETUP || g_MenuData.root == MENUROOT_4MBMAINMENU)) {
 			var80062948 = 1;
-			filelist_create(0, FILETYPE_MPPLAYER);
-			filelist_create(1, FILETYPE_MPSETUP);
+			filelistCreate(0, FILETYPE_MPPLAYER);
 		}
 
 		if (var80062944) {
-			filelists_tick();
+			filelistsTick();
 		}
 	} else {
 		if (var80062944 == 1) {
-			menu_stop();
+			menuStop();
 		}
 	}
 
 	g_MpPlayerNum = 0;
-	anyopen2 = false;
+	isdialogopen = false;
 
 	for (i = 0; i < ARRAYCOUNT(g_Menus); i++) {
 		if (g_Menus[i].curdialog) {
-			anyopen2 = true;
+			isdialogopen = true;
 		}
 	}
 
-	if ((g_MenuData.checkroots || g_MenuData.nextroot != -1) && anyopen2 == false) {
+	if ((g_MenuData.isdialogopen || g_MenuData.prevmenuroot != -1) && isdialogopen == false) {
 		if ((g_MenuData.root == MENUROOT_MPSETUP || g_MenuData.root == MENUROOT_4MBMAINMENU)
-				&& g_MenuData.nextroot == -1) {
+				&& g_MenuData.prevmenuroot == -1) {
 			if (g_Vars.mpsetupmenu == MPSETUPMENU_GENERAL) {
-				g_MenuData.nextroot = MENUROOT_MAINMENU;
-				g_MenuData.nextdialog = IS4MB() ? &g_CiMenuViaPauseMenuDialog : &g_CiMenuViaPcMenuDialog;
+				g_MenuData.prevmenuroot = MENUROOT_MAINMENU;
+				g_MenuData.prevmenudialog = IS4MB() ? &g_CiMenuViaPauseMenuDialog : &g_CiMenuViaPcMenuDialog;
 			} else if (IS4MB()) {
-				g_MenuData.nextroot = MENUROOT_4MBMAINMENU;
-				g_MenuData.nextdialog = &g_MainMenu4MbMenuDialog;
+				g_MenuData.prevmenuroot = MENUROOT_4MBMAINMENU;
+				g_MenuData.prevmenudialog = &g_MainMenu4MbMenuDialog;
 			} else {
-				g_MenuData.nextroot = MENUROOT_MPSETUP;
-				g_MenuData.nextdialog = &g_CombatSimulatorMenuDialog;
+				g_MenuData.prevmenuroot = MENUROOT_MPSETUP;
+				g_MenuData.prevmenudialog = &g_CombatSimulatorMenuDialog;
 			}
 		}
 
-		if (g_MenuData.nextroot != -1) {
-			if (g_MenuData.nextroot == MENUROOT_START_MP_MATCH) {
+		if (g_MenuData.prevmenuroot != -1) {
+			if (g_MenuData.prevmenuroot == -5) {
 				// Match is beginning
-				mp_start_match();
-				menu_stop();
+				mpStartMatch();
+				menuStop();
 
 				if (g_Vars.modifiedfiles & MODFILE_MPSETUP) {
-					bossfile_save();
+					bossfileSave();
 					g_Vars.modifiedfiles &= ~MODFILE_MPSETUP;
 				}
-			} else if (g_MenuData.nextroot == MENUROOT_END_MP_MATCH) {
+			} else if (g_MenuData.prevmenuroot == -6) {
 				// Match is ending
 				s32 playernum = 0;
 
 				if (g_Vars.normmplayerisrunning) {
-					menu_queue_save(4);
+					func0f0fd548(4);
 				}
 
 				for (i = 0; i < MAX_PLAYERS; i++) {
@@ -534,54 +532,54 @@ void menu_tick(void)
 							if (g_Vars.stagenum == STAGE_DEEPSEA) {
 								g_MissionConfig.stageindex++;
 								g_MissionConfig.stagenum = g_SoloStages[g_MissionConfig.stageindex].stagenum;
-								title_set_next_stage(g_MissionConfig.stagenum);
-								lv_set_difficulty(g_MissionConfig.difficulty);
-								title_set_next_mode(TITLEMODE_SKIP);
-								main_change_to_stage(g_MissionConfig.stagenum);
+								titleSetNextStage(g_MissionConfig.stagenum);
+								lvSetDifficulty(g_MissionConfig.difficulty);
+								titleSetNextMode(TITLEMODE_SKIP);
+								mainChangeToStage(g_MissionConfig.stagenum);
 							} else {
 								s32 prevplayernum = g_Vars.currentplayernum;
-								set_current_player_num(playernum);
-								endscreen_push_coop();
-								set_current_player_num(prevplayernum);
-								anyopen2 = true;
+								setCurrentPlayerNum(playernum);
+								endscreenPushCoop();
+								setCurrentPlayerNum(prevplayernum);
+								isdialogopen = true;
 							}
 						} else if (g_Vars.antiplayernum >= 0) {
 							s32 prevplayernum = g_Vars.currentplayernum;
-							set_current_player_num(playernum);
-							endscreen_push_anti();
-							set_current_player_num(prevplayernum);
-							anyopen2 = true;
+							setCurrentPlayerNum(playernum);
+							endscreenPushAnti();
+							setCurrentPlayerNum(prevplayernum);
+							isdialogopen = true;
 						} else {
-							mp_push_endscreen_dialog(playernum, i);
-							anyopen2 = true;
+							mpPushEndscreenDialog(playernum, i);
+							isdialogopen = true;
 
 							if (g_PlayerConfigsArray[i].fileguid.fileid && g_PlayerConfigsArray[i].fileguid.deviceserial) {
-								menu_queue_save(i);
+								func0f0fd548(i);
 							}
 						}
 
 						playernum++;
 					}
 				}
-			} else if (g_MenuData.nextroot == MENUROOT_CHANGE_AGENT) {
-				menu_stop();
+			} else if (g_MenuData.prevmenuroot == -7) {
+				menuStop();
 				g_FileState = FILESTATE_CHANGINGAGENT;
-				gamefile_load_defaults(&g_GameFile);
-				gamefile_apply_options(&g_GameFile);
-				main_change_to_stage(IS4MB() ? STAGE_4MBMENU : STAGE_CITRAINING);
-				music_queue_stop_all_event();
+				gamefileLoadDefaults(&g_GameFile);
+				gamefileApplyOptions(&g_GameFile);
+				mainChangeToStage(IS4MB() ? STAGE_4MBMENU : STAGE_CITRAINING);
+				musicQueueStopAllEvent();
 			} else {
 				bool startmusic = false;
-				menu_push_root_dialog(g_MenuData.nextdialog, g_MenuData.nextroot);
-				anyopen2 = true;
+				menuPushRootDialog(g_MenuData.prevmenudialog, g_MenuData.prevmenuroot);
+				isdialogopen = true;
 
 				if (g_MenuData.root == MENUROOT_MPSETUP || g_MenuData.root == MENUROOT_4MBMAINMENU) {
 					startmusic = true;
-					snd_start(var80095200, SFXMAP_8098_EXPLOSION, 0, -1, -1, -1, -1, -1);
+					sndStart(var80095200, SFX_EXPLOSION_8098, 0, -1, -1, -1, -1, -1);
 				}
 
 				if (g_MenuData.root == MENUROOT_MAINMENU || g_MenuData.root == MENUROOT_TRAINING) {
-					struct trainingdata *dtdata = dt_get_data();
+					struct trainingdata *dtdata = dtGetData();
 
 					if ((g_Vars.stagenum == STAGE_CITRAINING || g_Vars.stagenum == STAGE_4MBMENU)
 							&& ((g_Vars.currentplayer->prop->rooms[0] >= 0x16 && g_Vars.currentplayer->prop->rooms[0] <= 0x19)
@@ -595,26 +593,26 @@ void menu_tick(void)
 				}
 
 				if (startmusic) {
-					music_start_menu();
+					musicStartMenu();
 				}
 			}
 
-			g_MenuData.nextdialog = NULL;
-			g_MenuData.nextroot = -1;
+			g_MenuData.prevmenudialog = NULL;
+			g_MenuData.prevmenuroot = -1;
 		} else {
 			switch (g_MenuData.root) {
 			case MENUROOT_ENDSCREEN:
 				if (g_Vars.restartlevel) {
-					main_change_to_stage(main_get_stage_num());
+					mainChangeToStage(mainGetStageNum());
 				} else {
-					main_change_to_stage(STAGE_TITLE);
+					mainChangeToStage(STAGE_TITLE);
 				}
 				break;
 			case MENUROOT_MPPAUSE:
 				break;
 			case MENUROOT_MPENDSCREEN:
 				if (g_Vars.normmplayerisrunning) {
-					g_MpReturningFromMatch = 3;
+					var80087260 = 3;
 				} else if (g_Vars.coopplayernum >= 0 || g_Vars.antiplayernum >= 0) {
 					struct mpplayerconfig tmp;
 
@@ -629,12 +627,12 @@ void menu_tick(void)
 
 				if (g_Vars.coopplayernum >= 0
 						&& g_MissionConfig.stageindex <= SOLOSTAGEINDEX_SKEDARRUINS
-						&& ((!g_CheatsActiveBank0 && !g_CheatsActiveBank1) || is_stage_difficulty_unlocked(g_MissionConfig.stageindex + 1, g_MissionConfig.difficulty))) {
-					endscreen_push_solo();
+						&& ((!g_CheatsActiveBank0 && !g_CheatsActiveBank1) || isStageDifficultyUnlocked(g_MissionConfig.stageindex + 1, g_MissionConfig.difficulty))) {
+					endscreenPushSolo();
 				} else if (g_Vars.restartlevel) {
-					main_change_to_stage(main_get_stage_num());
+					mainChangeToStage(mainGetStageNum());
 				} else {
-					mp_set_paused(MPPAUSEMODE_UNPAUSED);
+					mpSetPaused(MPPAUSEMODE_UNPAUSED);
 					g_Vars.mplayerisrunning = false;
 					g_Vars.normmplayerisrunning = false;
 					g_Vars.lvmpbotlevel = 0;
@@ -644,28 +642,28 @@ void menu_tick(void)
 					}
 
 					if (IS8MB()) {
-						title_set_next_stage(STAGE_CITRAINING);
-						set_num_players(1);
-						title_set_next_mode(TITLEMODE_SKIP);
-						main_change_to_stage(STAGE_CITRAINING);
+						titleSetNextStage(STAGE_CITRAINING);
+						setNumPlayers(1);
+						titleSetNextMode(TITLEMODE_SKIP);
+						mainChangeToStage(STAGE_CITRAINING);
 					} else {
-						title_set_next_stage(STAGE_4MBMENU);
-						set_num_players(1);
-						title_set_next_mode(TITLEMODE_SKIP);
-						main_change_to_stage(STAGE_4MBMENU);
+						titleSetNextStage(STAGE_4MBMENU);
+						setNumPlayers(1);
+						titleSetNextMode(TITLEMODE_SKIP);
+						mainChangeToStage(STAGE_4MBMENU);
 					}
 				}
 				break;
 			case MENUROOT_COOPCONTINUE:
 				if (g_Vars.coopplayernum >= 0) {
-					mp_set_paused(MPPAUSEMODE_UNPAUSED);
+					mpSetPaused(MPPAUSEMODE_UNPAUSED);
 					g_Vars.mplayerisrunning = false;
 					g_Vars.normmplayerisrunning = false;
 					g_Vars.lvmpbotlevel = 0;
-					title_set_next_stage(STAGE_CITRAINING);
-					set_num_players(1);
-					title_set_next_mode(TITLEMODE_SKIP);
-					main_change_to_stage(STAGE_CITRAINING);
+					titleSetNextStage(STAGE_CITRAINING);
+					setNumPlayers(1);
+					titleSetNextMode(TITLEMODE_SKIP);
+					mainChangeToStage(STAGE_CITRAINING);
 					g_MissionConfig.iscoop = false;
 				}
 				break;
@@ -673,14 +671,14 @@ void menu_tick(void)
 		}
 	}
 
-	menu_count_dialogs();
+	menuCountDialogs();
 
 	if (g_MenuData.count == 0) {
 		if (g_MenuData.nextbg != 255) {
 			if (g_MenuData.nextbg != 0) {
 				g_MenuData.bg = g_MenuData.nextbg;
 				g_MenuData.nextbg = 0;
-				g_MenuData.bgopacityfrac = 1.0f - g_MenuData.bgopacityfrac;
+				g_MenuData.unk010 = 1.0f - g_MenuData.unk010;
 			}
 		} else {
 			if (g_MenuData.bg != 0) {
@@ -689,10 +687,10 @@ void menu_tick(void)
 		}
 
 		if (g_Vars.currentplayer->gunctrl.gunmemowner == GUNMEMOWNER_INVMENU && g_Vars.stagenum != STAGE_CITRAINING) {
-			g_MenuData.ininventorymenu = true;
+			g_MenuData.unk5d5_01 = true;
 
 			if (g_Menus[0].menumodel.allocstart) {
-				bgun_free_gun_mem();
+				bgunFreeGunMem();
 				g_Menus[0].menumodel.allocstart = NULL;
 			}
 		}
@@ -712,8 +710,8 @@ void menu_tick(void)
 		if (mpindex >= 0 && g_Vars.players[i]) {
 			if (g_MenuData.nextbg != 255U
 					|| g_MenuData.bg
-					|| g_MenuData.triggerhudpiece
-					|| g_MenuData.hudpieceactive
+					|| g_MenuData.unk5d5_05
+					|| g_MenuData.unk5d4
 					|| g_Menus[mpindex].curdialog
 					|| g_MenuData.bannernum != -1) {
 				g_Vars.players[i]->menuisactive = true;
@@ -751,6 +749,6 @@ void menu_tick(void)
 		}
 	}
 
-	g_UiScaleX = 1;
-	g_MenuData.checkroots = anyopen2 ? true : false;
+	g_ScaleX = 1;
+	g_MenuData.isdialogopen = isdialogopen ? true : false;
 }

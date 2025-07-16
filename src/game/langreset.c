@@ -6,11 +6,12 @@
 #include "lib/memp.h"
 #include "data.h"
 #include "types.h"
+#include "platform.h"
 
 extern u8 *g_LangBuffer;
 extern s32 g_LangBufferSize;
 
-void lang_reset(s32 stagenum)
+void langReset(s32 stagenum)
 {
 	s32 i;
 	s32 size;
@@ -21,9 +22,9 @@ void lang_reset(s32 stagenum)
 
 #if VERSION >= VERSION_PAL_BETA
 	// PAL and newer have to support switching languages mid-stage. To do this,
-	// lang_reload iterates the bank pointers and reloads them if they're
-	// non-zero. Here it's using lang_reload to do the initial load by setting
-	// the desired banks to dummy (non-zero) values so lang_reload will load them.
+	// langReload iterates the bank pointers and reloads them if they're
+	// non-zero. Here it's using langReload to do the initial load by setting
+	// the desired banks to dummy (non-zero) values so langReload will load them.
 	g_LangBanks[LANGBANK_GUN] = (void *)1;
 	g_LangBanks[LANGBANK_MPMENU] = (void *)1;
 	g_LangBanks[LANGBANK_PROPOBJ] = (void *)1;
@@ -45,21 +46,37 @@ void lang_reset(s32 stagenum)
 		}
 	}
 
-	g_LangBuffer = memp_alloc(ALIGN16(size), MEMPOOL_STAGE);
+#ifdef PLATFORM_64BIT
+	size *= 2;
+#endif
+
+	g_LangBuffer = mempAlloc(ALIGN16(size), MEMPOOL_STAGE);
 	g_LangBufferSize = size;
 
-	lang_reload();
+	langReload();
 #else
 	// Versions prior to PAL load the language directly
-	g_LangBanks[LANGBANK_GUN] = file_load_to_new(lang_get_file_id(LANGBANK_GUN), FILELOADMETHOD_DEFAULT);
-	g_LangBanks[LANGBANK_MPMENU] = file_load_to_new(lang_get_file_id(LANGBANK_MPMENU), FILELOADMETHOD_DEFAULT);
-	g_LangBanks[LANGBANK_PROPOBJ] = file_load_to_new(lang_get_file_id(LANGBANK_PROPOBJ), FILELOADMETHOD_DEFAULT);
-	g_LangBanks[LANGBANK_MPWEAPONS] = file_load_to_new(lang_get_file_id(LANGBANK_MPWEAPONS), FILELOADMETHOD_DEFAULT);
-	g_LangBanks[LANGBANK_OPTIONS] = file_load_to_new(lang_get_file_id(LANGBANK_OPTIONS), FILELOADMETHOD_DEFAULT);
-	g_LangBanks[LANGBANK_MISC] = file_load_to_new(lang_get_file_id(LANGBANK_MISC), FILELOADMETHOD_DEFAULT);
+	g_LoadType = LOADTYPE_LANG; // find be a better way to do this..
+	g_LangBanks[LANGBANK_GUN] = fileLoadToNew(langGetFileId(LANGBANK_GUN), FILELOADMETHOD_DEFAULT, LOADTYPE_LANG);
+
+	g_LoadType = LOADTYPE_LANG;
+	g_LangBanks[LANGBANK_MPMENU] = fileLoadToNew(langGetFileId(LANGBANK_MPMENU), FILELOADMETHOD_DEFAULT, LOADTYPE_LANG);
+
+	g_LoadType = LOADTYPE_LANG;
+	g_LangBanks[LANGBANK_PROPOBJ] = fileLoadToNew(langGetFileId(LANGBANK_PROPOBJ), FILELOADMETHOD_DEFAULT, LOADTYPE_LANG);
+
+	g_LoadType = LOADTYPE_LANG;
+	g_LangBanks[LANGBANK_MPWEAPONS] = fileLoadToNew(langGetFileId(LANGBANK_MPWEAPONS), FILELOADMETHOD_DEFAULT, LOADTYPE_LANG);
+
+	g_LoadType = LOADTYPE_LANG;
+	g_LangBanks[LANGBANK_OPTIONS] = fileLoadToNew(langGetFileId(LANGBANK_OPTIONS), FILELOADMETHOD_DEFAULT, LOADTYPE_LANG);
+
+	g_LoadType = LOADTYPE_LANG;
+	g_LangBanks[LANGBANK_MISC] = fileLoadToNew(langGetFileId(LANGBANK_MISC), FILELOADMETHOD_DEFAULT, LOADTYPE_LANG);
 
 	if (stagenum == STAGE_CREDITS) {
-		g_LangBanks[LANGBANK_TITLE] = file_load_to_new(lang_get_file_id(LANGBANK_TITLE), FILELOADMETHOD_DEFAULT);
+		g_LoadType = LOADTYPE_LANG;
+		g_LangBanks[LANGBANK_TITLE] = fileLoadToNew(langGetFileId(LANGBANK_TITLE), FILELOADMETHOD_DEFAULT, LOADTYPE_LANG);
 	}
 #endif
 }
