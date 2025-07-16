@@ -4,6 +4,6 @@
 #include "data.h"
 #include "types.h"
 
-void bgun_reset(void);
+void bgunReset(void);
 
 #endif

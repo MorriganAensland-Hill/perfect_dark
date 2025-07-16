@@ -4,7 +4,8 @@
 #include "data.h"
 #include "types.h"
 
-void casings_reset(void);
-void casings_tick(void);
+void casingsReset(void);
+void casingTick(struct casing *arg0);
+void casingsTick(void);
 
 #endif

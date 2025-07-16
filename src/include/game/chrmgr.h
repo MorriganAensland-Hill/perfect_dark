@@ -4,9 +4,9 @@
 #include "data.h"
 #include "types.h"
 
-void chrmgr_reset(void);
-void chrmgr_configure(s32 numchrs);
+void chrmgrReset(void);
+void chrmgrConfigure(s32 numchrs);
 
-void chrmgr_stop(void);
+void chrmgrStop(void);
 
 #endif

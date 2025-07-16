@@ -12,15 +12,21 @@ extern struct menudialogdef g_CheatsClassicWeaponsMenuDialog;
 extern struct menudialogdef g_CheatsWeaponsMenuDialog;
 extern struct menudialogdef g_CheatsBuddiesMenuDialog;
 
-u32 cheat_is_unlocked(s32 cheat_id);
-bool cheat_is_active(s32 cheat_id);
-void cheat_activate(s32 cheat_id);
-void cheat_deactivate(s32 cheat_id);
-void cheats_init(void);
-void cheats_reset(void);
-s32 cheat_get_by_timed_stage_index(s32 stage_index, s32 difficulty);
-s32 cheat_get_by_completed_stage_index(s32 stage_index);
-s32 cheat_get_time(s32 cheat_id);
-char *cheat_get_name(s32 cheat_id);
+u32 cheatIsUnlocked(s32 cheat_id);
+bool cheatIsActive(s32 cheat_id);
+void cheatActivate(s32 cheat_id);
+void cheatDeactivate(s32 cheat_id);
+void cheatsInit(void);
+void cheatsReset(void);
+char *cheatGetNameIfUnlocked(struct menuitem *item);
+char *cheatGetMarquee(struct menuitem *item);
+s32 cheatGetByTimedStageIndex(s32 stage_index, s32 difficulty);
+s32 cheatGetByCompletedStageIndex(s32 stage_index);
+s32 cheatGetTime(s32 cheat_id);
+char *cheatGetName(s32 cheat_id);
+MenuDialogHandlerResult cheatMenuHandleDialog(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data);
+MenuItemHandlerResult cheatCheckboxMenuHandler(s32 operation, struct menuitem *item, union handlerdata *data);
+MenuItemHandlerResult cheatMenuHandleBuddyCheckbox(s32 operation, struct menuitem *item, union handlerdata *data);
+MenuItemHandlerResult cheatMenuHandleTurnOffAllCheats(s32 operation, struct menuitem *item, union handlerdata *data);
 
 #endif

@@ -4,7 +4,7 @@
 #include "data.h"
 #include "types.h"
 
-void bcutscene_init(void);
-void bcutscene_tick(void);
+void bcutsceneInit(void);
+void bcutsceneTick(void);
 
 #endif
