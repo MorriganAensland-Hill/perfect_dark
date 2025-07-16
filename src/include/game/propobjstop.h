@@ -4,6 +4,6 @@
 #include "data.h"
 #include "types.h"
 
-void objs_stop(void);
+void objsStop(void);
 
 #endif
