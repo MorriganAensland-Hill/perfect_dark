@@ -93,8 +93,8 @@ SECTIONS
 	osAppNMIBuffer = 0x8000031c;
 
 	getitle0f0155f0_hack = getitle0f0155f0;
-	nbomb_create_storm_hack = nbomb_create_storm;
-	vi_get_height_hack = vi_get_height;
+	nbombCreateStorm_hack = nbombCreateStorm;
+	viGetHeight_hack = viGetHeight;
 
 	/***************************************************************************
 	 * romheader
@@ -145,11 +145,11 @@ SECTIONS
 	END_SEG(preamble)
 
 	/**
-	/* vm_boot()'s address is 0x70001050, but preamble calls it by 0x80001050
+	/* vmBoot()'s address is 0x70001050, but preamble calls it by 0x80001050
 	 * due to it not being TLB mapped yet. So we set up this variable to allow
 	 * this to happen.
 	 */
-	vm_boot_from_preamble = vm_boot + 0x10000000;
+	vmBootFromPreamble = vmBoot + 0x10000000;
 
 	/***************************************************************************
 	 * lib
