@@ -16,7 +16,7 @@ ALMicroTime __n_vsDelta(N_ALVoiceState *vs, ALMicroTime t);
 u32 var8009c350[16];
 
 // 110000 occurs twice in this table...
-s32 g_CspTimeLookup[] = {
+s32 var8005f150[] = {
 	0,         10000,     20000,     30000,
 	40000,     50000,     60000,     70000,
 	80000,     90000,     100000,    110000,
@@ -51,7 +51,7 @@ s32 g_CspTimeLookup[] = {
 	170000000, 175000000, 180000000,
 };
 
-f32 g_CspRateLookup[100] = {
+f32 var8005f34c[100] = {
 	0.05,  0.05, 0.06,  0.06, 0.06,  0.07, 0.07,  0.08, 0.08,  0.09,
 	0.10,  0.11, 0.13,  0.14, 0.17,  0.20, 0.25,  0.33, 0.5,   1,
 	1.25,  1.5,  1.75,  2,    2.25,  2.5,  2.75,  3,    3.25,  3.5,
@@ -64,9 +64,9 @@ f32 g_CspRateLookup[100] = {
 	18.75, 19,   19.25, 19.5, 19.75, 20,   20.25, 20.5, 20.75, 21,
 };
 
-s32 var8005f4dc = 0;
+u32 var8005f4dc = 0x00000000;
 
-void n_alCSPAllChanOn(N_ALCSPlayer *seqp);
+void func00039cd0(N_ALCSPlayer *seqp);
 ALMicroTime __n_CSPVoiceHandler(void *node);
 
 void n_alCSPNew(N_ALCSPlayer *seqp, ALSeqpConfig *c)
@@ -86,12 +86,12 @@ void n_alCSPNew(N_ALCSPlayer *seqp, ALSeqpConfig *c)
 	seqp->drvr          = n_syn;
 	seqp->chanMask      = 0xffff;
 
-	n_alCSPAllChanOn(seqp);
+	func00039cd0(seqp);
 
 	seqp->uspt          = 488;
 	seqp->nextDelta     = 0;
 	seqp->state         = AL_STOPPED;
-	seqp->vol           = AL_VOL_FULL;
+	seqp->vol           = 0x7fff;              /* full volume  */
 	seqp->debugFlags    = c->debugFlags;
 	seqp->frameTime     = AL_USEC_PER_FRAME; /* should get this from driver */
 	seqp->curTime       = 0;
@@ -99,11 +99,11 @@ void n_alCSPNew(N_ALCSPlayer *seqp, ALSeqpConfig *c)
 	seqp->updateOsc     = c->updateOsc;
 	seqp->stopOsc       = c->stopOsc;
 
-	seqp->fxmixmajor = 0;
-	seqp->fxmixmega = 1;
+	seqp->unk7c = 0;
+	seqp->unk80 = 1;
 	seqp->queue = 0;
-	seqp->voicecount = 0;
-	seqp->voicelimit = c->maxVoices;
+	seqp->unk89 = 0;
+	seqp->unk88 = c->maxVoices;
 
 	seqp->nextEvent.type = AL_SEQP_API_EVT;	/* this will start the voice handler "spinning" */
 
@@ -149,10 +149,11 @@ void __n_CSPHandleNextSeqEvent(N_ALCSPlayer *seqp);
 void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event);
 
 void n_alSynFilter13(N_ALVoice *v, f32 arg1);
-u8 __n_vsMix(N_ALVoiceState *vs, N_ALCSPlayer *seqp);
-ALFxRef n_alSynGetOutputLPRef(u8 arg0);
-void n_alSynSetOutputLPParam(struct fx *fx, u8 arg1, void *param);
-f32 alSemitones2Ratio(s32 arg0);
+u8 func0003d9cc(N_ALVoiceState *vs, N_ALCSPlayer *seqp);
+ALFxRef func0003e540(u8 arg0);
+ALFxRef func0003e5b8(u8 arg0);
+void func0003e674(struct fx *fx, u8 arg1, void *param);
+f32 func0003b9d4(s32 arg0);
 
 ALMicroTime __n_CSPVoiceHandler(void *node)
 {
@@ -227,7 +228,7 @@ ALMicroTime __n_CSPVoiceHandler(void *node)
 			if (seqp->chanState[chan].unk11) {
 				n_alSynFilter13(&vs->voice,
 						440
-						* alSemitones2Ratio(seqp->chanState[chan].unk12 + (vs->key - vs->sound->keyMap->keyBase) - 64)
+						* func0003b9d4(seqp->chanState[chan].unk12 + (vs->key - vs->sound->keyMap->keyBase) - 64)
 						* seqp->chanState[chan].pitchBend
 						* vs->vibrato);
 			}
@@ -258,18 +259,18 @@ ALMicroTime __n_CSPVoiceHandler(void *node)
 			}
 			break;
 
-		case (AL_SEQP_FXMIX_EVT):
-			seqp->fxmixmajor = seqp->nextEvent.msg.evt18.unk00;
-			seqp->fxmixmega = seqp->nextEvent.msg.evt18.unk04;
+		case (AL_18_EVT):
+			seqp->unk7c = seqp->nextEvent.msg.evt18.unk00;
+			seqp->unk80 = seqp->nextEvent.msg.evt18.unk04;
 
 			for (vs = seqp->vAllocHead; vs != 0; vs = vs->next) {
-				n_alSynSetFXMix(&vs->voice, __n_vsMix(vs, seqp));
+				n_alSynSetFXMix(&vs->voice, func0003d9cc(vs, seqp));
 			}
 			break;
 
-		case (AL_SEQP_FXPARAM_EVT):
+		case (AL_19_EVT):
 			if (seqp->nextEvent.msg.evt19.unk01 < 8) {
-				ALFxRef fx = n_alSynGetFXRef(seqp->nextEvent.msg.evt19.unk00);
+				ALFxRef fx = func0003e540(seqp->nextEvent.msg.evt19.unk00);
 
 				if (fx) {
 					n_alSynSetFXParam(fx,
@@ -277,10 +278,10 @@ ALMicroTime __n_CSPVoiceHandler(void *node)
 							&seqp->nextEvent.msg.evt19.param);
 				}
 			} else {
-				ALFxRef fx = n_alSynGetOutputLPRef(seqp->nextEvent.msg.evt19.unk00);
+				ALFxRef fx = func0003e5b8(seqp->nextEvent.msg.evt19.unk00);
 
 				if (fx) {
-					n_alSynSetOutputLPParam(fx, seqp->nextEvent.msg.evt19.unk01, &seqp->nextEvent.msg.evt19.param);
+					func0003e674(fx, seqp->nextEvent.msg.evt19.unk01, &seqp->nextEvent.msg.evt19.param);
 				}
 			}
 			break;
@@ -346,9 +347,9 @@ ALMicroTime __n_CSPVoiceHandler(void *node)
 				}
 
 				for (chan = 0; chan < 16; chan++) {
-					seqp->chanState[chan].fadevolcurrent = seqp->chanState[chan].fadevoltarget;
+					seqp->chanState[chan].unk0d = seqp->chanState[chan].unk0e;
 
-					if (seqp->chanState[chan].fadevolcurrent == 0) {
+					if (seqp->chanState[chan].unk0d == 0) {
 						seqp->chanMask &= (1 << chan) ^ 0xffff;
 					} else {
 						seqp->chanMask |= 1 << chan;
@@ -455,7 +456,7 @@ void __n_CSPHandleNextSeqEvent(N_ALCSPlayer *seqp)
 	}
 }
 
-void n_alCSPApplyChlVol(N_ALCSPlayer *seqp, u8 channel)
+void func00034f0c(N_ALCSPlayer *seqp, u8 channel)
 {
 	N_ALVoiceState *vs;
 
@@ -482,13 +483,13 @@ void func00034fb8(N_ALCSPlayer *seqp, u8 channel)
 			n_alSynFilter12(&vs->voice, sp2a);
 
 			if (sp2a) {
-				n_alSynFilter13(&vs->voice, alSemitones2Ratio(vs->key - vs->sound->keyMap->keyBase + sp29) * 440 * sp24);
+				n_alSynFilter13(&vs->voice, func0003b9d4((vs->key - vs->sound->keyMap->keyBase) + sp29) * 440 * sp24);
 			}
 		}
 	}
 }
 
-void snd_start_mp3_by_filenum(u8 arg0);
+void sndStartMp3ByFilenum(u8 arg0);
 f32 _depth2Cents(u8 arg0);
 
 void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
@@ -557,7 +558,7 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 					ERR_ALSEQP_NO_SOUND);
 
 			config.priority = chanstate->priority;
-			config.fxBus = chanstate->fxbus;
+			config.fxBus = chanstate->unk0b;
 			config.unityPitch = 0;
 
 			vstate = __n_mapVoice((N_ALSeqPlayer*)seqp, key, vel, chan);
@@ -582,13 +583,13 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 
 			cents = (key - sound->keyMap->keyBase) * 100 + sound->keyMap->detune;
 
-			if (chanstate->usechanparams) {
-				cents += chanstate->pitch;
+			if (chanstate->unk24) {
+				cents += chanstate->unk27;
 			}
 
 			vstate->pitch = alCents2Ratio(cents);
 
-			if (chanstate->usechanparams) {
+			if (chanstate->unk24) {
 				vstate->envGain = chanstate->attackVolume;
 				vstate->envEndTime = seqp->curTime + chanstate->attackTime;
 			} else {
@@ -601,7 +602,7 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 			 */
 			vstate->flags = 0;
 
-			if (chanstate->usechanparams) {
+			if (chanstate->unk24) {
 				sp90 = chanstate->tremType;
 			} else {
 				inst = seqp->chanState[chan].instrument;
@@ -612,12 +613,12 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 
 			if (sp90) {
 				if (seqp->initOsc) {
-					if (chanstate->usechanparams) {
-						deltaTime = (*seqp->initOsc)(&oscState, &oscValue, chanstate->tremType,
-								chanstate->tremRate, chanstate->tremDepth, chanstate->tremDelay, chanstate->timeindex);
+					if (chanstate->unk24) {
+						deltaTime = (*seqp->initOsc)(&oscState,&oscValue,chanstate->tremType,
+								chanstate->tremRate,chanstate->tremDepth,chanstate->tremDelay, chanstate->unk31);
 					} else {
-						deltaTime = (*seqp->initOsc)(&oscState, &oscValue, inst->tremType,
-								inst->tremRate, inst->tremDepth, inst->tremDelay, chanstate->timeindex);
+						deltaTime = (*seqp->initOsc)(&oscState,&oscValue,inst->tremType,
+								inst->tremRate,inst->tremDepth,inst->tremDelay, chanstate->unk31);
 					}
 
 					if (deltaTime) /* a deltaTime of zero means don't run osc */ {
@@ -637,7 +638,7 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 
 			oscValue = 1.0f; /* set this as a default */
 
-			if (chanstate->usechanparams) {
+			if (chanstate->unk24) {
 				sp90 = chanstate->vibType;
 			} else {
 				sp90 = inst->vibType;
@@ -645,12 +646,12 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 
 			if (sp90) {
 				if (seqp->initOsc) {
-					if (chanstate->usechanparams) {
-						deltaTime = (*seqp->initOsc)(&oscState, &oscValue, chanstate->vibType,
-								chanstate->vibRate, chanstate->vibDepth, chanstate->vibDelay, chanstate->timeindex);
+					if (chanstate->unk24) {
+						deltaTime = (*seqp->initOsc)(&oscState,&oscValue,chanstate->vibType,
+								chanstate->vibRate,chanstate->vibDepth,chanstate->vibDelay, chanstate->unk31);
 					} else {
-						deltaTime = (*seqp->initOsc)(&oscState, &oscValue, inst->vibType,
-								inst->vibRate, inst->vibDepth, inst->vibDelay, chanstate->timeindex);
+						deltaTime = (*seqp->initOsc)(&oscState,&oscValue,inst->vibType,
+								inst->vibRate,inst->vibDepth,inst->vibDelay, chanstate->unk31);
 					}
 
 					if (deltaTime)  /* a deltaTime of zero means don't run osc. */ {
@@ -672,12 +673,12 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 			 */
 			pitch = vstate->pitch * chanstate->pitchBend * vstate->vibrato;
 
-			fxmix = __n_vsMix(vstate, seqp);
+			fxmix = func0003d9cc(vstate, seqp);
 
 			sp76 = chanstate->unk11;
 
 			if (sp76) {
-				sp70 = 440 * alSemitones2Ratio(cents / 100 + chanstate->unk12 - 64) * chanstate->pitchBend;
+				sp70 = 440 * func0003b9d4(cents / 100 + chanstate->unk12 - 64) * chanstate->pitchBend;
 			} else {
 				sp70 = 127.0f;
 			}
@@ -685,7 +686,7 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 			pan = __n_vsPan(vstate, (N_ALSeqPlayer*)seqp);
 			vol = __n_vsVol(vstate, (N_ALSeqPlayer*)seqp);
 
-			if (chanstate->usechanparams) {
+			if (chanstate->unk24) {
 				deltaTime = chanstate->attackTime;
 			} else {
 				deltaTime = sound->envelope->attackTime;
@@ -700,7 +701,7 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 			evt.type = AL_SEQP_ENV_EVT;
 			evt.msg.vol.voice = voice;
 
-			if (chanstate->usechanparams) {
+			if (chanstate->unk24) {
 				evt.msg.vol.vol = chanstate->decayVolume;
 				evt.msg.vol.delta = chanstate->decayTime;
 			} else {
@@ -725,8 +726,8 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 				n_alEvtqPostEvent(&seqp->evtq, &evt, deltaTime, 0);
 			}
 
-			if ((chanstate->notemesgflags & 1) && seqp->queue) {
-				osSendMesg(seqp->queue, (OSMesg)((var8009c350[chan] & 0xffffff00) | (chanstate->notemesgflags >> 2)), OS_MESG_NOBLOCK);
+			if ((chanstate->unk10 & 1) && seqp->queue) {
+				osSendMesg(seqp->queue, (OSMesg)((var8009c350[chan] & 0xffffff00) | (chanstate->unk10 >> 2)), OS_MESG_NOBLOCK);
 			}
 
 			break;
@@ -750,15 +751,17 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 		} else {
 			vstate->phase = AL_PHASE_RELEASE;
 
-			if (chanstate->usechanparams) {
-				__n_seqpReleaseVoice((N_ALSeqPlayer*)seqp, &vstate->voice, chanstate->releaseTime);
+			if (chanstate->unk24) {
+				__n_seqpReleaseVoice((N_ALSeqPlayer*)seqp, &vstate->voice,
+						chanstate->releaseTime);
 			} else {
-				__n_seqpReleaseVoice((N_ALSeqPlayer*)seqp, &vstate->voice, vstate->sound->envelope->releaseTime);
+				__n_seqpReleaseVoice((N_ALSeqPlayer*)seqp, &vstate->voice,
+						vstate->sound->envelope->releaseTime);
 			}
 		}
 
-		if ((chanstate->notemesgflags & 2) && seqp->queue) {
-			osSendMesg(seqp->queue, (OSMesg)(key << 16 | 8 | chanstate->notemesgflags >> 2), OS_MESG_NOBLOCK);
+		if ((chanstate->unk10 & 2) && seqp->queue) {
+			osSendMesg(seqp->queue, (OSMesg)(key << 16 | 8 | chanstate->unk10 >> 2), OS_MESG_NOBLOCK);
 		}
 
 		break;
@@ -770,12 +773,12 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 		 * sounding.
 		 */
 		vstate = __n_lookupVoice((N_ALSeqPlayer*)seqp, key, chan);
-		ALFailIf(!vstate, ERR_ALSEQP_POLY_VOICE );
+		ALFailIf(!vstate,  ERR_ALSEQP_POLY_VOICE );
 
 		vstate->velocity = byte2;
-		n_alSynSetVol(&vstate->voice,
+		n_alSynSetVol( &vstate->voice,
 				__n_vsVol(vstate, (N_ALSeqPlayer*)seqp),
-				__n_vsDelta(vstate, seqp->curTime));
+				__n_vsDelta(vstate,seqp->curTime));
 		break;
 
 	case (AL_MIDI_ChannelPressure):
@@ -787,9 +790,9 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 		for (vs = seqp->vAllocHead; vs != 0; vs = vs->next) {
 			if (vs->channel == chan) {
 				vs->velocity = byte1;
-				n_alSynSetVol(&vs->voice,
+				n_alSynSetVol( &vs->voice,
 						__n_vsVol(vs, (N_ALSeqPlayer*)seqp),
-						__n_vsDelta(vs, seqp->curTime));
+						__n_vsDelta(vs,seqp->curTime));
 			}
 		}
 		break;
@@ -802,38 +805,35 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 			for (vs = seqp->vAllocHead; vs != 0; vs = vs->next) {
 				if (vs->channel == chan) {
 					pan = __n_vsPan(vs, (N_ALSeqPlayer*)seqp);
-					n_alSynSetPan(&vs->voice, pan);
+					n_alSynSetPan( &vs->voice, pan);
 				}
 			}
 			break;
-		case (AL_MIDI_FADESPEED_CTRL):
-			seqp->chanState[chan].fadevolinc = byte2;
+		case (0xfd):
+			seqp->chanState[chan].unk0f = byte2;
 			break;
-		case (AL_MIDI_FADESTART_CTRL):
-			if (seqp->chanState[chan].fadevolinc == 0) {
-				seqp->chanState[chan].fadevolinc = 0x90;
+		case (0xff):
+			if (seqp->chanState[chan].unk0f == 0) {
+				seqp->chanState[chan].unk0f = 0x90;
 			}
 
-			if (byte2 != seqp->chanState[chan].fadevoltarget) {
-				if (seqp->chanState[chan].fadevoltarget == seqp->chanState[chan].fadevolcurrent) {
-					// Not currently fading
-					seqp->chanState[chan].fadevoltarget = byte2;
+			if (seqp->chanState[chan].unk0e != byte2) {
+				if (seqp->chanState[chan].unk0e == seqp->chanState[chan].unk0d) {
+					seqp->chanState[chan].unk0e = byte2;
 				} else {
-					// Currently fading towards a different target volume, so update target
-					seqp->chanState[chan].fadevoltarget = byte2;
+					seqp->chanState[chan].unk0e = byte2;
 					break;
 				}
 			} else {
-				// Already fading toward this target volume, so don't need to do anything
 				break;
 			}
 
-			midi->byte1 = AL_MIDI_SETFADEINC_CTRL;
+			midi->byte1 = 0xfe;
 			// fall-through
-		case (AL_MIDI_SETFADEINC_CTRL):
-			sp67 = seqp->chanState[chan].fadevolcurrent;
-			sp66 = seqp->chanState[chan].fadevoltarget;
-			vel = seqp->chanState[chan].fadevolinc;
+		case (0xfe):
+			sp67 = seqp->chanState[chan].unk0d;
+			sp66 = seqp->chanState[chan].unk0e;
+			vel = seqp->chanState[chan].unk0f;
 			sp60 = sp66 - sp67;
 
 			if (sp60 > 0) {
@@ -853,7 +853,7 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 			}
 
 			sp67 += sp60;
-			seqp->chanState[chan].fadevolcurrent = sp67;
+			seqp->chanState[chan].unk0d = sp67;
 
 			if (sp67 != sp66) {
 				n_alEvtqPostEvent(&seqp->evtq, event, seqp->uspt * 100, 0);
@@ -865,11 +865,11 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 				seqp->chanMask &= ~(1 << chan);
 			}
 
-			n_alCSPApplyChlVol(seqp, chan);
+			func00034f0c(seqp, chan);
 			break;
-		case (AL_MIDI_FADEEND_CTRL):
-			seqp->chanState[chan].fadevolcurrent = byte2;
-			seqp->chanState[chan].fadevoltarget = byte2;
+		case (0xfc):
+			seqp->chanState[chan].unk0d = byte2;
+			seqp->chanState[chan].unk0e = byte2;
 
 			if (byte2 == 0) {
 				seqp->chanMask &= (1 << chan) ^ 0xffff;
@@ -877,17 +877,17 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 				seqp->chanMask |= 1 << chan;
 			}
 
-			n_alCSPApplyChlVol(seqp, chan);
+			func00034f0c(seqp, chan);
 			break;
-		case (AL_MIDI_UNK11_CTRL):
+		case (0x21):
 			seqp->chanState[chan].unk11 = byte2;
 			func00034fb8(seqp, chan);
 			break;
-		case (AL_MIDI_UNK12_CTRL):
+		case (0x22):
 			seqp->chanState[chan].unk12 = byte2;
 			func00034fb8(seqp, chan);
 			break;
-		case (AL_MIDI_UNK13_CTRL):
+		case (0x23):
 			seqp->chanState[chan].unk13 = byte2;
 
 			for (vs = seqp->vAllocHead; vs != 0; vs = vs->next) {
@@ -896,7 +896,7 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 				}
 			}
 			break;
-		case (AL_MIDI_OSMESG_CTRL):
+		case (0x1e):
 			if (seqp->queue) {
 				osSendMesg(seqp->queue, (OSMesg)((byte2 & 7) | 0x10 | ((seqp->node.samplesLeft << 5) & 0xffffff00)), OS_MESG_NOBLOCK);
 			}
@@ -920,7 +920,7 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 
 			for (vs = seqp->vAllocHead; vs != 0; vs = vs->next) {
 				if ((vs->channel == chan) && (vs->phase != AL_PHASE_RELEASE)) {
-					if (byte2 > AL_SUSTAIN) {
+					if ( byte2 > AL_SUSTAIN ) {
 						/*
 						 * sustain pedal down
 						 */
@@ -936,12 +936,18 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 						} else if (vs->phase == AL_PHASE_SUSTREL) {
 							vs->phase = AL_PHASE_RELEASE;
 
+#ifdef AVOID_UB
+							chanstate = &seqp->chanState[chan];
+#endif
 							// @bug: chanstate is uninitialised
-							if (chanstate->usechanparams) {
+							if (chanstate->unk24) {
 								__n_seqpReleaseVoice((N_ALSeqPlayer*)seqp,
 										&vs->voice,
 										(seqp->chanState[chan].releaseTime < AL_USEC_PER_FRAME ? AL_USEC_PER_FRAME : seqp->chanState[chan].releaseTime));
 							} else {
+#ifdef AVOID_UB
+								vstate = __n_lookupVoice((N_ALSeqPlayer*)seqp, key, chan);
+#endif
 								__n_seqpReleaseVoice((N_ALSeqPlayer*)seqp,
 										&vs->voice,
 										vstate->sound->envelope->releaseTime < AL_USEC_PER_FRAME ? AL_USEC_PER_FRAME : vstate->sound->envelope->releaseTime);
@@ -951,11 +957,11 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 				}
 			}
 			break;
-		case (AL_MIDI_FXMIX7F_CTRL):
+		case (AL_MIDI_FX1_CTRL):
 			seqp->chanState[chan].fxmix = (seqp->chanState[chan].fxmix & 0x80) | byte2;
 			byte2 = seqp->chanState[chan].fxmix >> 7;
 			// fall-through
-		case (AL_MIDI_FXMIX80_CTRL):
+		case (0x41):
 			seqp->chanState[chan].fxmix = (seqp->chanState[chan].fxmix & 0x7f) | (byte2 << 7);
 
 			for (vs = seqp->vAllocHead; vs != 0; vs = vs->next) {
@@ -964,119 +970,119 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 				}
 			}
 			break;
-		case (AL_MIDI_FXBUS_CTRL):
+		case (0x5c):
 			if (byte2 < n_syn->maxAuxBusses) {
-				seqp->chanState[chan].fxbus = byte2;
+				seqp->chanState[chan].unk0b = byte2;
 			}
 			break;
-		case (AL_MIDI_MP3_CTRL):
-			snd_start_mp3_by_filenum(byte2);
+		case (AL_MIDI_FX_CTRL_6):
+			sndStartMp3ByFilenum(byte2);
 			break;
-		case (AL_MIDI_INST_MAJOR_CTRL):
-			seqp->chanState[chan].instmajor = byte2;
+		case (0x20):
+			seqp->chanState[chan].unk32 = byte2;
 			break;
-		case (AL_MIDI_ATTACKTIME_CTRL):
-			seqp->chanState[chan].attackTime = g_CspTimeLookup[byte2];
-			seqp->chanState[chan].usechanparams = 1;
+		case (AL_MIDI_FX_CTRL_0):
+			seqp->chanState[chan].attackTime = var8005f150[byte2];
+			seqp->chanState[chan].unk24 = 1;
 			break;
-		case (AL_MIDI_ATTACKVOL_CTRL):
+		case (AL_MIDI_FX_CTRL_1):
 			seqp->chanState[chan].attackVolume = byte2;
-			seqp->chanState[chan].usechanparams = 1;
+			seqp->chanState[chan].unk24 = 1;
 			break;
-		case (AL_MIDI_DECAYTIME_CTRL):
-			seqp->chanState[chan].decayTime = g_CspTimeLookup[byte2];
-			seqp->chanState[chan].usechanparams = 1;
+		case (AL_MIDI_FX_CTRL_2):
+			seqp->chanState[chan].decayTime = var8005f150[byte2];
+			seqp->chanState[chan].unk24 = 1;
 			break;
-		case (AL_MIDI_DECAYVOL_CTRL):
+		case (AL_MIDI_FX_CTRL_3):
 			seqp->chanState[chan].decayVolume = byte2;
-			seqp->chanState[chan].usechanparams = 1;
+			seqp->chanState[chan].unk24 = 1;
 			break;
-		case (AL_MIDI_RELEASETIME_CTRL):
-			seqp->chanState[chan].releaseTime = g_CspTimeLookup[byte2];
-			seqp->chanState[chan].usechanparams = 1;
+		case (AL_MIDI_FX_CTRL_4):
+			seqp->chanState[chan].releaseTime = var8005f150[byte2];
+			seqp->chanState[chan].unk24 = 1;
 			break;
-		case (AL_MIDI_PITCH_CTRL):
-			seqp->chanState[chan].pitch = byte2 - 64;
-			seqp->chanState[chan].usechanparams = 1;
+		case (0x02):
+			seqp->chanState[chan].unk27 = byte2 - 64;
+			seqp->chanState[chan].unk24 = 1;
 			break;
-		case (AL_MIDI_BENDRANGE_MINOR_CTRL):
+		case (0x03):
 			seqp->chanState[chan].bendRange /= 100;
 			seqp->chanState[chan].bendRange *= 100;
 			seqp->chanState[chan].bendRange += byte2;
 			break;
-		case (AL_MIDI_BENDRANGE_MAJOR_CTRL):
+		case (0x04):
 			seqp->chanState[chan].bendRange %= 100;
 			seqp->chanState[chan].bendRange += byte2 * 100;
 			break;
-		case (AL_MIDI_VIBTYPE_CTRL):
+		case (0x0b):
 			if (byte2) {
 				byte2 += 0x80;
 			}
 
 			seqp->chanState[chan].vibType = byte2;
-			seqp->chanState[chan].usechanparams = 1;
+			seqp->chanState[chan].unk24 = 1;
 			break;
-		case (AL_MIDI_VIBRATE_CTRL):
+		case (0x0c):
 			seqp->chanState[chan].vibRate = byte2;
-			seqp->chanState[chan].usechanparams = 1;
+			seqp->chanState[chan].unk24 = 1;
 			break;
-		case (AL_MIDI_VIBDEPTH_CTRL):
+		case (0x0d):
 			seqp->chanState[chan].vibDepth = byte2 * 2;
-			seqp->chanState[chan].usechanparams = 1;
+			seqp->chanState[chan].unk24 = 1;
 			break;
-		case (AL_MIDI_VIBDELAY_CTRL):
+		case (0x0e):
 			seqp->chanState[chan].vibDelay = byte2;
-			seqp->chanState[chan].usechanparams = 1;
+			seqp->chanState[chan].unk24 = 1;
 			break;
-		case (AL_MIDI_TREMTYPE_CTRL):
+		case (0x0f):
 			seqp->chanState[chan].tremType = byte2;
-			seqp->chanState[chan].usechanparams = 1;
+			seqp->chanState[chan].unk24 = 1;
 			break;
-		case (AL_MIDI_TREMRATE_CTRL):
+		case (0x11):
 			seqp->chanState[chan].tremRate = byte2;
-			seqp->chanState[chan].usechanparams = 1;
+			seqp->chanState[chan].unk24 = 1;
 			break;
-		case (AL_MIDI_TREMDEPTH_CTRL):
+		case (0x12):
 			seqp->chanState[chan].tremDepth = byte2;
-			seqp->chanState[chan].usechanparams = 1;
+			seqp->chanState[chan].unk24 = 1;
 			break;
-		case (AL_MIDI_TREMDELAY_CTRL):
+		case (0x13):
 			seqp->chanState[chan].tremDelay = byte2;
-			seqp->chanState[chan].usechanparams = 1;
+			seqp->chanState[chan].unk24 = 1;
 			break;
-		case (AL_MIDI_OSC_CTRL):
+		case (0x01):
 			byte2 *= 2;
 
 			for (vs = seqp->vAllocHead; vs != 0; vs = vs->next) {
 				if (vs->channel == chan && vs->oscState2) {
-					struct oscstate *osc = vs->oscState2;
+					struct oscstate *sp5c = vs->oscState2;
 
-					switch (osc->unk04 & 0xffffff7f) {
+					switch (sp5c->unk04 & 0xffffff7f) {
 					case 0x02:
-						osc->unk10 = -_depth2Cents(byte2);
+						sp5c->unk10 = -_depth2Cents(byte2);
 						// fall-through
 					case 0x03:
 					case 0x04:
 					case 0x05:
-						osc->unk0c = _depth2Cents(byte2);
+						sp5c->unk0c = _depth2Cents(byte2);
 						break;
 					case 0x07:
 					case 0x09:
 					case 0x0d:
-						osc->unk0c = _depth2Cents(byte2) / 2.0f;
+						sp5c->unk0c = _depth2Cents(byte2) / 2.0f;
 						break;
 					case 0x0a:
-						osc->unk0c = _depth2Cents(byte2) * 2.0f;
+						sp5c->unk0c = _depth2Cents(byte2) * 2.0f;
 						break;
 					default:
-						osc->unk0c = _depth2Cents(byte2);
+						sp5c->unk0c = _depth2Cents(byte2);
 						break;
 					}
 				}
 			}
 			break;
-		case AL_MIDI_TIMEINDEX_CTRL:
-			seqp->chanState[chan].timeindex = byte2;
+		case 0x19:
+			seqp->chanState[chan].unk31 = byte2;
 			break;
 		default:
 			break;
@@ -1084,7 +1090,7 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 		break;
 	case (AL_MIDI_ProgramChange):
 		/* sct 1/16/96 - We must have a valid bank in order to process the program change. */
-		sp90 = (seqp->chanState[chan].instmajor << 7) + key;
+		sp90 = (seqp->chanState[chan].unk32 << 7) + key;
 
 		if (sp90 < seqp->bank->instCount) {
 			ALInstrument *inst = seqp->bank->instArray[sp90];
@@ -1111,10 +1117,10 @@ void __n_CSPHandleMIDIMsg(N_ALCSPlayer *seqp, N_ALEvent *event)
 
 			for (vs = seqp->vAllocHead; vs != 0; vs = vs->next) {
 				if (vs->channel == chan) {
-					n_alSynSetPitch(&vs->voice, vs->pitch * bendRatio * vs->vibrato);
+					n_alSynSetPitch( &vs->voice, vs->pitch * bendRatio * vs->vibrato);
 
 					if (seqp->chanState[chan].unk11) {
-						n_alSynFilter13(&vs->voice, 440 * alSemitones2Ratio(vs->key - vs->sound->keyMap->keyBase + seqp->chanState[chan].unk12 - 64) * bendRatio * vs->vibrato);
+						n_alSynFilter13(&vs->voice, 440 * func0003b9d4(seqp->chanState[chan].unk12 + (vs->key - vs->sound->keyMap->keyBase) - 64) * bendRatio * vs->vibrato);
 					}
 				}
 			}
@@ -1241,7 +1247,7 @@ void __n_CSPPostNextSeqEvent(N_ALCSPlayer *seqp)
 	n_alEvtqPostEvent(&seqp->evtq, &evt, deltaTicks * seqp->uspt, 0);
 }
 
-void n_alCSPVoiceLimit(N_ALCSPlayer *seqp, u8 value)
+void func00037634(N_ALCSPlayer *seqp, u8 value)
 {
-	seqp->voicelimit = value;
+	seqp->unk88 = value;
 }

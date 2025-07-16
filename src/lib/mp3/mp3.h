@@ -2,11 +2,15 @@
 #define _IN_LIB_MP3_MP3_H
 #include <ultra64.h>
 #include "types.h"
+#include "platform.h"
 
 struct mp3decfourbytes {
 	u8 bytes[2];
 	s8 unk02;
 	s8 unk03;
+#ifdef PLATFORM_64BIT
+	u32 _pad_;
+#endif
 };
 
 struct asistream_scalefac {
@@ -21,8 +25,8 @@ struct asistream_4f64 {
 
 struct asistream {
 	/*0x0000*/ s32 unk00;
-	/*0x0004*/ s32 (*dmafunc)(s32 arg0, void *arg1, s32 arg2, s32 arg3);
-	/*0x0008*/ s32 filesize;
+	/*0x0004*/ s32 (*unk04)(s32 arg0, void *arg1, s32 arg2, s32 arg3);
+	/*0x0008*/ s32 unk08;
 	/*0x000c*/ s32 unk0c;
 	/*0x0010*/ s32 unk10;
 	/*0x0014*/ s32 unk14;
@@ -31,10 +35,10 @@ struct asistream {
 	/*0x201c*/ s32 unk201c;
 	/*0x2020*/ s32 unk2020;
 	/*0x2024*/ u8 buffer[0x40];
-	/*0x2064*/ s32 offset;
+	/*0x2064*/ s32 count;
 	/*0x2068*/ u32 unk2068;
 	/*0x206c*/ u32 unk206c;
-	/*0x2070*/ u16 unk2070[6][580];
+	/*0x2070*/ struct mp3thing unk2070[6];
 	/*0x3ba0*/ s32 unk3ba0;
 	/*0x3ba4*/ u32 version;
 	/*0x3ba8*/ u32 layer;
@@ -44,18 +48,18 @@ struct asistream {
 	/*0x3bb8*/ u32 haspadding;
 	/*0x3bbc*/ u32 privatebit;
 	/*0x3bc0*/ u32 channelmode;
-	/*0x3bc4*/ u32 channelmodeext;
-	/*0x3bc8*/ u32 copyright;
-	/*0x3bcc*/ u32 isoriginal;
-	/*0x3bd0*/ u32 emphasis;
+	/*0x3bc4*/ u32 unk3bc4;
+	/*0x3bc8*/ u32 unk3bc8;
+	/*0x3bcc*/ u32 unk3bcc;
+	/*0x3bd0*/ u32 unk3bd0;
 	/*0x3bd4*/ bool doneinitial;
 	/*0x3bd8*/ u32 initialversion;
 	/*0x3bdc*/ u32 initiallayer;
 	/*0x3be0*/ u32 initialcrctype;
 	/*0x3be4*/ u32 initialsamplerateindex;
 	/*0x3be8*/ u32 initialchannelmode;
-	/*0x3bec*/ u32 initialcopyright;
-	/*0x3bf0*/ u32 initialisoriginal;
+	/*0x3bec*/ u32 unk3bec;
+	/*0x3bf0*/ u32 unk3bf0;
 	/*0x3bf4*/ u32 main_data_begin;
 	/*0x3bf8*/ u32 scfsi[1][32];
 	/*0x3c78*/ u32 part2_3_length[2][1];
@@ -76,8 +80,8 @@ struct asistream {
 	/*0x3ef8*/ u32 unk3ef8;
 	/*0x3efc*/ u32 unk3efc[6];
 	/*0x3f14*/ u32 unk3f14[26];
-	/*0x3f7c*/ s32 bitrate;
-	/*0x3f80*/ s32 samplerate;
+	/*0x3f7c*/ s32 unk3f7c;
+	/*0x3f80*/ s32 unk3f80;
 	/*0x3f84*/ s32 unk3f84;
 	/*0x3f88*/ s32 unk3f88;
 	/*0x3f8c*/ s32 numchannels;
@@ -92,12 +96,12 @@ struct asistream {
 	/*0x6a64*/ struct asistream_4f64 unk6a64[2][32];
 	/*0x7c64*/ u8 unk7c64[0x810];
 	/*0x8474*/ s32 unk8474;
-	/*0x8478*/ bool (*decodeframefunc)(struct asistream *stream);
-	/*0x847c*/ bool (*setsideinfofunc)(struct asistream *stream);
+	/*0x8478*/ bool (*unk8478)(struct asistream *stream);
+	/*0x847c*/ bool (*unk847c)(struct asistream *stream);
 };
 
-u32 mp3main_init(void);
-struct asistream *mp3main_start_file(s32 arg0, void *arg1, s32 arg2);
-s32 mp3main_continue_file(struct asistream *stream, u16 **arg1, s32 *arg2);
+u32 mp3mainInit(void);
+struct asistream *mp3main00044460(s32 arg0, void *arg1, s32 arg2);
+s32 mp3main0004453c(struct asistream *stream, struct mp3thing **arg1, s32 *arg2);
 
 #endif

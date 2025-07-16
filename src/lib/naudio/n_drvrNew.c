@@ -62,7 +62,7 @@ void func0003b710(f32 outputrate, f32 arg1, f32 arg2, f32 *arg3, f32 *arg4)
 	arg4[2] = ((1 + sp20) - sp1c) / (1 + sp20 + sp1c);
 }
 
-void n_alFxInitlpfilter(ALLowPass *lp)
+void _init_lpfilter(ALLowPass *lp)
 {
 	s32 i, temp;
 	s16 fc;
@@ -89,7 +89,7 @@ void n_alFxInitlpfilter(ALLowPass *lp)
 	}
 }
 
-f32 alSemitones2Ratio(s32 arg0)
+f32 func0003b9d4(s32 arg0)
 {
 	f32 mult;
 	f32 value;
@@ -115,7 +115,7 @@ f32 alSemitones2Ratio(s32 arg0)
 	return value;
 }
 
-void n_alFxInitlpfilter_mono(struct fx *fx, f32 outputrate)
+void func0003ba64(struct fx *fx, f32 outputrate)
 {
 	s32 i;
 	f32 sp30[3];
@@ -156,7 +156,7 @@ void n_alFxNew(ALFx **fx_ar, ALSynConfig *c, s16 bus, ALHeap *hp)
 	*fx_ar = r = (ALFx *)alHeapAlloc(hp, 1, sizeof(ALFx));
 
 	switch (c->fxTypes[bus]) {
-	case AL_FX_CUSTOM:
+	case 6:
 		param = c->params[bus];
 		break;
 	default:
@@ -225,7 +225,7 @@ void n_alFxNew(ALFx **fx_ar, ALSynConfig *c, s16 bus, ALHeap *hp)
 			d->lp->fstate[0] = alHeapAlloc(hp, 1, sizeof(POLEF_STATE));
 			d->lp->fstate[1] = alHeapAlloc(hp, 1, sizeof(POLEF_STATE));
 			d->lp->fc = param[j++];
-			n_alFxInitlpfilter(d->lp);
+			_init_lpfilter(d->lp);
 		} else {
 			d->lp = 0;
 			j++;

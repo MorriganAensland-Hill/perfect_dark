@@ -1,15 +1,15 @@
 #include <ultra64.h>
 #include "n_synthInternals.h"
 
-s32 mp3_make_samples(s32 arg0, Acmd **cmd);
-void n_alFxInitlpfilter_mono(struct fx *fx, f32 outputrate);
+s32 func00037fc0(s32 arg0, Acmd **cmd);
+void func0003ba64(struct fx *fx, f32 outputrate);
 
 Acmd *n_alMainBusPull(s32 sampleOffset, Acmd *p)
 {
 	Acmd *ptr = p;
 	s32 i;
 
-	if (!mp3_make_samples(FIXED_SAMPLE, &ptr)) {
+	if (!func00037fc0(FIXED_SAMPLE, &ptr)) {
 		aClearBuffer(ptr++, N_AL_MAIN_L_OUT, N_AL_DIVIDED << 1);
 	}
 
@@ -36,7 +36,7 @@ Acmd *n_alMainBusPull(s32 sampleOffset, Acmd *p)
 			struct auxbus44 *bus44 = n_syn->auxBus[i].unk44;
 
 			if (bus44->unk28) {
-				n_alFxInitlpfilter_mono(&bus44->fx, n_syn->outputRate);
+				func0003ba64(&bus44->fx, n_syn->outputRate);
 			}
 
 			n_aLoadADPCM(ptr++, 32, osVirtualToPhysical(&bus44->fx.unk08));
