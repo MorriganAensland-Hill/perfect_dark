@@ -6,6 +6,8 @@
  * There are no callback functions or special logic.
  */
 
+extern struct menudialogdef g_ExtGameOptionsMenuDialog;
+
 struct menuitem g_MpCombatOptionsMenuItems[] = {
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -13,7 +15,7 @@ struct menuitem g_MpCombatOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_222, // "One-Hit Kills"
 		MPOPTION_ONEHITKILLS,
-		menuhandler_mp_one_hit_kills,
+		menuhandlerMpOneHitKills,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -21,7 +23,7 @@ struct menuitem g_MpCombatOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_223, // "Slow Motion"
 		0,
-		menuhandler_mp_slow_motion,
+		menuhandlerMpSlowMotion,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -29,7 +31,7 @@ struct menuitem g_MpCombatOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_224, // "Fast Movement"
 		MPOPTION_FASTMOVEMENT,
-		menuhandler_mp_checkbox_option,
+		menuhandlerMpCheckboxOption,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -37,7 +39,7 @@ struct menuitem g_MpCombatOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_225, // "Display Team"
 		MPOPTION_DISPLAYTEAM,
-		menuhandler_mp_display_team,
+		menuhandlerMpDisplayTeam,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -45,7 +47,7 @@ struct menuitem g_MpCombatOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_226, // "No Radar"
 		MPOPTION_NORADAR,
-		menuhandler_mp_checkbox_option,
+		menuhandlerMpCheckboxOption,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -53,7 +55,7 @@ struct menuitem g_MpCombatOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_227, // "No Auto-Aim"
 		MPOPTION_NOAUTOAIM,
-		menuhandler_mp_checkbox_option,
+		menuhandlerMpCheckboxOption,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -69,7 +71,7 @@ struct menuitem g_MpCombatOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_228, // "No Player Highlight"
 		MPOPTION_NOPLAYERHIGHLIGHT,
-		menuhandler_mp_checkbox_option,
+		menuhandlerMpCheckboxOption,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -77,7 +79,7 @@ struct menuitem g_MpCombatOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_229, // "No Pickup Highlight"
 		MPOPTION_NOPICKUPHIGHLIGHT,
-		menuhandler_mp_checkbox_option,
+		menuhandlerMpCheckboxOption,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -102,7 +104,7 @@ struct menudialogdef g_MpCombatOptionsMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_MPMENU_215, // "Combat Options"
 	g_MpCombatOptionsMenuItems,
-	mp_options_menu_dialog,
+	mpOptionsMenuDialog,
 	MENUDIALOGFLAG_MPLOCKABLE,
-	NULL,
+	&g_ExtGameOptionsMenuDialog,
 };

@@ -9,9 +9,9 @@
 /**
  * @cmd 0185
  */
-bool ai_mp_init_simulants(void)
+bool aiMpInitSimulants(void)
 {
-	bot_spawn_all();
+	botSpawnAll();
 	g_Vars.aioffset += 2;
 	return false;
 }
@@ -19,7 +19,7 @@ bool ai_mp_init_simulants(void)
 /**
  * @cmd 0176
  */
-bool ai_if_bot_respawning(void)
+bool aiIfBotRespawning(void)
 {
 	u8 *cmd = g_Vars.ailist + g_Vars.aioffset;
 	struct aibot *aibot;
@@ -36,7 +36,7 @@ bool ai_if_bot_respawning(void)
 	aibot = g_Vars.chrdata->aibot;
 
 	if (aibot->respawning == true) {
-		g_Vars.aioffset = chrai_go_to_label(g_Vars.ailist, g_Vars.aioffset, cmd[2]);
+		g_Vars.aioffset = chraiGoToLabel(g_Vars.ailist, g_Vars.aioffset, cmd[2]);
 		aibot->respawning = false;
 	} else {
 		g_Vars.aioffset += 3;

@@ -11,6 +11,8 @@
  * Players cannot score unless their briefcase is at the home base.
  */
 
+extern struct menudialogdef g_ExtGameOptionsMenuDialog;
+
 struct menuitem g_CtcOptionsMenuItems[] = {
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -18,7 +20,7 @@ struct menuitem g_CtcOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_222, // "One-Hit Kills"
 		MPOPTION_ONEHITKILLS,
-		menuhandler_mp_one_hit_kills,
+		menuhandlerMpOneHitKills,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -26,7 +28,7 @@ struct menuitem g_CtcOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_223, // "Slow Motion"
 		0,
-		menuhandler_mp_slow_motion,
+		menuhandlerMpSlowMotion,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -34,7 +36,7 @@ struct menuitem g_CtcOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_224, // "Fast Movement"
 		MPOPTION_FASTMOVEMENT,
-		menuhandler_mp_checkbox_option,
+		menuhandlerMpCheckboxOption,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -42,7 +44,7 @@ struct menuitem g_CtcOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_225, // "Display Team"
 		MPOPTION_DISPLAYTEAM,
-		menuhandler_mp_display_team,
+		menuhandlerMpDisplayTeam,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -50,7 +52,7 @@ struct menuitem g_CtcOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_226, // "No Radar"
 		MPOPTION_NORADAR,
-		menuhandler_mp_checkbox_option,
+		menuhandlerMpCheckboxOption,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -58,7 +60,7 @@ struct menuitem g_CtcOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_227, // "No Auto-Aim"
 		MPOPTION_NOAUTOAIM,
-		menuhandler_mp_checkbox_option,
+		menuhandlerMpCheckboxOption,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -66,7 +68,7 @@ struct menuitem g_CtcOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_OPTIONS_493, // "Kills Score"
 		MPOPTION_KILLSSCORE,
-		menuhandler_mp_checkbox_option,
+		menuhandlerMpCheckboxOption,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -82,7 +84,7 @@ struct menuitem g_CtcOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_236, // "Show on Radar"
 		MPOPTION_CTC_SHOWONRADAR,
-		menuhandler_mp_checkbox_option,
+		menuhandlerMpCheckboxOption,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -107,9 +109,10 @@ struct menudialogdef g_CtcOptionsMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_MPMENU_220, // "Capture Options"
 	g_CtcOptionsMenuItems,
-	mp_options_menu_dialog,
+	mpOptionsMenuDialog,
 	MENUDIALOGFLAG_MPLOCKABLE,
-	NULL,
+	&g_ExtGameOptionsMenuDialog,
+//	NULL,
 };
 
 struct weaponobj g_CtcTokenObj0;
@@ -117,7 +120,7 @@ struct weaponobj g_CtcTokenObj1;
 struct weaponobj g_CtcTokenObj2;
 struct weaponobj g_CtcTokenObj3;
 
-void ctc_init(void)
+void ctcInit(void)
 {
 	s32 i, j, k;
 	g_MpSetup.options |= MPOPTION_TEAMSENABLED;
@@ -141,29 +144,29 @@ void ctc_init(void)
 		if (g_MpSetup.chrslots & (1 << k)) {
 			struct mpchrconfig *mpchr = MPCHR(k);
 
-			while (mpchr->team >= scenario_get_max_teams()) {
-				mpchr->team -= scenario_get_max_teams();
+			while (mpchr->team >= scenarioGetMaxTeams()) {
+				mpchr->team -= scenarioGetMaxTeams();
 			}
 		}
 	}
 }
 
-s32 ctc_num_props(void)
+s32 ctcNumProps(void)
 {
 	return 4;
 }
 
-void ctc_tick(void)
+void ctcTick(void)
 {
 	// empty
 }
 
-void ctc_tick_chr(struct chrdata *chr)
+void ctcTickChr(struct chrdata *chr)
 {
 	if (chr);
 }
 
-void ctc_init_props(void)
+void ctcInitProps(void)
 {
 	struct mpchrconfig *mpchr;
 	struct weaponobj *tmp;
@@ -195,8 +198,8 @@ void ctc_init_props(void)
 		0x0fff,                 // floorcol
 		0,                      // tiles
 		WEAPON_BRIEFCASE2,      // weaponnum
-		0,                      // upgradewant
-		0,                      // miscbyte
+		0,                      // unk5d
+		0,                      // unk5e
 		FUNC_PRIMARY,           // gunfunc
 		0,                      // fadeouttimer60
 		-1,                     // dualweaponnum
@@ -220,7 +223,7 @@ void ctc_init_props(void)
 
 	for (i = 0; i != ARRAYCOUNT(g_ScenarioData.ctc.teamindexes); i++) {
 		do {
-			g_ScenarioData.ctc.teamindexes[i] = random() % 4;
+			g_ScenarioData.ctc.teamindexes[i] = rngRandom() % 4;
 		} while (teamsdone[g_ScenarioData.ctc.teamindexes[i]]);
 
 		teamsdone[g_ScenarioData.ctc.teamindexes[i]] = true;
@@ -230,23 +233,23 @@ void ctc_init_props(void)
 		if (g_MpSetup.chrslots & (1 << k)) {
 			mpchr = MPCHR(k);
 
-			while (mpchr->team >= scenario_get_max_teams()) {
-				mpchr->team -= scenario_get_max_teams();
+			while (mpchr->team >= scenarioGetMaxTeams()) {
+				mpchr->team -= scenarioGetMaxTeams();
 			}
 
 #if VERSION >= VERSION_NTSC_1_0
-			mpindex = mp_chrslot_to_chrindex(k);
+			mpindex = func0f18d0e8(k);
 
 			if (mpindex >= 0) {
-				struct chrdata *chr = mp_chrindex_to_chr(mpindex);
+				struct chrdata *chr = mpGetChrFromPlayerIndex(mpindex);
 
 				if (chr) {
 					chr->team = 1 << mpchr->team;
 				}
 			}
 #else
-			if (mp_chrslot_to_chrindex(k) >= 0) {
-				struct chrdata *chr = mp_chrindex_to_chr(mp_chrslot_to_chrindex(k));
+			if (func0f18d0e8(k) >= 0) {
+				struct chrdata *chr = mpGetChrFromPlayerIndex(func0f18d0e8(k));
 
 				if (chr) {
 					chr->team = 1 << mpchr->team;
@@ -281,7 +284,7 @@ void ctc_init_props(void)
 		tmp = &g_CtcTokenObj0;
 		tmp->base.pad = g_ScenarioData.ctc.spawnpadsperteam[g_ScenarioData.ctc.teamindexes[0]].homepad;
 
-		setup_place_weapon(tmp, 1000);
+		setupPlaceWeapon(tmp, 1000);
 
 		g_ScenarioData.ctc.tokens[0] = tmp->base.prop;
 
@@ -296,7 +299,7 @@ void ctc_init_props(void)
 		tmp = &g_CtcTokenObj1;
 		tmp->base.pad = g_ScenarioData.ctc.spawnpadsperteam[g_ScenarioData.ctc.teamindexes[1]].homepad;
 
-		setup_place_weapon(tmp, 1001);
+		setupPlaceWeapon(tmp, 1001);
 
 		g_ScenarioData.ctc.tokens[1] = tmp->base.prop;
 
@@ -311,7 +314,7 @@ void ctc_init_props(void)
 		tmp = &g_CtcTokenObj2;
 		tmp->base.pad = g_ScenarioData.ctc.spawnpadsperteam[g_ScenarioData.ctc.teamindexes[2]].homepad;
 
-		setup_place_weapon(tmp, 1002);
+		setupPlaceWeapon(tmp, 1002);
 
 		g_ScenarioData.ctc.tokens[2] = tmp->base.prop;
 
@@ -326,7 +329,7 @@ void ctc_init_props(void)
 		tmp = &g_CtcTokenObj3;
 		tmp->base.pad = g_ScenarioData.ctc.spawnpadsperteam[g_ScenarioData.ctc.teamindexes[3]].homepad;
 
-		setup_place_weapon(tmp, 1003);
+		setupPlaceWeapon(tmp, 1003);
 
 		g_ScenarioData.ctc.tokens[3] = tmp->base.prop;
 
@@ -338,12 +341,12 @@ void ctc_init_props(void)
 
 	for (i = 0; i < ARRAYCOUNT(g_ScenarioData.ctc.playercountsperteam); i++) {
 		if (g_ScenarioData.ctc.playercountsperteam[i] && g_ScenarioData.ctc.baserooms[i] != -1) {
-			room_set_light_op(g_ScenarioData.ctc.baserooms[i], LIGHTOP_HIGHLIGHT, 0, 0, 0);
+			roomSetLightOp(g_ScenarioData.ctc.baserooms[i], LIGHTOP_HIGHLIGHT, 0, 0, 0);
 		}
 	}
 }
 
-void ctc_calculate_player_score(struct mpchrconfig *mpchr, s32 mpchrnum, s32 *score, s32 *deaths)
+void ctcCalculatePlayerScore(struct mpchrconfig *mpchr, s32 mpchrnum, s32 *score, s32 *deaths)
 {
 	struct mpchrconfig *loopmpchr;
 	s32 i;
@@ -370,12 +373,12 @@ void ctc_calculate_player_score(struct mpchrconfig *mpchr, s32 mpchrnum, s32 *sc
 	*deaths = mpchr->numdeaths;
 }
 
-Gfx *ctc_radar_extra(Gfx *gdl)
+Gfx *ctcRadarExtra(Gfx *gdl)
 {
 	if (g_MpSetup.options & MPOPTION_CTC_SHOWONRADAR) {
 		s32 i;
 
-		for (i = 0; i < scenario_get_max_teams(); i++) {
+		for (i = 0; i < scenarioGetMaxTeams(); i++) {
 			if (g_ScenarioData.ctc.tokens[i] &&
 					g_ScenarioData.ctc.tokens[i]->type != PROPTYPE_CHR &&
 					g_ScenarioData.ctc.tokens[i]->type != PROPTYPE_PLAYER) {
@@ -383,7 +386,7 @@ Gfx *ctc_radar_extra(Gfx *gdl)
 				dist.x = g_ScenarioData.ctc.tokens[i]->pos.x - g_Vars.currentplayer->prop->pos.x;
 				dist.y = g_ScenarioData.ctc.tokens[i]->pos.y - g_Vars.currentplayer->prop->pos.y;
 				dist.z = g_ScenarioData.ctc.tokens[i]->pos.z - g_Vars.currentplayer->prop->pos.z;
-				gdl = radar_draw_dot(gdl, g_ScenarioData.ctc.tokens[i], &dist, g_TeamColours[i], 0, 1);
+				gdl = radarDrawDot(gdl, g_ScenarioData.ctc.tokens[i], &dist, g_TeamColours[i], 0, 1);
 			}
 		}
 	}
@@ -391,20 +394,20 @@ Gfx *ctc_radar_extra(Gfx *gdl)
 	return gdl;
 }
 
-bool ctc_radar_chr(Gfx **gdl, struct prop *prop)
+bool ctcRadarChr(Gfx **gdl, struct prop *prop)
 {
 	s32 i;
 
 	if (g_MpSetup.options & MPOPTION_CTC_SHOWONRADAR) {
-		for (i = 0; i < scenario_get_max_teams(); i++) {
+		for (i = 0; i < scenarioGetMaxTeams(); i++) {
 			if (prop == g_ScenarioData.ctc.tokens[i] &&
 					(g_ScenarioData.ctc.tokens[i]->type == PROPTYPE_CHR || g_ScenarioData.ctc.tokens[i]->type == PROPTYPE_PLAYER)) {
 				struct coord dist;
-				s32 colour = g_TeamColours[radar_get_team_index(prop->chr->team)];
+				s32 colour = g_TeamColours[radarGetTeamIndex(prop->chr->team)];
 				dist.x = g_ScenarioData.ctc.tokens[i]->pos.x - g_Vars.currentplayer->prop->pos.x;
 				dist.y = g_ScenarioData.ctc.tokens[i]->pos.y - g_Vars.currentplayer->prop->pos.y;
 				dist.z = g_ScenarioData.ctc.tokens[i]->pos.z - g_Vars.currentplayer->prop->pos.z;
-				*gdl = radar_draw_dot(*gdl, g_ScenarioData.ctc.tokens[i], &dist,
+				*gdl = radarDrawDot(*gdl, g_ScenarioData.ctc.tokens[i], &dist,
 						g_TeamColours[i], colour, 1);
 				return true;
 			}
@@ -414,7 +417,7 @@ bool ctc_radar_chr(Gfx **gdl, struct prop *prop)
 	return false;
 }
 
-bool ctc_highlight_prop(struct prop *prop, s32 *colour)
+bool ctcHighlightProp(struct prop *prop, s32 *colour)
 {
 	struct defaultobj *obj = prop->obj;
 
@@ -438,7 +441,7 @@ bool ctc_highlight_prop(struct prop *prop, s32 *colour)
 	return false;
 }
 
-void ctc_add_pad(s32 *cmd)
+void ctcAddPad(s32 *cmd)
 {
 	s32 i;
 
@@ -457,13 +460,13 @@ void ctc_add_pad(s32 *cmd)
 	}
 }
 
-bool ctc_choose_spawn_location(f32 arg0, struct coord *pos, RoomNum *rooms, struct prop *prop, f32 *arg4)
+bool ctcChooseSpawnLocation(f32 arg0, struct coord *pos, RoomNum *rooms, struct prop *prop, f32 *arg4)
 {
 	struct chrdata *chr = prop->chr;
-	s32 index = radar_get_team_index(chr->team);
+	s32 index = radarGetTeamIndex(chr->team);
 
 	if (g_ScenarioData.ctc.spawnpadsperteam[g_ScenarioData.ctc.teamindexes[index]].numspawnpads > 0) {
-		*arg4 = player_choose_spawn_location(arg0, pos, rooms, prop,
+		*arg4 = playerChooseSpawnLocation(arg0, pos, rooms, prop,
 				g_ScenarioData.ctc.spawnpadsperteam[g_ScenarioData.ctc.teamindexes[index]].spawnpads,
 				g_ScenarioData.ctc.spawnpadsperteam[g_ScenarioData.ctc.teamindexes[index]].numspawnpads);
 		return true;
@@ -472,12 +475,12 @@ bool ctc_choose_spawn_location(f32 arg0, struct coord *pos, RoomNum *rooms, stru
 	return false;
 }
 
-s32 ctc_get_max_teams(void)
+s32 ctcGetMaxTeams(void)
 {
 	return 4;
 }
 
-bool ctc_is_room_highlighted(RoomNum room)
+bool ctcIsRoomHighlighted(RoomNum room)
 {
 	s32 i;
 
@@ -490,7 +493,7 @@ bool ctc_is_room_highlighted(RoomNum room)
 	return false;
 }
 
-void ctc_highlight_room(RoomNum roomnum, s32 *arg1, s32 *arg2, s32 *arg3)
+void ctcHighlightRoom(RoomNum roomnum, s32 *arg1, s32 *arg2, s32 *arg3)
 {
 	s32 i;
 

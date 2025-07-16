@@ -6,7 +6,7 @@
 #include "game/menu.h"
 #include "game/mainmenu.h"
 #include "game/filemgr.h"
-#include "game/text.h"
+#include "game/game_1531a0.h"
 #include "game/music.h"
 #include "game/mplayer/ingame.h"
 #include "game/mplayer/setup.h"
@@ -20,9 +20,13 @@
 #include "lib/vi.h"
 #include "lib/rng.h"
 #include "lib/str.h"
+#include "lib/joy.h"
 #include "data.h"
 #include "gbiex.h"
 #include "types.h"
+#include "system.h"
+#include "input.h"
+#include "mpsetups.h"
 
 struct menuitem g_MpCharacterMenuItems[];
 struct menudialogdef g_MpAddSimulantMenuDialog;
@@ -31,31 +35,32 @@ struct menudialogdef g_MpChangeTeamNameMenuDialog;
 struct menudialogdef g_MpEditSimulantMenuDialog;
 struct menudialogdef g_MpSaveSetupNameMenuDialog;
 
-void mp_restart_character_body_label_timer(void);
-MenuItemHandlerResult menuhandler_mp_challenge_description_and_separator(s32 operation, struct menuitem *item, union handlerdata *data);
-MenuItemHandlerResult menuhandler_mp_start_challenge(s32 operation, struct menuitem *item, union handlerdata *data);
-MenuItemHandlerResult menuhandler_mp_abort_challenge(s32 operation, struct menuitem *item, union handlerdata *data);
-MenuItemHandlerResult menuhandler_mp_accept_challenge2(s32 operation, struct menuitem *item, union handlerdata *data);
-void mp_close_dialogs_for_new_setup(void);
+extern struct menudialogdef g_ManageSettingsDialog;
+extern struct menudialogdef g_FilemgrFileSavedMenuDialog;
+extern struct menudialogdef g_FilemgrErrorMenuDialog;
 
-MenuItemHandlerResult menuhandler_mp_drop_out(s32 operation, struct menuitem *item, union handlerdata *data)
+#ifndef PLATFORM_N64
+extern s32 g_MpWeaponSetNum;
+#endif
+
+MenuItemHandlerResult menuhandlerMpDropOut(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		menu_pop_dialog();
-		menu_pop_dialog();
+	if (operation == MENUOP_SET) {
+		menuPopDialog();
+		menuPopDialog();
 	}
 
 	return 0;
 }
 
-char *mp_get_current_player_name(struct menuitem *item)
+char *mpGetCurrentPlayerName(struct menuitem *item)
 {
 	return g_PlayerConfigsArray[g_MpPlayerNum].base.name;
 }
 
-MenuItemHandlerResult menuhandler_mp_teams_label(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpTeamsLabel(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_IS_DISABLED) {
+	if (operation == MENUOP_CHECKDISABLED) {
 		if ((g_MpSetup.options & MPOPTION_TEAMSENABLED) == 0) {
 			return true;
 		}
@@ -79,7 +84,7 @@ struct menuitem g_MpDropOutMenuItems[] = {
 		0,
 		L_MPMENU_197, // "Drop Out"
 		0,
-		menuhandler_mp_drop_out,
+		menuhandlerMpDropOut,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -122,27 +127,27 @@ struct mparena g_MpArenas[] = {
 	{ 1,                   0,                          L_MPMENU_136 }, // "Random"
 };
 
-s32 mp_get_num_stages(void)
+s32 mpGetNumStages(void)
 {
 	return 17;
 }
 
-s16 mp_choose_random_stage(void)
+s16 mpChooseRandomStage(void)
 {
 	s32 i;
 	s32 numchallengescomplete = 0;
 	s32 index;
 
 	for (i = 0; i < 16; i++) {
-		if (challenge_is_feature_unlocked(g_MpArenas[i].requirefeature)) {
+		if (challengeIsFeatureUnlocked(g_MpArenas[i].requirefeature)) {
 			numchallengescomplete++;
 		}
 	}
 
-	index = random() % numchallengescomplete;
+	index = rngRandom() % numchallengescomplete;
 
 	for (i = 0; i < 16; i++) {
-		if (challenge_is_feature_unlocked(g_MpArenas[i].requirefeature)) {
+		if (challengeIsFeatureUnlocked(g_MpArenas[i].requirefeature)) {
 			if (index == 0) {
 				return g_MpArenas[i].stagenum;
 			}
@@ -154,7 +159,7 @@ s16 mp_choose_random_stage(void)
 	return STAGE_MP_SKEDAR;
 }
 
-MenuItemHandlerResult mp_arena_menu_handler(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult mpArenaMenuHandler(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	struct optiongroup groups[] = {
 		{ 0,  L_MPMENU_116 }, // "Dark"
@@ -167,29 +172,29 @@ MenuItemHandlerResult mp_arena_menu_handler(s32 operation, struct menuitem *item
 	s32 groupindex;
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 		for (i = 0; i < ARRAYCOUNT(g_MpArenas); i++) {
-			if (challenge_is_feature_unlocked(g_MpArenas[i].requirefeature)) {
+			if (challengeIsFeatureUnlocked(g_MpArenas[i].requirefeature)) {
 				count++;
 			}
 		}
 
 		data->list.value = count;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
+	case MENUOP_GETOPTIONTEXT:
 		for (i = 0; i < ARRAYCOUNT(g_MpArenas); i++) {
-			if (challenge_is_feature_unlocked(g_MpArenas[i].requirefeature)) {
+			if (challengeIsFeatureUnlocked(g_MpArenas[i].requirefeature)) {
 				if (count == data->list.value) {
-					return (s32)lang_get(g_MpArenas[i].name);
+					return (uintptr_t)langGet(g_MpArenas[i].name);
 				}
 
 				count++;
 			}
 		}
 		break;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		for (i = 0; i < ARRAYCOUNT(g_MpArenas); i++) {
-			if (challenge_is_feature_unlocked(g_MpArenas[i].requirefeature)) {
+			if (challengeIsFeatureUnlocked(g_MpArenas[i].requirefeature)) {
 				if (count == data->list.value) {
 					break;
 				}
@@ -200,48 +205,48 @@ MenuItemHandlerResult mp_arena_menu_handler(s32 operation, struct menuitem *item
 
 		g_MpSetup.stagenum = g_MpArenas[i].stagenum;
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		for (i = 0; i < ARRAYCOUNT(g_MpArenas); i++) {
 			if (g_MpSetup.stagenum == g_MpArenas[i].stagenum) {
 				data->list.value = count;
 			}
 
-			if (challenge_is_feature_unlocked(g_MpArenas[i].requirefeature)) {
+			if (challengeIsFeatureUnlocked(g_MpArenas[i].requirefeature)) {
 				count++;
 			}
 		}
 		break;
-	case MENUOP_GET_OPTGROUP_COUNT:
+	case MENUOP_GETOPTGROUPCOUNT:
 		data->list.value = 3;
 
-		if (!challenge_is_feature_unlocked(MPFEATURE_STAGE_COMPLEX)
-				&& !challenge_is_feature_unlocked(MPFEATURE_STAGE_TEMPLE)
-				&& !challenge_is_feature_unlocked(MPFEATURE_STAGE_FELICITY)) {
+		if (!challengeIsFeatureUnlocked(MPFEATURE_STAGE_COMPLEX)
+				&& !challengeIsFeatureUnlocked(MPFEATURE_STAGE_TEMPLE)
+				&& !challengeIsFeatureUnlocked(MPFEATURE_STAGE_FELICITY)) {
 			data->list.value--;
 		}
 		break;
-	case MENUOP_GET_OPTGROUP_TEXT:
+	case MENUOP_GETOPTGROUPTEXT:
 		count = data->list.value;
 
-		if (!challenge_is_feature_unlocked(MPFEATURE_STAGE_COMPLEX)
-				&& !challenge_is_feature_unlocked(MPFEATURE_STAGE_TEMPLE)
-				&& !challenge_is_feature_unlocked(MPFEATURE_STAGE_FELICITY)
+		if (!challengeIsFeatureUnlocked(MPFEATURE_STAGE_COMPLEX)
+				&& !challengeIsFeatureUnlocked(MPFEATURE_STAGE_TEMPLE)
+				&& !challengeIsFeatureUnlocked(MPFEATURE_STAGE_FELICITY)
 				&& count > 0) {
 			count++;
 		}
-		return (s32)lang_get(groups[count].name);
-	case MENUOP_GET_OPTGROUP_START_INDEX:
+		return (uintptr_t)langGet(groups[count].name);
+	case MENUOP_GETGROUPSTARTINDEX:
 		groupindex = data->list.value;
 
-		if (!challenge_is_feature_unlocked(MPFEATURE_STAGE_COMPLEX)
-				&& !challenge_is_feature_unlocked(MPFEATURE_STAGE_TEMPLE)
-				&& !challenge_is_feature_unlocked(MPFEATURE_STAGE_FELICITY)
+		if (!challengeIsFeatureUnlocked(MPFEATURE_STAGE_COMPLEX)
+				&& !challengeIsFeatureUnlocked(MPFEATURE_STAGE_TEMPLE)
+				&& !challengeIsFeatureUnlocked(MPFEATURE_STAGE_FELICITY)
 				&& groupindex == 1) {
 			groupindex++;
 		}
 
 		for (i = 0; i < groups[groupindex].offset; i++) {
-			if (challenge_is_feature_unlocked(g_MpArenas[i].requirefeature)) {
+			if (challengeIsFeatureUnlocked(g_MpArenas[i].requirefeature)) {
 				count++;
 			}
 		}
@@ -252,7 +257,7 @@ MenuItemHandlerResult mp_arena_menu_handler(s32 operation, struct menuitem *item
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_control_style(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpControlStyle(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u16 labels[] = {
 		L_OPTIONS_239, // "1.1"
@@ -262,70 +267,76 @@ MenuItemHandlerResult menuhandler_mp_control_style(s32 operation, struct menuite
 	};
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
-		data->dropdown.value = 4;
+	case MENUOP_GETOPTIONCOUNT:
+		data->dropdown.value = 5;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
-		return (s32) lang_get(labels[data->dropdown.value]);
-	case MENUOP_CONFIRM:
-		options_set_control_mode(g_MpPlayerNum, data->dropdown.value);
+	case MENUOP_GETOPTIONTEXT:
+		return (intptr_t) ((data->dropdown.value == 4) ? "Ext" : langGet(labels[data->dropdown.value]));
+	case MENUOP_SET:
+		optionsSetControlMode(g_MpPlayerNum, (data->dropdown.value == 4 ? CONTROLMODE_PC : data->dropdown.value));
+#ifndef PLATFORM_N64
+		g_PlayerExtCfg[g_MpPlayerNum & 3].extcontrols = (data->dropdown.value == 4);
+#endif
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
-		data->dropdown.value = options_get_control_mode(g_MpPlayerNum);
+	case MENUOP_GETSELECTEDINDEX:
+		data->dropdown.value = optionsGetControlMode(g_MpPlayerNum);
+		if (data->dropdown.value == CONTROLMODE_PC) {
+			data->dropdown.value = 4;
+		}
 		break;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_weapon_slot(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpWeaponSlot(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
-		data->dropdown.value = mp_get_num_weapon_options();
+	case MENUOP_GETOPTIONCOUNT:
+		data->dropdown.value = mpGetNumWeaponOptions();
 		break;
-	case MENUOP_GET_OPTION_TEXT:
-		return (s32) mp_get_weapon_label(data->dropdown.value);
-	case MENUOP_CONFIRM:
-		mp_set_weapon_slot(item->param3, data->dropdown.value);
+	case MENUOP_GETOPTIONTEXT:
+		return (uintptr_t) mpGetWeaponLabel(data->dropdown.value);
+	case MENUOP_SET:
+		mpSetWeaponSlot(item->param3, data->dropdown.value);
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
-		data->dropdown.value = mp_get_weapon_slot(item->param3);
+	case MENUOP_GETSELECTEDINDEX:
+		data->dropdown.value = mpGetWeaponSlot(item->param3);
 	}
 
 	return 0;
 }
 
-char *mp_menu_text_weapon_name_for_slot(struct menuitem *item)
+char *mpMenuTextWeaponNameForSlot(struct menuitem *item)
 {
-	return mp_get_weapon_label(mp_get_weapon_slot(item->param));
+	return mpGetWeaponLabel(mpGetWeaponSlot(item->param));
 }
 
-MenuItemHandlerResult menuhandler_mp_weapon_set_dropdown(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpWeaponSetDropdown(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
-		data->dropdown.value = mp_get_num_weaponset_slots(item->param);
+	case MENUOP_GETOPTIONCOUNT:
+		data->dropdown.value = func0f189058(item->param);
 		break;
-	case MENUOP_GET_OPTION_TEXT:
-		return (s32) mp_get_weaponset_name_by_slotnum(data->dropdown.value);
-	case MENUOP_CONFIRM:
-		mp_set_weaponset_slotnum(data->dropdown.value);
+	case MENUOP_GETOPTIONTEXT:
+		return (uintptr_t) mpGetWeaponSetName(data->dropdown.value);
+	case MENUOP_SET:
+		mpSetWeaponSet(data->dropdown.value);
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
-		data->dropdown.value = mp_get_weaponset_slotnum();
+	case MENUOP_GETSELECTEDINDEX:
+		data->dropdown.value = mpGetWeaponSet();
 		break;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_control_checkbox(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpControlCheckbox(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	s32 val;
 
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
+	case MENUOP_GET:
 		if (item->param3 == OPTION_FORWARDPITCH) {
 			if ((g_PlayerConfigsArray[g_MpPlayerNum].options & item->param3) == 0) {
 				return true;
@@ -336,7 +347,7 @@ MenuItemHandlerResult menuhandler_mp_control_checkbox(s32 operation, struct menu
 			return false;
 		}
 		return true;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		val = OPTION_FORWARDPITCH;
 
 		if (item->param3 == val) {
@@ -357,7 +368,7 @@ MenuItemHandlerResult menuhandler_mp_control_checkbox(s32 operation, struct menu
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_aim_control(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpAimControl(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u16 labels[] = {
 #if VERSION >= VERSION_PAL_FINAL
@@ -370,31 +381,31 @@ MenuItemHandlerResult menuhandler_mp_aim_control(s32 operation, struct menuitem 
 	};
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 		data->dropdown.value = 2;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
-		return (s32) lang_get(labels[data->dropdown.value]);
-	case MENUOP_CONFIRM:
-		options_set_aim_control(g_MpPlayerNum, data->dropdown.value);
+	case MENUOP_GETOPTIONTEXT:
+		return (uintptr_t) langGet(labels[data->dropdown.value]);
+	case MENUOP_SET:
+		optionsSetAimControl(g_MpPlayerNum, data->dropdown.value);
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
-		data->dropdown.value = options_get_aim_control(g_MpPlayerNum);
+	case MENUOP_GETSELECTEDINDEX:
+		data->dropdown.value = optionsGetAimControl(g_MpPlayerNum);
 		break;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_checkbox_option(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpCheckboxOption(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
+	case MENUOP_GET:
 		if ((g_MpSetup.options & item->param3) == 0) {
 			return false;
 		}
 		return true;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_MpSetup.options = g_MpSetup.options & ~item->param3;
 		if (data->checkbox.value) {
 			g_MpSetup.options = g_MpSetup.options | item->param3;
@@ -404,9 +415,9 @@ MenuItemHandlerResult menuhandler_mp_checkbox_option(s32 operation, struct menui
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_teams_enabled(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpTeamsEnabled(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_IS_DISABLED) {
+	if (operation == MENUOP_CHECKDISABLED) {
 		if (g_MpSetup.scenario == MPSCENARIO_CAPTURETHECASE ||
 				g_MpSetup.scenario == MPSCENARIO_KINGOFTHEHILL) {
 			return true;
@@ -415,18 +426,18 @@ MenuItemHandlerResult menuhandler_mp_teams_enabled(s32 operation, struct menuite
 		return false;
 	}
 
-	return menuhandler_mp_checkbox_option(operation, item, data);
+	return menuhandlerMpCheckboxOption(operation, item, data);
 }
 
-MenuItemHandlerResult menuhandler_mp_display_option_checkbox(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpDisplayOptionCheckbox(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
+	case MENUOP_GET:
 		if ((g_PlayerConfigsArray[g_MpPlayerNum].base.displayoptions & item->param3) == 0) {
 			return false;
 		}
 		return true;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_PlayerConfigsArray[g_MpPlayerNum].base.displayoptions &= ~(u8)item->param3;
 
 		if (data->checkbox.value) {
@@ -438,80 +449,82 @@ MenuItemHandlerResult menuhandler_mp_display_option_checkbox(s32 operation, stru
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_confirm_save_chr(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpConfirmSaveChr(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		menu_pop_dialog();
-		filemgr_push_select_location_dialog(6, FILETYPE_MPPLAYER);
+	if (operation == MENUOP_SET) {
+		menuPopDialog();
+		filemgrPushSelectLocationDialog(6, FILETYPE_MPPLAYER);
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_setup_name(s32 operation, struct menuitem *item, union handlerdata *data)
+extern struct menudialogdef g_StatusErrorDialog;
+MenuItemHandlerResult menuhandlerMpSetupName(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	char *name = data->keyboard.string;
+	s32 err;
 
 	switch (operation) {
-	case MENUOP_GET_KEYBOARD_STRING:
+	case MENUOP_GETTEXT:
 		strcpy(name, g_MpSetup.name);
 		break;
-	case MENUOP_SET_KEYBOARD_STRING:
+	case MENUOP_SETTEXT:
 		strcpy(g_MpSetup.name, name);
 		break;
-	case MENUOP_CONFIRM:
-		filemgr_push_select_location_dialog(7, FILETYPE_MPSETUP);
+	case MENUOP_SET:
+		err = mpsetupSaveSetup(g_MpSetupFile.numsetups, true);
+		if (!err) {
+			menuPushDialog(&g_FilemgrFileSavedMenuDialog);
+			g_MpCurrentSetup = g_MpSetupFile.numsetups - 1;
+		}
+		else {
+			menuPushDialog(&g_StatusErrorDialog);
+		}
 		break;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_save_setup_overwrite(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpSaveSetupOverwrite(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		menu_pop_dialog();
-		filemgr_save_or_load(&g_MpSetup.fileguid, FILEOP_SAVE_MPSETUP, 0);
+	if (operation == MENUOP_SET) {
+		menuPopDialog();
+		mpsetupSaveSetup(g_MpCurrentSetup, true);
+		menuPushDialog(&g_FilemgrFileSavedMenuDialog);
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_save_setup_copy(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpSaveSetupCopy(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		menu_pop_dialog();
-		menu_push_dialog(&g_MpSaveSetupNameMenuDialog);
+	if (operation == MENUOP_SET) {
+		menuPopDialog();
+		menuPushDialog(&g_MpSaveSetupNameMenuDialog);
 	}
 
 	return 0;
 }
 
 #if VERSION >= VERSION_NTSC_1_0
-char *mp_menu_text_setup_name(struct menuitem *item)
+char *mpMenuTextSetupName(struct menuitem *item)
 {
 	return g_MpSetup.name;
 }
 #endif
 
-/**
- * These handicap functions are not called.
- *
- * As for the handicaps themselves:
- * handicap1 is never read
- * handicap2 is never read
- * handicap3 limits the player's walk speed, but cannot be changed off its default.
- */
-MenuItemHandlerResult menuhandler_mp_handicap1(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult func0f179b68(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_GET_SLIDER_VALUE:
+	case MENUOP_GETSLIDER:
 		data->slider.value = g_PlayerConfigsArray[g_MpPlayerNum].base.unk18;
 		break;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_PlayerConfigsArray[g_MpPlayerNum].base.unk18 = (u8) data->slider.value;
 		break;
-	case MENUOP_GET_SLIDER_LABEL:
+	case MENUOP_GETSLIDERLABEL:
 		sprintf(data->slider.label, "%d%%\n", data->slider.value + 20);
 		break;
 	}
@@ -519,16 +532,16 @@ MenuItemHandlerResult menuhandler_mp_handicap1(s32 operation, struct menuitem *i
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_handicap2(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult func0f179c14(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_GET_SLIDER_VALUE:
+	case MENUOP_GETSLIDER:
 		data->slider.value = g_PlayerConfigsArray[g_MpPlayerNum].base.unk1a;
 		break;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_PlayerConfigsArray[g_MpPlayerNum].base.unk1a = (u8) data->slider.value;
 		break;
-	case MENUOP_GET_SLIDER_LABEL:
+	case MENUOP_GETSLIDERLABEL:
 		sprintf(data->slider.label, "%d%%\n", data->slider.value + 20);
 		break;
 	}
@@ -536,16 +549,16 @@ MenuItemHandlerResult menuhandler_mp_handicap2(s32 operation, struct menuitem *i
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_handicap3(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult func0f179cc0(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_GET_SLIDER_VALUE:
+	case MENUOP_GETSLIDER:
 		data->slider.value = g_PlayerConfigsArray[g_MpPlayerNum].base.unk1c;
 		break;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_PlayerConfigsArray[g_MpPlayerNum].base.unk1c = data->slider.value;
 		break;
-	case MENUOP_GET_SLIDER_LABEL:
+	case MENUOP_GETSLIDERLABEL:
 		sprintf(data->slider.label, "%d%%\n", data->slider.value + 25);
 		break;
 	}
@@ -553,10 +566,10 @@ MenuItemHandlerResult menuhandler_mp_handicap3(s32 operation, struct menuitem *i
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_reset_handicaps(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult func0f179d6c(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		mp_init_handicaps(g_MpPlayerNum);
+	if (operation == MENUOP_SET) {
+		func0f187fbc(g_MpPlayerNum);
 	}
 
 	return 0;
@@ -565,13 +578,13 @@ MenuItemHandlerResult menuhandler_mp_reset_handicaps(s32 operation, struct menui
 /**
  * This function is used by both player body selection and bot body selection.
  */
-MenuItemHandlerResult mp_character_body_menu_handler(s32 operation, struct menuitem *item, union handlerdata *data, s32 mpbodynum, s32 mpheadnum, bool isplayer)
+MenuItemHandlerResult mpCharacterBodyMenuHandler(s32 operation, struct menuitem *item, union handlerdata *data, s32 mpbodynum, s32 mpheadnum, bool isplayer)
 {
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
-		data->carousel.value = mp_get_num_bodies();
+	case MENUOP_GETOPTIONCOUNT:
+		data->carousel.value = mpGetNumBodies();
 		break;
-	case MENUOP_ON_CAROUSEL_TICK:
+	case MENUOP_11:
 		g_Menus[g_MpPlayerNum].menumodel.newanimnum = ANIM_01FC;
 		g_Menus[g_MpPlayerNum].menumodel.newparams = MENUMODELPARAMS_SET_MP_HEADBODY(mpheadnum, mpbodynum);
 		g_Menus[g_MpPlayerNum].menumodel.zoomtimer60 += g_Vars.diffframe60;
@@ -595,24 +608,24 @@ MenuItemHandlerResult mp_character_body_menu_handler(s32 operation, struct menui
 		g_Menus[g_MpPlayerNum].menumodel.partvisibility = NULL;
 		g_Menus[g_MpPlayerNum].menumodel.zoom = 30;
 		break;
-	case MENUOP_IS_CAROUSEL_OPTION_HIDDEN:
-		if (!challenge_is_feature_unlocked(mp_get_body_required_feature(data->carousel.value))) {
+	case MENUOP_21:
+		if (!challengeIsFeatureUnlocked(mpGetBodyRequiredFeature(data->carousel.value))) {
 			return 1;
 		}
 		break;
 #if VERSION >= VERSION_NTSC_1_0
-	case MENUOP_ON_FOCUS:
+	case MENUOP_FOCUS:
 		g_Menus[g_MpPlayerNum].menumodel.loaddelay = 3;
 		break;
 #endif
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		data->carousel.value = mpbodynum;
 		break;
-	case MENUOP_CONFIRM:
-	case MENUOP_IS_PREFOCUSED:
+	case MENUOP_SET:
+	case MENUOP_CHECKPREFOCUSED:
 		g_Menus[g_MpPlayerNum].menumodel.removingpiece = false;
 
-		menu_configure_model(&g_Menus[g_MpPlayerNum].menumodel, 0, 0, 0, 0, 0, 0, 1, MENUMODELFLAG_HASSCALE);
+		menuConfigureModel(&g_Menus[g_MpPlayerNum].menumodel, 0, 0, 0, 0, 0, 0, 1, MENUMODELFLAG_HASSCALE);
 
 		g_Menus[g_MpPlayerNum].menumodel.curposx = 8.2f;
 		g_Menus[g_MpPlayerNum].menumodel.newposx = 8.2f;
@@ -630,7 +643,7 @@ MenuItemHandlerResult mp_character_body_menu_handler(s32 operation, struct menui
 		g_Menus[g_MpPlayerNum].menumodel.loaddelay = 8;
 
 #if VERSION >= VERSION_NTSC_1_0
-		if (operation == MENUOP_IS_PREFOCUSED) {
+		if (operation == MENUOP_CHECKPREFOCUSED) {
 			g_Menus[g_MpPlayerNum].menumodel.loaddelay = 16;
 		}
 #endif
@@ -641,55 +654,55 @@ MenuItemHandlerResult mp_character_body_menu_handler(s32 operation, struct menui
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_character_body(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpCharacterBody(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_CONFIRM:
-		if (g_PlayerConfigsArray[g_MpPlayerNum].base.mpheadnum < mp_get_num_heads()) {
+	case MENUOP_SET:
+		if (g_PlayerConfigsArray[g_MpPlayerNum].base.mpheadnum < mpGetNumHeads()) {
 #if VERSION >= VERSION_NTSC_1_0
 			if (!data->carousel.unk04)
 #endif
 			{
-				g_PlayerConfigsArray[g_MpPlayerNum].base.mpheadnum = mp_get_mpheadnum_by_mpbodynum(data->carousel.value);
+				g_PlayerConfigsArray[g_MpPlayerNum].base.mpheadnum = mpGetMpheadnumByMpbodynum(data->carousel.value);
 			}
 		}
 		g_PlayerConfigsArray[g_MpPlayerNum].base.mpbodynum = data->carousel.value;
-		mp_restart_character_body_label_timer();
+		func0f17b8f0();
 		break;
-	case MENUOP_IS_PREFOCUSED:
+	case MENUOP_CHECKPREFOCUSED:
 #if VERSION >= VERSION_NTSC_1_0
-		mp_character_body_menu_handler(operation, item, data,
+		mpCharacterBodyMenuHandler(operation, item, data,
 				g_PlayerConfigsArray[g_MpPlayerNum].base.mpbodynum,
 				g_PlayerConfigsArray[g_MpPlayerNum].base.mpheadnum, true);
 #endif
 		return true;
 	}
 
-	return mp_character_body_menu_handler(operation, item, data,
+	return mpCharacterBodyMenuHandler(operation, item, data,
 			g_PlayerConfigsArray[g_MpPlayerNum].base.mpbodynum,
 			g_PlayerConfigsArray[g_MpPlayerNum].base.mpheadnum, true);
 }
 
-MenuDialogHandlerResult menudialog_mp_human_character(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialog0017a174(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_ON_OPEN:
+	case MENUOP_OPEN:
 		break;
-	case MENUOP_ON_CLOSE:
+	case MENUOP_CLOSE:
 		break;
-	case MENUOP_ON_TICK:
+	case MENUOP_TICK:
 		if (g_Menus[g_MpPlayerNum].curdialog->definition == dialogdef
 				&& g_Menus[g_MpPlayerNum].curdialog->focuseditem != &dialogdef->items[1]
 				&& g_Menus[g_MpPlayerNum].curdialog->focuseditem != &dialogdef->items[2]) {
 			union handlerdata data;
-			menuhandler_mp_character_body(MENUOP_ON_CAROUSEL_TICK, &dialogdef->items[2], &data);
+			menuhandlerMpCharacterBody(MENUOP_11, &dialogdef->items[2], &data);
 		}
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult mp_challenges_list_handler(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult mpChallengesListHandler(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	Gfx *gdl;
 	struct menuitemrenderdata *renderdata;
@@ -703,8 +716,8 @@ MenuItemHandlerResult mp_challenges_list_handler(s32 operation, struct menuitem 
 	s32 size = 11;
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
-		data->list.value = challenge_get_auto_focused_index(g_MpPlayerNum);
+	case MENUOP_GETOPTIONCOUNT:
+		data->list.value = challengeGetAutoFocusedIndex(g_MpPlayerNum);
 		break;
 	case MENUOP_RENDER:
 		maxplayers = 4;
@@ -719,15 +732,15 @@ MenuItemHandlerResult mp_challenges_list_handler(s32 operation, struct menuitem 
 		x = renderdata->x + 10;
 		y = renderdata->y + 1;
 
-		gdl = text_begin(gdl);
+		gdl = text0f153628(gdl);
 
-		name = challenge_get_name2(g_MpPlayerNum, challengeindex);
+		name = challengeGetName2(g_MpPlayerNum, challengeindex);
 
-		gdl = text_render_v2(gdl, &x, &y, name,
+		gdl = textRenderProjected(gdl, &x, &y, name,
 				g_CharsHandelGothicSm, g_FontHandelGothicSm, renderdata->colour,
-				vi_get_width(), vi_get_height(), 0, 0);
+				viGetWidth(), viGetHeight(), 0, 0);
 
-		gdl = text_end(gdl);
+		gdl = text0f153780(gdl);
 
 		gDPPipeSync(gdl++);
 		gDPSetTexturePersp(gdl++, G_TP_NONE);
@@ -735,20 +748,20 @@ MenuItemHandlerResult mp_challenges_list_handler(s32 operation, struct menuitem 
 		gDPSetTextureLOD(gdl++, G_TL_TILE);
 		gDPSetTextureConvert(gdl++, G_TC_FILT);
 
-		tex_select(&gdl, &g_TexGeneralConfigs[TEX_GENERAL_ENVSTAR], 2, 0, 2, 1, NULL);
+		texSelect(&gdl, &g_TexGeneralConfigs[35], 2, 0, 2, 1, NULL);
 
 		gDPSetCycleType(gdl++, G_CYC_1CYCLE);
 		gDPSetTextureFilter(gdl++, G_TF_POINT);
 
 		for (i = 0, loopx = 10; i < maxplayers; i++) {
 #if VERSION >= VERSION_NTSC_1_0
-			if (challenge_is_completed_by_player_with_num_players2(g_MpPlayerNum, challengeindex, i + 1)) {
+			if (challengeIsCompletedByPlayerWithNumPlayers2(g_MpPlayerNum, challengeindex, i + 1)) {
 				gDPSetEnvColorViaWord(gdl++, 0xb2efff00 | (renderdata->colour & 0xff) * 255 / 256);
 			} else {
 				gDPSetEnvColorViaWord(gdl++, 0x30407000 | (renderdata->colour & 0xff) * 255 / 256);
 			}
 #else
-			if (challenge_is_completed_by_player_with_num_players2(g_MpPlayerNum, challengeindex, i + 1)) {
+			if (challengeIsCompletedByPlayerWithNumPlayers2(g_MpPlayerNum, challengeindex, i + 1)) {
 				gDPSetEnvColorViaWord(gdl++, 0xb2efffff);
 			} else {
 				gDPSetEnvColorViaWord(gdl++, 0x304070ff);
@@ -762,18 +775,18 @@ MenuItemHandlerResult mp_challenges_list_handler(s32 operation, struct menuitem 
 					TEXEL0, 0, ENVIRONMENT, 0);
 
 			gSPTextureRectangle(gdl++,
-					((renderdata->x + loopx) << 2) * g_UiScaleX,
+					((renderdata->x + loopx) << 2) * g_ScaleX,
 					(renderdata->y + size) << 2,
-					((renderdata->x + size + loopx) << 2) * g_UiScaleX,
+					((renderdata->x + size + loopx) << 2) * g_ScaleX,
 					(renderdata->y + size * 2) << 2,
 					G_TX_RENDERTILE,
-					0, 0x0160, 0x0400 / g_UiScaleX, 0xfc00);
+					0, 0x0160, 0x0400 / g_ScaleX, 0xfc00);
 
 			loopx += 13;
 		}
 
-		return (s32) gdl;
-	case MENUOP_GET_OPTION_HEIGHT:
+		return (uintptr_t) gdl;
+	case MENUOP_GETOPTIONHEIGHT:
 		data->list.value = 26;
 		break;
 	}
@@ -784,67 +797,67 @@ MenuItemHandlerResult mp_challenges_list_handler(s32 operation, struct menuitem 
 const char var7f1b7ea8[] = "Menu99 -> Calling Camera Module Start\n";
 const char var7f1b7ed0[] = "Menu99 -> Calling Camera Module Finish\n";
 
-char *mp_menu_text_kills(struct menuitem *item)
+char *mpMenuTextKills(struct menuitem *item)
 { \
 	sprintf(g_StringPointer, "%d\n", g_PlayerConfigsArray[g_MpPlayerNum].kills);
 	return g_StringPointer;
 }
 
-char *mp_menu_text_deaths(struct menuitem *item)
+char *mpMenuTextDeaths(struct menuitem *item)
 { \
 	sprintf(g_StringPointer, "%d\n", g_PlayerConfigsArray[g_MpPlayerNum].deaths);
 	return g_StringPointer;
 }
 
-char *mp_menu_text_games_played(struct menuitem *item)
+char *mpMenuTextGamesPlayed(struct menuitem *item)
 { \
 	sprintf(g_StringPointer, "%d\n", g_PlayerConfigsArray[g_MpPlayerNum].gamesplayed);
 	return g_StringPointer;
 }
 
-char *mp_menu_text_games_won(struct menuitem *item)
+char *mpMenuTextGamesWon(struct menuitem *item)
 { \
 	sprintf(g_StringPointer, "%d\n", g_PlayerConfigsArray[g_MpPlayerNum].gameswon);
 	return g_StringPointer;
 }
 
-char *mp_menu_text_games_lost(struct menuitem *item)
+char *mpMenuTextGamesLost(struct menuitem *item)
 { \
 	sprintf(g_StringPointer, "%d\n", g_PlayerConfigsArray[g_MpPlayerNum].gameslost);
 	return g_StringPointer;
 }
 
-char *mp_menu_text_head_shots(struct menuitem *item)
+char *mpMenuTextHeadShots(struct menuitem *item)
 { \
 	sprintf(g_StringPointer, "%d\n", g_PlayerConfigsArray[g_MpPlayerNum].headshots);
 	return g_StringPointer;
 }
 
-char *mp_menu_text_medal_accuracy(struct menuitem *item)
+char *mpMenuTextMedalAccuracy(struct menuitem *item)
 { \
 	sprintf(g_StringPointer, "%d\n", g_PlayerConfigsArray[g_MpPlayerNum].accuracymedals);
 	return g_StringPointer;
 }
 
-char *mp_menu_text_medal_head_shot(struct menuitem *item)
+char *mpMenuTextMedalHeadShot(struct menuitem *item)
 { \
 	sprintf(g_StringPointer, "%d\n", g_PlayerConfigsArray[g_MpPlayerNum].headshotmedals);
 	return g_StringPointer;
 }
 
-char *mp_menu_text_medal_kill_master(struct menuitem *item)
+char *mpMenuTextMedalKillMaster(struct menuitem *item)
 { \
 	sprintf(g_StringPointer, "%d\n", g_PlayerConfigsArray[g_MpPlayerNum].killmastermedals);
 	return g_StringPointer;
 }
 
-char *mp_menu_text_medal_survivor(struct menuitem *item)
+char *mpMenuTextMedalSurvivor(struct menuitem *item)
 { \
 	sprintf(g_StringPointer, "%d\n", g_PlayerConfigsArray[g_MpPlayerNum].survivormedals);
 	return g_StringPointer;
 }
 
-char *mp_menu_text_ammo_used(struct menuitem *item)
+char *mpMenuTextAmmoUsed(struct menuitem *item)
 {
 	s32 value = g_PlayerConfigsArray[g_MpPlayerNum].ammoused;
 
@@ -864,13 +877,13 @@ char *mp_menu_text_ammo_used(struct menuitem *item)
 	return g_StringPointer;
 }
 
-char *mp_menu_text_distance(struct menuitem *item)
+char *mpMenuTextDistance(struct menuitem *item)
 {
 	sprintf(g_StringPointer, "%s%s%.1fkm\n", "", "", g_PlayerConfigsArray[g_MpPlayerNum].distance / 10.0f);
 	return g_StringPointer;
 }
 
-char *mp_menu_text_time(struct menuitem *item)
+char *mpMenuTextTime(struct menuitem *item)
 {
 	u32 raw = g_PlayerConfigsArray[g_MpPlayerNum].time;
 	s32 secs = raw % 60;
@@ -898,7 +911,7 @@ char *mp_menu_text_time(struct menuitem *item)
 	return g_StringPointer;
 }
 
-char *mp_menu_text_accuracy(struct menuitem *item)
+char *mpMenuTextAccuracy(struct menuitem *item)
 {
 #if VERSION < VERSION_NTSC_1_0
 	if (g_PlayerConfigsArray[g_MpPlayerNum].gamesplayed < 8) {
@@ -910,7 +923,7 @@ char *mp_menu_text_accuracy(struct menuitem *item)
 	return g_StringPointer;
 }
 
-void mp_format_damage_value(char *dst, f32 damage)
+void mpFormatDamageValue(char *dst, f32 damage)
 {
 #if VERSION >= VERSION_NTSC_1_0
 	if (damage < 1000) {
@@ -942,19 +955,19 @@ void mp_format_damage_value(char *dst, f32 damage)
 #endif
 }
 
-char *mp_menu_text_pain_received(struct menuitem *item)
+char *mpMenuTextPainReceived(struct menuitem *item)
 {
-	mp_format_damage_value(g_StringPointer, g_PlayerConfigsArray[g_MpPlayerNum].painreceived / 10.0f);
+	mpFormatDamageValue(g_StringPointer, g_PlayerConfigsArray[g_MpPlayerNum].painreceived / 10.0f);
 	return g_StringPointer;
 }
 
-char *mp_menu_text_damage_dealt(struct menuitem *item)
+char *mpMenuTextDamageDealt(struct menuitem *item)
 {
-	mp_format_damage_value(g_StringPointer, g_PlayerConfigsArray[g_MpPlayerNum].damagedealt / 10.0f);
+	mpFormatDamageValue(g_StringPointer, g_PlayerConfigsArray[g_MpPlayerNum].damagedealt / 10.0f);
 	return g_StringPointer;
 }
 
-MenuItemHandlerResult mp_medal_menu_handler(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult mpMedalMenuHandler(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	if (operation == MENUOP_RENDER) {
 		Gfx *gdl = data->type19.gdl;
@@ -968,7 +981,7 @@ MenuItemHandlerResult mp_medal_menu_handler(s32 operation, struct menuitem *item
 		gDPSetTextureConvert(gdl++, G_TC_FILT);
 		gDPSetTextureFilter(gdl++, G_TF_POINT);
 
-		tex_select(&gdl, &g_TexGeneralConfigs[TEX_GENERAL_ENVSTAR], 2, 0, 2, 1, NULL);
+		texSelect(&gdl, &g_TexGeneralConfigs[35], 2, 0, 2, 1, NULL);
 
 		gDPSetCycleType(gdl++, G_CYC_1CYCLE);
 		gDPSetCombineMode(gdl++, G_CC_DECALRGBA, G_CC_DECALRGBA);
@@ -1002,26 +1015,26 @@ MenuItemHandlerResult mp_medal_menu_handler(s32 operation, struct menuitem *item
 				TEXEL0, 0, ENVIRONMENT, 0);
 
 		gSPTextureRectangle(gdl++,
-				((renderdata->x + 9) << 2) * g_UiScaleX, renderdata->y << 2,
-				((renderdata->x + 20) << 2) * g_UiScaleX, (renderdata->y + 11) << 2,
-				G_TX_RENDERTILE, 0, 0x0160, 1024 / g_UiScaleX, -1024);
+				((renderdata->x + 9) << 2) * g_ScaleX, renderdata->y << 2,
+				((renderdata->x + 20) << 2) * g_ScaleX, (renderdata->y + 11) << 2,
+				G_TX_RENDERTILE, 0, 0x0160, 1024 / g_ScaleX, -1024);
 
-		return (s32) gdl;
+		return (uintptr_t) gdl;
 	}
 
 	return 0;
 }
 
-char *mp_menu_title_stats_for_player_name(struct menudialogdef *dialogdef)
+char *mpMenuTitleStatsForPlayerName(struct menudialogdef *dialogdef)
 {
 	// "Stats for %s"
-	sprintf(g_StringPointer, lang_get(L_MPMENU_145), g_PlayerConfigsArray[g_MpPlayerNum].base.name);
+	sprintf(g_StringPointer, langGet(L_MPMENU_145), g_PlayerConfigsArray[g_MpPlayerNum].base.name);
 	return g_StringPointer;
 }
 
-MenuItemHandlerResult menuhandler_mp_username_password(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpUsernamePassword(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_IS_HIDDEN) {
+	if (operation == MENUOP_CHECKHIDDEN) {
 		if (g_PlayerConfigsArray[g_MpPlayerNum].title != MPPLAYERTITLE_PERFECT) {
 			return true;
 		}
@@ -1061,7 +1074,7 @@ struct menuitem g_MpSavePlayerMenuItems[] = {
 		0,
 		L_MPMENU_194, // "Yes"
 		0,
-		menuhandler_mp_confirm_save_chr,
+		menuhandlerMpConfirmSaveChr,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -1080,19 +1093,19 @@ struct menuitem g_MpSaveSetupNameMenuItems[] = {
 	{
 		MENUITEMTYPE_LABEL,
 		0,
-		MENUITEMFLAG_LESSLEFTPADDING,
-		L_MPMENU_189, // "Enter a name for your game setup file:"
+		MENUITEMFLAG_LITERAL_TEXT | MENUITEMFLAG_LESSLEFTPADDING,
+		(uintptr_t)"Enter the setup name:\n",
 		0,
 		NULL,
 	},
 #endif
 	{
 		MENUITEMTYPE_KEYBOARD,
+		MPSETUP_MAXNAME,
 		0,
 		0,
-		0,
-		0,
-		menuhandler_mp_setup_name,
+		1,
+		menuhandlerMpSetupName,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -1113,14 +1126,14 @@ struct menuitem g_MpSaveSetupExistsMenuItems[] = {
 		0,
 		MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_SMALLFONT,
 		L_MPWEAPONS_230, // "Name:"
-		(uintptr_t)&mp_menu_text_setup_name,
+		(uintptr_t)&mpMenuTextSetupName,
 		NULL,
 	},
 	{
-		MENUITEMTYPE_LABEL,
+		MENUITEMTYPE_SEPARATOR,
 		0,
-		MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_SELECTABLE_CENTRE | MENUITEMFLAG_SMALLFONT,
-		(uintptr_t)&filemgr_menu_text_device_name,
+		0,
+		0,
 		0,
 		NULL,
 	},
@@ -1128,8 +1141,16 @@ struct menuitem g_MpSaveSetupExistsMenuItems[] = {
 	{
 		MENUITEMTYPE_LABEL,
 		0,
-		MENUITEMFLAG_LESSLEFTPADDING,
-		L_MPMENU_184, // "Do you want to save over your original game file?"
+		MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Save over your\noriginal setup?\n",
+		0,
+		NULL,
+	},
+	{
+		MENUITEMTYPE_SEPARATOR,
+		0,
+		0,
+		0,
 		0,
 		NULL,
 	},
@@ -1139,7 +1160,7 @@ struct menuitem g_MpSaveSetupExistsMenuItems[] = {
 		0,
 		L_MPMENU_185, // "Save Over Original"
 		0,
-		menuhandler_mp_save_setup_overwrite,
+		menuhandlerMpSaveSetupOverwrite,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -1147,7 +1168,7 @@ struct menuitem g_MpSaveSetupExistsMenuItems[] = {
 		0,
 		L_MPMENU_186, // "Save Copy"
 		0,
-		menuhandler_mp_save_setup_copy,
+		menuhandlerMpSaveSetupCopy,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -1169,6 +1190,204 @@ struct menudialogdef g_MpSaveSetupExistsMenuDialog = {
 	NULL,
 };
 
+#ifndef PLATFORM_N64
+MenuItemHandlerResult mpSelectRandomWeaponListHandler(s32 operation, struct menuitem *item, union handlerdata *data)
+{
+	static const char *labels[] = {
+		"Select Dark",
+		"Select Classic",
+		"Select All",
+		"Select None",
+	};
+
+	switch (operation) {
+	case MENUOP_GETOPTIONCOUNT:
+		data->list.value = mpGetNumWeaponOptions() + 4;
+		break;
+	case MENUOP_GETOPTIONTEXT:
+		{
+			s32 numweapons = mpGetNumWeaponOptions();
+
+			if (data->list.value < numweapons) {
+				return (uintptr_t) mpGetWeaponLabel(data->list.value);
+			} else {
+				return (intptr_t)labels[data->list.value - numweapons];
+			}
+		}
+	case MENUOP_SET:
+		{
+			s32 numweapons = mpGetNumWeaponOptions();
+			s32 mpweaponnum = data->list.value;
+			s32 optionindex = mpweaponnum;
+			s32 i;
+
+			if (data->list.value < numweapons) {
+				if (data->list.unk04 == 0) {
+					for (i = 0; i <= mpweaponnum; i++) {
+						if (challengeIsFeatureUnlocked(g_MpWeapons[i].unlockfeature) == 0) {
+							mpweaponnum++;
+						}
+
+						optionindex = mpweaponnum;
+					}
+
+					g_MpWeaponSetRandomFilters[optionindex] = 1 - g_MpWeaponSetRandomFilters[optionindex];
+				}
+			} else {
+				s32 index = data->list.value - numweapons;
+
+				switch (index) {
+				case 0:
+					// Select Dark
+					for (i = 0; i < ARRAYCOUNT(g_MpWeapons); i++) {
+						if ((i >= MPWEAPON_NONE && i <= MPWEAPON_XRAYSCANNER)
+								|| i == MPWEAPON_CLOAKINGDEVICE
+								|| i == MPWEAPON_COMBATBOOST
+								|| i >= MPWEAPON_SHIELD) {
+							g_MpWeaponSetRandomFilters[i] = 1;
+						} else {
+							g_MpWeaponSetRandomFilters[i] = 0;
+						}
+					}
+					break;
+				case 1:
+					// Select Classic
+					for (i = 0; i < ARRAYCOUNT(g_MpWeapons); i++) {
+						if (i >= MPWEAPON_PP9I && i <= MPWEAPON_RCP45) {
+							g_MpWeaponSetRandomFilters[i] = 1;
+						} else {
+							g_MpWeaponSetRandomFilters[i] = 0;
+						}
+					}
+					break;
+				case 2:
+					// Select All
+					for (i = 0; i < ARRAYCOUNT(g_MpWeapons); i++) {
+						g_MpWeaponSetRandomFilters[i] = 1;
+					}
+					break;
+				case 3:
+					// Select None
+					for (i = 0; i < ARRAYCOUNT(g_MpWeapons); i++) {
+						g_MpWeaponSetRandomFilters[i] = 0;
+					}
+					break;
+				}
+			}
+		}
+		break;
+	case MENUOP_GETSELECTEDINDEX:
+		data->list.value = 0x000fffff;
+		break;
+	case MENUOP_GETLISTITEMCHECKBOX:
+		{
+			s32 numweapons = mpGetNumWeaponOptions();
+			s32 mpweaponnum = data->list.value;
+			s32 optionindex = mpweaponnum;
+			s32 i;
+
+			if (data->list.value < numweapons) {
+
+				for (i = 0; i <= mpweaponnum; i++) {
+					if (challengeIsFeatureUnlocked(g_MpWeapons[i].unlockfeature) == 0) {
+						mpweaponnum++;
+					}
+
+					optionindex = mpweaponnum;
+				}
+
+				data->list.unk04 = g_MpWeaponSetRandomFilters[optionindex];
+			}
+		}
+		break;
+	}
+
+	return 0;
+}
+
+struct menuitem g_MpSelectRandomWeaponsMenuItems[] = {
+	{
+		MENUITEMTYPE_LIST,
+		0,
+		MENUITEMFLAG_LOCKABLEMINOR,
+		0x00000078,
+		0x0000004d,
+		mpSelectRandomWeaponListHandler,
+	},
+	{ MENUITEMTYPE_END },
+};
+
+struct menudialogdef g_MpSelectRandomWeaponsMenuDialog = {
+	MENUDIALOGTYPE_DEFAULT,
+	(uintptr_t)"Select Weapons",
+	g_MpSelectRandomWeaponsMenuItems,
+	NULL,
+	MENUDIALOGFLAG_LITERAL_TEXT,
+	NULL,
+};
+
+MenuItemHandlerResult menuhandlerMpSelectRandomWeapons(s32 operation, struct menuitem *item, union handlerdata *data)
+{
+	switch (operation) {
+	case MENUOP_CHECKDISABLED:
+	case MENUOP_CHECKHIDDEN:
+		if (g_MpWeaponSetNum == WEAPONSET_RANDOM
+				|| g_MpWeaponSetNum == WEAPONSET_RANDOMFIVE) {
+			return false;
+		}
+		return true;
+	case MENUOP_SET:
+		menuPushDialog(&g_MpSelectRandomWeaponsMenuDialog);
+	}
+
+	return 0;
+}
+
+MenuItemHandlerResult menuhandlerMpAutoRandomWeapon(s32 operation, struct menuitem *item, union handlerdata *data)
+{
+	static const char *labels[] = {
+		"Off",
+		"Start",
+		"End",
+	};
+
+	switch (operation) {
+	case MENUOP_CHECKDISABLED:
+	case MENUOP_CHECKHIDDEN:
+		if (g_MpWeaponSetNum == WEAPONSET_RANDOM
+				|| g_MpWeaponSetNum == WEAPONSET_RANDOMFIVE) {
+			return false;
+		}
+		return true;
+	case MENUOP_GETOPTIONCOUNT:
+		data->dropdown.value = ARRAYCOUNT(labels);
+		break;
+	case MENUOP_GETOPTIONTEXT:
+		return (intptr_t)labels[data->dropdown.value];
+	case MENUOP_SET:
+		g_MpSetup.options &= ~(MPOPTION_AUTORANDOMWEAPON_START | MPOPTION_AUTORANDOMWEAPON_END);
+
+		if (data->dropdown.value == AUTORANDOMWEAPON_START) {
+			g_MpSetup.options |= MPOPTION_AUTORANDOMWEAPON_START;
+		} else if (data->dropdown.value == AUTORANDOMWEAPON_END) {
+			g_MpSetup.options |= MPOPTION_AUTORANDOMWEAPON_END;
+		}
+		break;
+	case MENUOP_GETSELECTEDINDEX:
+		if (g_MpSetup.options & MPOPTION_AUTORANDOMWEAPON_END) {
+			data->dropdown.value = AUTORANDOMWEAPON_END;
+		} else if (g_MpSetup.options & MPOPTION_AUTORANDOMWEAPON_START) {
+			data->dropdown.value = AUTORANDOMWEAPON_START;
+		} else {
+			data->dropdown.value = AUTORANDOMWEAPON_OFF;
+		}
+		break;
+	}
+
+	return 0;
+}
+#endif
+
 struct menuitem g_MpWeaponsMenuItems[] = {
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -1176,8 +1395,26 @@ struct menuitem g_MpWeaponsMenuItems[] = {
 		MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_DROPDOWN_BELOW | MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_174, // "Set:"
 		0,
-		menuhandler_mp_weapon_set_dropdown,
+		menuhandlerMpWeaponSetDropdown,
 	},
+#ifndef PLATFORM_N64
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Select Weapons\n",
+		0,
+		menuhandlerMpSelectRandomWeapons,
+	},
+	{
+		MENUITEMTYPE_DROPDOWN,
+		0,
+		MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Auto Random\n",
+		0,
+		menuhandlerMpAutoRandomWeapon,
+	},
+#endif
 	{
 		MENUITEMTYPE_SEPARATOR,
 		0,
@@ -1200,7 +1437,7 @@ struct menuitem g_MpWeaponsMenuItems[] = {
 		MENUITEMFLAG_DROPDOWN_BELOW | MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_MPWEAPONSLOT,
 		L_MPMENU_176, // "1:"
 		0,
-		menuhandler_mp_weapon_slot,
+		menuhandlerMpWeaponSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -1208,7 +1445,7 @@ struct menuitem g_MpWeaponsMenuItems[] = {
 		MENUITEMFLAG_DROPDOWN_BELOW | MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_MPWEAPONSLOT,
 		L_MPMENU_177, // "2:"
 		1,
-		menuhandler_mp_weapon_slot,
+		menuhandlerMpWeaponSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -1216,7 +1453,7 @@ struct menuitem g_MpWeaponsMenuItems[] = {
 		MENUITEMFLAG_DROPDOWN_BELOW | MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_MPWEAPONSLOT,
 		L_MPMENU_178, // "3:"
 		2,
-		menuhandler_mp_weapon_slot,
+		menuhandlerMpWeaponSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -1224,7 +1461,7 @@ struct menuitem g_MpWeaponsMenuItems[] = {
 		MENUITEMFLAG_DROPDOWN_BELOW | MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_MPWEAPONSLOT,
 		L_MPMENU_179, // "4:"
 		3,
-		menuhandler_mp_weapon_slot,
+		menuhandlerMpWeaponSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -1232,7 +1469,7 @@ struct menuitem g_MpWeaponsMenuItems[] = {
 		MENUITEMFLAG_DROPDOWN_BELOW | MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_MPWEAPONSLOT,
 		L_MPMENU_180, // "5:"
 		4,
-		menuhandler_mp_weapon_slot,
+		menuhandlerMpWeaponSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -1240,7 +1477,7 @@ struct menuitem g_MpWeaponsMenuItems[] = {
 		MENUITEMFLAG_DROPDOWN_BELOW | MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_MPWEAPONSLOT,
 		L_MPMENU_181, // "6:"
 		5,
-		menuhandler_mp_weapon_slot,
+		menuhandlerMpWeaponSlot,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -1277,7 +1514,7 @@ struct menuitem g_MpQuickTeamWeaponsMenuItems[] = {
 		MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_DROPDOWN_BELOW | MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_174, // "Set:"
 		0,
-		menuhandler_mp_weapon_set_dropdown,
+		menuhandlerMpWeaponSetDropdown,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -1292,7 +1529,7 @@ struct menuitem g_MpQuickTeamWeaponsMenuItems[] = {
 		0,
 		MENUITEMFLAG_00000002,
 		L_MPMENU_176, // "1:"
-		(uintptr_t)&mp_menu_text_weapon_name_for_slot,
+		(uintptr_t)&mpMenuTextWeaponNameForSlot,
 		NULL,
 	},
 	{
@@ -1300,7 +1537,7 @@ struct menuitem g_MpQuickTeamWeaponsMenuItems[] = {
 		1,
 		MENUITEMFLAG_00000002,
 		L_MPMENU_177, // "2:"
-		(uintptr_t)&mp_menu_text_weapon_name_for_slot,
+		(uintptr_t)&mpMenuTextWeaponNameForSlot,
 		NULL,
 	},
 	{
@@ -1308,7 +1545,7 @@ struct menuitem g_MpQuickTeamWeaponsMenuItems[] = {
 		2,
 		MENUITEMFLAG_00000002,
 		L_MPMENU_178, // "3:"
-		(uintptr_t)&mp_menu_text_weapon_name_for_slot,
+		(uintptr_t)&mpMenuTextWeaponNameForSlot,
 		NULL,
 	},
 	{
@@ -1316,7 +1553,7 @@ struct menuitem g_MpQuickTeamWeaponsMenuItems[] = {
 		3,
 		MENUITEMFLAG_00000002,
 		L_MPMENU_179, // "4:"
-		(uintptr_t)&mp_menu_text_weapon_name_for_slot,
+		(uintptr_t)&mpMenuTextWeaponNameForSlot,
 		NULL,
 	},
 	{
@@ -1324,7 +1561,7 @@ struct menuitem g_MpQuickTeamWeaponsMenuItems[] = {
 		4,
 		MENUITEMFLAG_00000002,
 		L_MPMENU_180, // "5:"
-		(uintptr_t)&mp_menu_text_weapon_name_for_slot,
+		(uintptr_t)&mpMenuTextWeaponNameForSlot,
 		NULL,
 	},
 	{
@@ -1362,7 +1599,7 @@ struct menuitem g_MpPlayerOptionsMenuItems[] = {
 		0,
 		L_MPMENU_168, // "Highlight Pickups"
 		MPDISPLAYOPTION_HIGHLIGHTPICKUPS,
-		menuhandler_mp_display_option_checkbox,
+		menuhandlerMpDisplayOptionCheckbox,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -1370,7 +1607,7 @@ struct menuitem g_MpPlayerOptionsMenuItems[] = {
 		0,
 		L_MPMENU_169, // "Highlight Players"
 		MPDISPLAYOPTION_HIGHLIGHTPLAYERS,
-		menuhandler_mp_display_option_checkbox,
+		menuhandlerMpDisplayOptionCheckbox,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -1378,7 +1615,7 @@ struct menuitem g_MpPlayerOptionsMenuItems[] = {
 		0,
 		L_MPMENU_170, // "Highlight Teams"
 		MPDISPLAYOPTION_HIGHLIGHTTEAMS,
-		menuhandler_mp_display_option_checkbox,
+		menuhandlerMpDisplayOptionCheckbox,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -1386,7 +1623,7 @@ struct menuitem g_MpPlayerOptionsMenuItems[] = {
 		0,
 		L_MPMENU_171, // "Radar"
 		MPDISPLAYOPTION_RADAR,
-		menuhandler_mp_display_option_checkbox,
+		menuhandlerMpDisplayOptionCheckbox,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -1423,7 +1660,7 @@ struct menuitem g_MpControlMenuItems[] = {
 		0,
 		L_MPMENU_200, // "Control Style"
 		0,
-		menuhandler_mp_control_style,
+		menuhandlerMpControlStyle,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -1431,7 +1668,7 @@ struct menuitem g_MpControlMenuItems[] = {
 		0,
 		L_MPMENU_201, // "Reverse Pitch"
 		OPTION_FORWARDPITCH,
-		menuhandler_mp_control_checkbox,
+		menuhandlerMpControlCheckbox,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -1439,7 +1676,7 @@ struct menuitem g_MpControlMenuItems[] = {
 		0,
 		L_MPMENU_202, // "Look Ahead"
 		OPTION_LOOKAHEAD,
-		menuhandler_mp_control_checkbox,
+		menuhandlerMpControlCheckbox,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -1447,7 +1684,7 @@ struct menuitem g_MpControlMenuItems[] = {
 		0,
 		L_MPMENU_203, // "Head Roll"
 		OPTION_HEADROLL,
-		menuhandler_mp_control_checkbox,
+		menuhandlerMpControlCheckbox,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -1455,7 +1692,7 @@ struct menuitem g_MpControlMenuItems[] = {
 		0,
 		L_MPMENU_204, // "Auto-Aim"
 		OPTION_AUTOAIM,
-		menuhandler_mp_control_checkbox,
+		menuhandlerMpControlCheckbox,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -1463,7 +1700,7 @@ struct menuitem g_MpControlMenuItems[] = {
 		0,
 		L_MPMENU_205, // "Aim Control"
 		0,
-		menuhandler_mp_aim_control,
+		menuhandlerMpAimControl,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -1479,7 +1716,7 @@ struct menuitem g_MpControlMenuItems[] = {
 		0,
 		L_MPMENU_206, // "Sight on Screen"
 		OPTION_SIGHTONSCREEN,
-		menuhandler_mp_control_checkbox,
+		menuhandlerMpControlCheckbox,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -1487,7 +1724,7 @@ struct menuitem g_MpControlMenuItems[] = {
 		0,
 		L_MPMENU_207, // "Show Target"
 		OPTION_ALWAYSSHOWTARGET,
-		menuhandler_mp_control_checkbox,
+		menuhandlerMpControlCheckbox,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -1495,7 +1732,7 @@ struct menuitem g_MpControlMenuItems[] = {
 		0,
 		L_MPMENU_208, // "Zoom Range"
 		OPTION_SHOWZOOMRANGE,
-		menuhandler_mp_control_checkbox,
+		menuhandlerMpControlCheckbox,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -1503,7 +1740,7 @@ struct menuitem g_MpControlMenuItems[] = {
 		0,
 		L_MPMENU_209, // "Ammo on Screen"
 		OPTION_AMMOONSCREEN,
-		menuhandler_mp_control_checkbox,
+		menuhandlerMpControlCheckbox,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -1511,7 +1748,7 @@ struct menuitem g_MpControlMenuItems[] = {
 		0,
 		L_MPMENU_210, // "Gun Function"
 		OPTION_SHOWGUNFUNCTION,
-		menuhandler_mp_control_checkbox,
+		menuhandlerMpControlCheckbox,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -1519,7 +1756,7 @@ struct menuitem g_MpControlMenuItems[] = {
 		0,
 		L_MPMENU_211, // "Paintball"
 		OPTION_PAINTBALL,
-		menuhandler_mp_control_checkbox,
+		menuhandlerMpControlCheckbox,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -1556,7 +1793,7 @@ struct menuitem g_MpCompletedChallengesMenuItems[] = {
 		MENUITEMFLAG_LIST_CUSTOMRENDER,
 		0x00000078,
 		0x0000004d,
-		mp_challenges_list_handler,
+		mpChallengesListHandler,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -1571,7 +1808,7 @@ struct menudialogdef g_MpCompletedChallengesMenuDialog = {
 };
 
 #if VERSION >= VERSION_NTSC_1_0
-char *mp_menu_text_username_password(struct menuitem *item)
+char *mpMenuTextUsernamePassword(struct menuitem *item)
 {
 	// Phrases included here to assist people searching the code for them:
 	// EnTROpIcDeCAy
@@ -1631,7 +1868,7 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 		0,
 		0,
 		L_MPMENU_146, // "Kills:"
-		(uintptr_t)&mp_menu_text_kills,
+		(uintptr_t)&mpMenuTextKills,
 		NULL,
 	},
 	{
@@ -1639,7 +1876,7 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 		0,
 		0,
 		L_MPMENU_147, // "Deaths:"
-		(uintptr_t)&mp_menu_text_deaths,
+		(uintptr_t)&mpMenuTextDeaths,
 		NULL,
 	},
 	{
@@ -1647,7 +1884,7 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 		0,
 		0,
 		L_MPMENU_148, // "Accuracy:"
-		(uintptr_t)&mp_menu_text_accuracy,
+		(uintptr_t)&mpMenuTextAccuracy,
 		NULL,
 	},
 	{
@@ -1655,7 +1892,7 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 		0,
 		0,
 		L_MPMENU_149, // "Head Shots:"
-		(uintptr_t)&mp_menu_text_head_shots,
+		(uintptr_t)&mpMenuTextHeadShots,
 		NULL,
 	},
 	{
@@ -1671,7 +1908,7 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 		0,
 		0,
 		L_MPMENU_150, // "Ammo Used:"
-		(uintptr_t)&mp_menu_text_ammo_used,
+		(uintptr_t)&mpMenuTextAmmoUsed,
 		NULL,
 	},
 	{
@@ -1679,7 +1916,7 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 		0,
 		0,
 		L_MPMENU_151, // "Damage Dealt:"
-		(uintptr_t)&mp_menu_text_damage_dealt,
+		(uintptr_t)&mpMenuTextDamageDealt,
 		NULL,
 	},
 	{
@@ -1687,7 +1924,7 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 		0,
 		0,
 		L_MPMENU_152, // "Pain Received:"
-		(uintptr_t)&mp_menu_text_pain_received,
+		(uintptr_t)&mpMenuTextPainReceived,
 		NULL,
 	},
 	{
@@ -1703,7 +1940,7 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 		0,
 		0,
 		L_MPMENU_153, // "Games Played:"
-		(uintptr_t)&mp_menu_text_games_played,
+		(uintptr_t)&mpMenuTextGamesPlayed,
 		NULL,
 	},
 	{
@@ -1711,7 +1948,7 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 		0,
 		0,
 		L_MPMENU_154, // "Games Won:"
-		(uintptr_t)&mp_menu_text_games_won,
+		(uintptr_t)&mpMenuTextGamesWon,
 		NULL,
 	},
 	{
@@ -1719,7 +1956,7 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 		0,
 		0,
 		L_MPMENU_155, // "Games Lost:"
-		(uintptr_t)&mp_menu_text_games_lost,
+		(uintptr_t)&mpMenuTextGamesLost,
 		NULL,
 	},
 	{
@@ -1727,7 +1964,7 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 		0,
 		0,
 		L_MPMENU_156, // "Time:"
-		(uintptr_t)&mp_menu_text_time,
+		(uintptr_t)&mpMenuTextTime,
 		NULL,
 	},
 	{
@@ -1735,7 +1972,7 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 		0,
 		0,
 		L_MPMENU_157, // "Distance:"
-		(uintptr_t)&mp_menu_text_distance,
+		(uintptr_t)&mpMenuTextDistance,
 		NULL,
 	},
 	{
@@ -1759,32 +1996,32 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 		2,
 		MENUITEMFLAG_LIST_CUSTOMRENDER,
 		L_MPMENU_159, // "Accuracy:"
-		(uintptr_t)&mp_menu_text_medal_accuracy,
-		mp_medal_menu_handler,
+		(uintptr_t)&mpMenuTextMedalAccuracy,
+		mpMedalMenuHandler,
 	},
 	{
 		MENUITEMTYPE_LABEL,
 		1,
 		MENUITEMFLAG_LIST_CUSTOMRENDER,
 		L_MPMENU_160, // "Head Shot:"
-		(uintptr_t)&mp_menu_text_medal_head_shot,
-		mp_medal_menu_handler,
+		(uintptr_t)&mpMenuTextMedalHeadShot,
+		mpMedalMenuHandler,
 	},
 	{
 		MENUITEMTYPE_LABEL,
 		0,
 		MENUITEMFLAG_LIST_CUSTOMRENDER,
 		L_MPMENU_161, // "KillMaster:"
-		(uintptr_t)&mp_menu_text_medal_kill_master,
-		mp_medal_menu_handler,
+		(uintptr_t)&mpMenuTextMedalKillMaster,
+		mpMedalMenuHandler,
 	},
 	{
 		MENUITEMTYPE_LABEL,
 		3,
 		MENUITEMFLAG_LIST_CUSTOMRENDER,
 		L_MPMENU_162, // "Survivor:"
-		(uintptr_t)&mp_menu_text_medal_survivor,
-		mp_medal_menu_handler,
+		(uintptr_t)&mpMenuTextMedalSurvivor,
+		mpMedalMenuHandler,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -1806,7 +2043,7 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 		MENUITEMTYPE_LABEL,
 		0,
 		MENUITEMFLAG_SELECTABLE_CENTRE,
-		(uintptr_t)&mp_menu_text_player_title,
+		(uintptr_t)&mpMenuTextPlayerTitle,
 		0,
 		NULL,
 	},
@@ -1816,19 +2053,19 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 		MENUITEMFLAG_SMALLFONT,
 		L_MPWEAPONS_219, // "USERNAME:"
 		0,
-		menuhandler_mp_username_password,
+		menuhandlerMpUsernamePassword,
 	},
 	{
 		MENUITEMTYPE_LABEL,
 		0,
 		MENUITEMFLAG_SELECTABLE_CENTRE | MENUITEMFLAG_SMALLFONT,
 #if VERSION >= VERSION_NTSC_1_0
-		(uintptr_t)&mp_menu_text_username_password,
+		(uintptr_t)&mpMenuTextUsernamePassword,
 #else
 		0x51f0,
 #endif
 		0,
-		menuhandler_mp_username_password,
+		menuhandlerMpUsernamePassword,
 	},
 	{
 		MENUITEMTYPE_LABEL,
@@ -1836,19 +2073,19 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 		MENUITEMFLAG_SMALLFONT,
 		L_MPWEAPONS_220, // "PASSWORD:"
 		0,
-		menuhandler_mp_username_password,
+		menuhandlerMpUsernamePassword,
 	},
 	{
 		MENUITEMTYPE_LABEL,
 		(VERSION >= VERSION_NTSC_1_0 ? 1 : 0),
 		MENUITEMFLAG_SELECTABLE_CENTRE | MENUITEMFLAG_SMALLFONT,
 #if VERSION >= VERSION_NTSC_1_0
-		(uintptr_t)&mp_menu_text_username_password,
+		(uintptr_t)&mpMenuTextUsernamePassword,
 #else
 		0x51f1,
 #endif
 		0,
-		menuhandler_mp_username_password,
+		menuhandlerMpUsernamePassword,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -1871,14 +2108,14 @@ struct menuitem g_MpPlayerStatsMenuItems[] = {
 
 struct menudialogdef g_MpPlayerStatsMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
-	(uintptr_t)&mp_menu_title_stats_for_player_name,
+	(uintptr_t)&mpMenuTitleStatsForPlayerName,
 	g_MpPlayerStatsMenuItems,
 	NULL,
 	MENUDIALOGFLAG_DISABLEITEMSCROLL | MENUDIALOGFLAG_SMOOTHSCROLLABLE,
 	&g_MpCompletedChallengesMenuDialog,
 };
 
-MenuItemHandlerResult mp_character_head_menu_handler(s32 operation, struct menuitem *item, union handlerdata *data, s32 mpheadnum, bool arg4)
+MenuItemHandlerResult mpCharacterHeadMenuHandler(s32 operation, struct menuitem *item, union handlerdata *data, s32 mpheadnum, bool arg4)
 {
 	f32 diffframe;
 	s32 headnum;
@@ -1891,10 +2128,10 @@ MenuItemHandlerResult mp_character_head_menu_handler(s32 operation, struct menui
 	};
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
-		data->carousel.value = mp_get_num_heads2();
+	case MENUOP_GETOPTIONCOUNT:
+		data->carousel.value = mpGetNumHeads2();
 		break;
-	case MENUOP_ON_CAROUSEL_TICK:
+	case MENUOP_11:
 #if VERSION >= VERSION_PAL_BETA
 		diffframe = g_Menus[g_MpPlayerNum].menumodel.curroty + 0.01f * g_Vars.diffframe60freal;
 #else
@@ -1904,40 +2141,40 @@ MenuItemHandlerResult mp_character_head_menu_handler(s32 operation, struct menui
 		g_Menus[g_MpPlayerNum].menumodel.newroty = diffframe;
 		g_Menus[g_MpPlayerNum].menumodel.curroty = diffframe;
 
-		if (mpheadnum < mp_get_num_heads2()) {
-			headnum = mp_get_head_id(mpheadnum);
+		if (mpheadnum < mpGetNumHeads2()) {
+			headnum = mpGetHeadId(mpheadnum);
 
 			g_Menus[g_MpPlayerNum].menumodel.newparams = MENUMODELPARAMS_SET_FILENUM(g_HeadsAndBodies[headnum].filenum);
 			g_Menus[g_MpPlayerNum].menumodel.isperfecthead = false;
 		} else {
-			headnum = mp_get_beau_head_id(phead_get_unk3a4(mpheadnum - mp_get_num_heads2()));
+			headnum = mpGetBeauHeadId(func0f14a9f8(mpheadnum - mpGetNumHeads2()));
 
 			g_Menus[g_MpPlayerNum].menumodel.newparams = MENUMODELPARAMS_SET_FILENUM(g_HeadsAndBodies[headnum].filenum);
 			g_Menus[g_MpPlayerNum].menumodel.isperfecthead = true;
-			g_Menus[g_MpPlayerNum].menumodel.perfectheadnum = mpheadnum - mp_get_num_heads2();
+			g_Menus[g_MpPlayerNum].menumodel.perfectheadnum = mpheadnum - mpGetNumHeads2();
 		}
 
 		g_Menus[g_MpPlayerNum].menumodel.zoomtimer60 = 0;
 		g_Menus[g_MpPlayerNum].menumodel.partvisibility = visibility;
 		g_Menus[g_MpPlayerNum].menumodel.zoom = 30;
 		break;
-	case MENUOP_IS_CAROUSEL_OPTION_HIDDEN:
-		if (!challenge_is_feature_unlocked(mp_get_head_required_feature(data->carousel.value))) {
+	case MENUOP_21:
+		if (!challengeIsFeatureUnlocked(mpGetHeadRequiredFeature(data->carousel.value))) {
 			return 1;
 		}
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		data->carousel.value = mpheadnum;
 		break;
-	case MENUOP_CONFIRM:
-	case MENUOP_ON_FOCUS:
+	case MENUOP_SET:
+	case MENUOP_FOCUS:
 #if VERSION >= VERSION_NTSC_1_0
 		g_Menus[g_MpPlayerNum].menumodel.loaddelay = 3;
 #endif
 
-		mp_get_num_heads2();
+		mpGetNumHeads2();
 
-		menu_configure_model(&g_Menus[g_MpPlayerNum].menumodel, 0, 0, 0, 0, 0, 0, 1, MENUMODELFLAG_HASSCALE);
+		menuConfigureModel(&g_Menus[g_MpPlayerNum].menumodel, 0, 0, 0, 0, 0, 0, 1, MENUMODELFLAG_HASSCALE);
 
 		g_Menus[g_MpPlayerNum].menumodel.curposx = 0;
 		g_Menus[g_MpPlayerNum].menumodel.curposy = 0;
@@ -1958,32 +2195,32 @@ MenuItemHandlerResult mp_character_head_menu_handler(s32 operation, struct menui
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_character_head(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpCharacterHead(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		g_PlayerConfigsArray[g_MpPlayerNum].base.mpheadnum = data->carousel.value;
 	}
 
-	return mp_character_head_menu_handler(operation, item, data, g_PlayerConfigsArray[g_MpPlayerNum].base.mpheadnum, 1);
+	return mpCharacterHeadMenuHandler(operation, item, data, g_PlayerConfigsArray[g_MpPlayerNum].base.mpheadnum, 1);
 }
 
-char *mp_menu_text_body_name(struct menuitem *item)
+char *mpMenuTextBodyName(struct menuitem *item)
 {
-	return mp_get_body_name(g_PlayerConfigsArray[g_MpPlayerNum].base.mpbodynum);
+	return mpGetBodyName(g_PlayerConfigsArray[g_MpPlayerNum].base.mpbodynum);
 }
 
-void mp_restart_character_body_label_timer(void)
+void func0f17b8f0(void)
 {
-	menu_set_item_redraw_timer(&g_MpCharacterMenuItems[0], -0.4f);
+	func0f0f139c(g_MpCharacterMenuItems, -0.4f);
 }
 
-MenuItemHandlerResult mp_player_name_menu_handler(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult mpPlayerNameMenuHandler(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	char *name = data->keyboard.string;
 	s32 i;
 
 	switch (operation) {
-	case MENUOP_GET_KEYBOARD_STRING:
+	case MENUOP_GETTEXT:
 		i = 0;
 
 		while (g_PlayerConfigsArray[g_MpPlayerNum].base.name[i] != '\n'
@@ -1998,7 +2235,7 @@ MenuItemHandlerResult mp_player_name_menu_handler(s32 operation, struct menuitem
 			i++;
 		}
 		break;
-	case MENUOP_SET_KEYBOARD_STRING:
+	case MENUOP_SETTEXT:
 		i = 0;
 
 		while (i < 11 && name[i] != '\0') {
@@ -2019,82 +2256,62 @@ MenuItemHandlerResult mp_player_name_menu_handler(s32 operation, struct menuitem
 	return 0;
 }
 
-MenuItemHandlerResult mp_load_settings_menu_handler(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult mpLoadSettingsMenuHandler(s32 operation, struct menuitem *item, union handlerdata *data)
 {
+	u8 presets = g_Menus[g_MpPlayerNum].mpsetup.showpresets;
+	s32 numpresets = mpGetNumUnlockedPresets()*presets;
+
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
-		data->list.value = mp_get_num_unlocked_presets();
-
-		if (g_FileLists[1] != NULL) {
-			data->list.value += g_FileLists[1]->numfiles;
+	case MENUOP_GETOPTIONCOUNT:
+		data->list.value = numpresets + g_MpSetupFile.numsetups;
+		break;
+	case MENUOP_GETOPTIONTEXT:
+		if (presets && data->list.value < mpGetNumUnlockedPresets()) {
+			return (uintptr_t)mpGetPresetNameBySlot(data->list.value);
+		}
+		if (g_MpSetupFile.numsetups > 0) {
+			struct setupblock *block = &g_MpSetupFile.setups[data->list.value - numpresets];
+			func0f0d564c_ext(block->bytes, g_StringPointer, false, MPSETUP_MAXNAME+1);
+			return (uintptr_t)g_StringPointer;
 		}
 		break;
-	case MENUOP_GET_OPTION_TEXT:
-		if (data->list.value < mp_get_num_unlocked_presets()) {
-			return (s32)mp_get_preset_name_by_slot(data->list.value);
-		}
-		if (g_FileLists[1] != NULL) {
-			savebuffer_bitstring_to_cstring(g_FileLists[1]->files[data->list.value - mp_get_num_unlocked_presets()].name, g_StringPointer, false);
-			return (s32)g_StringPointer;
-		}
-		break;
-	case MENUOP_CONFIRM:
-		mp_close_dialogs_for_new_setup();
+	case MENUOP_SET:
+		mpCloseDialogsForNewSetup();
 
-		if (data->list.value < mp_get_num_unlocked_presets()) {
-			mp_load_preset_by_slotnum(data->list.value);
-		} else if (g_FileLists[1] != NULL) {
-			struct filelistfile *file = &g_FileLists[1]->files[data->list.value - mp_get_num_unlocked_presets()];
-			struct fileguid guid;
-
-			guid.fileid = file->fileid;
-			guid.deviceserial = file->deviceserial;
-
-			filemgr_save_or_load(&guid, FILEOP_LOAD_MPSETUP, 0);
+		if (presets && data->list.value < mpGetNumUnlockedPresets()) {
+			mp0f18dec4(data->list.value);
+			g_MpCurrentSetup = -1;
+		} else {
+			mpsetupLoadSetup(data->list.value - numpresets);
 		}
 
 		if (item->param == 1) {
 			if (IS4MB()) {
-				menu_save_and_push_root_dialog(&g_MpQuickGo4MbMenuDialog, MENUROOT_4MBMAINMENU);
+				func0f0f820c(&g_MpQuickGo4MbMenuDialog, MENUROOT_4MBMAINMENU);
 			} else {
-				menu_save_and_push_root_dialog(&g_MpQuickGoMenuDialog, MENUROOT_MPSETUP);
+				func0f0f820c(&g_MpQuickGoMenuDialog, MENUROOT_MPSETUP);
 			}
 		}
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		data->list.value = 0xfffff;
 		break;
-	case MENUOP_GET_OPTGROUP_COUNT:
-		data->list.value = 1;
-
-		if (g_FileLists[1] != NULL) {
-			data->list.value += g_FileLists[1]->numdevices;
-		}
+	case MENUOP_GETOPTGROUPCOUNT:
+		data->list.value = presets ? 2 : 1;
 		break;
-	case MENUOP_GET_OPTGROUP_TEXT:
-		if (data->list.value == 0) {
-			return (s32)lang_get(L_MPMENU_141); // "Presets"
+	case MENUOP_GETOPTGROUPTEXT:
+		if (presets && data->list.value == 0) {
+			return (uintptr_t)langGet(L_MPMENU_141); // "Presets"
 		}
-		if (g_FileLists[1] != NULL) {
-			return (s32)filemgr_get_device_name_or_start_index(1, operation, data->list.value - 1);
-		}
+		return (uintptr_t)"Custom";
+	case MENUOP_GETGROUPSTARTINDEX:
+		data->list.groupstartindex = data->list.value == 0 ? 0 : numpresets;
 		break;
-	case MENUOP_GET_OPTGROUP_START_INDEX:
-		if (data->list.value == 0) {
-			data->list.groupstartindex = 0;
-		} else {
-			data->list.groupstartindex = mp_get_num_unlocked_presets();
-
-			if (g_FileLists[1] != NULL) {
-				data->list.groupstartindex += filemgr_get_device_name_or_start_index(1, operation, data->list.value - 1);
-			}
-		}
-		break;
-	case MENUOP_ON_OPTION_FOCUS:
-		if (data->list.value < mp_get_num_unlocked_presets()) {
+	case MENUOP_LISTITEMFOCUS:
+		if (presets && data->list.value < mpGetNumUnlockedPresets()) {
 			g_Menus[g_MpPlayerNum].mpsetup.slotindex = 0xffff;
 		} else {
-			g_Menus[g_MpPlayerNum].mpsetup.slotindex = data->list.value - mp_get_num_unlocked_presets();
+			g_Menus[g_MpPlayerNum].mpsetup.slotindex = data->list.value - numpresets;
 		}
 		break;
 	}
@@ -2102,23 +2319,23 @@ MenuItemHandlerResult mp_load_settings_menu_handler(s32 operation, struct menuit
 	return 0;
 }
 
-char *mp_menu_text_mpconfig_marquee(struct menuitem *item)
+char *mpMenuTextMpconfigMarquee(struct menuitem *item)
 {
-	char filename[20];
+	char filename[MPSETUP_MAXNAME+1];
 	u16 numsims;
 	u16 stagenum;
 	u16 scenarionum;
 	s32 arenanum;
 	s32 i;
 
-	if (g_Menus[g_MpPlayerNum].mpsetup.slotindex < 0xffff && g_FileLists[1]) {
+	if (g_Menus[g_MpPlayerNum].mpsetup.slotindex < 0xffff && g_MpSetupFile.numsetups > 0) {
 #if VERSION >= VERSION_NTSC_1_0
 		arenanum = -1;
 #else
 		arenanum = 0;
 #endif
 
-		mpsetupfile_get_overview(g_FileLists[1]->files[g_Menus[g_MpPlayerNum].mpsetup.slotindex].name,
+		mpsetupfileGetOverview(g_MpSetupFile.setups[g_Menus[g_MpPlayerNum].mpsetup.slotindex].bytes,
 				filename, &numsims, &stagenum, &scenarionum);
 
 		for (i = 0; i < ARRAYCOUNT(g_MpArenas); i++) {
@@ -2130,20 +2347,20 @@ char *mp_menu_text_mpconfig_marquee(struct menuitem *item)
 #if VERSION >= VERSION_NTSC_1_0
 		if (scenarionum <= 5 && arenanum != -1 && numsims >= 0 && filename[0] != '\0' && numsims <= MAX_BOTS) {
 			// "%s:  Scenario: %s   Arena: %s    Simulants: %d"
-			sprintf(g_StringPointer, lang_get(L_MPMENU_140),
+			sprintf(g_StringPointer, langGet(L_MPMENU_140),
 					filename,
-					lang_get(g_MpScenarioOverviews[scenarionum].name),
-					lang_get(g_MpArenas[arenanum].name),
+					langGet(g_MpScenarioOverviews[scenarionum].name),
+					langGet(g_MpArenas[arenanum].name),
 					numsims);
 		} else {
 			return "";
 		}
 #else
 		// "%s:  Scenario: %s   Arena: %s    Simulants: %d"
-		sprintf(g_StringPointer, lang_get(L_MPMENU_140),
+		sprintf(g_StringPointer, langGet(L_MPMENU_140),
 				filename,
-				lang_get(g_MpScenarioOverviews[scenarionum].name),
-				lang_get(g_MpArenas[arenanum].name),
+				langGet(g_MpScenarioOverviews[scenarionum].name),
+				langGet(g_MpArenas[arenanum].name),
 				numsims);
 #endif
 
@@ -2153,7 +2370,7 @@ char *mp_menu_text_mpconfig_marquee(struct menuitem *item)
 	return "";
 }
 
-MenuItemHandlerResult mp_load_player_menu_handler(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult mpLoadPlayerMenuHandler(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	s32 i;
 	struct fileguid guid;
@@ -2165,13 +2382,13 @@ MenuItemHandlerResult mp_load_player_menu_handler(s32 operation, struct menuitem
 	}
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 		data->list.value = g_FileLists[0]->numfiles;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
-		filemgr_get_select_name(g_StringPointer, &g_FileLists[0]->files[data->list.value], FILETYPE_MPPLAYER);
-		return (s32)g_StringPointer;
-	case MENUOP_CONFIRM:
+	case MENUOP_GETOPTIONTEXT:
+		filemgrGetSelectName(g_StringPointer, &g_FileLists[0]->files[data->list.value], FILETYPE_MPPLAYER);
+		return (uintptr_t)g_StringPointer;
+	case MENUOP_SET:
 		file = &g_FileLists[0]->files[data->list.value];
 		available = true;
 
@@ -2179,7 +2396,7 @@ MenuItemHandlerResult mp_load_player_menu_handler(s32 operation, struct menuitem
 			if (file->fileid == g_PlayerConfigsArray[i].fileguid.fileid
 					&& file->deviceserial == g_PlayerConfigsArray[i].fileguid.deviceserial) {
 				if ((g_MpSetup.chrslots & (1 << i)) == 0) {
-					mp_player_set_defaults(i, true);
+					mpPlayerSetDefaults(i, true);
 				} else {
 					available = false;
 				}
@@ -2190,120 +2407,120 @@ MenuItemHandlerResult mp_load_player_menu_handler(s32 operation, struct menuitem
 			guid.fileid = file->fileid;
 			guid.deviceserial = file->deviceserial;
 
-			menu_pop_dialog();
+			menuPopDialog();
 
-			filemgr_save_or_load(&guid, FILEOP_LOAD_MPPLAYER, g_MpPlayerNum);
+			filemgrSaveOrLoad(&guid, FILEOP_LOAD_MPPLAYER, g_MpPlayerNum);
 		} else {
-			filemgr_push_error_dialog(FILEERROR_ALREADYLOADED);
+			filemgrPushErrorDialog(FILEERROR_ALREADYLOADED);
 		}
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		data->list.value = 0xfffff;
 		break;
-	case MENUOP_GET_OPTGROUP_COUNT:
+	case MENUOP_GETOPTGROUPCOUNT:
 		data->list.value = g_FileLists[0]->numdevices;
 		break;
-	case MENUOP_GET_OPTGROUP_TEXT:
-		return filemgr_get_device_name_or_start_index(0, operation, data->list.value);
-	case MENUOP_GET_OPTGROUP_START_INDEX:
-		data->list.groupstartindex = filemgr_get_device_name_or_start_index(0, operation, data->list.value);
+	case MENUOP_GETOPTGROUPTEXT:
+		return filemgrGetDeviceNameOrStartIndex(0, operation, data->list.value);
+	case MENUOP_GETGROUPSTARTINDEX:
+		data->list.groupstartindex = filemgrGetDeviceNameOrStartIndex(0, operation, data->list.value);
 		return 0;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_time_limit_slider(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpTimeLimitSlider(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_GET_SLIDER_VALUE:
+	case MENUOP_GETSLIDER:
 		data->slider.value = g_MpSetup.timelimit;
 		break;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_MpSetup.timelimit = data->slider.value;
 		break;
-	case MENUOP_GET_SLIDER_LABEL:
+	case MENUOP_GETSLIDERLABEL:
 		if (data->slider.value == 60) {
-			sprintf(data->slider.label, lang_get(L_MPMENU_112)); // "No Limit"
+			sprintf(data->slider.label, langGet(L_MPMENU_112)); // "No Limit"
 		} else {
-			sprintf(data->slider.label, lang_get(L_MPMENU_114), data->slider.value + 1); // "%d Min"
+			sprintf(data->slider.label, langGet(L_MPMENU_114), data->slider.value + 1); // "%d Min"
 		}
 	}
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_score_limit_slider(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpScoreLimitSlider(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_GET_SLIDER_VALUE:
+	case MENUOP_GETSLIDER:
 		data->slider.value = g_MpSetup.scorelimit;
 		break;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_MpSetup.scorelimit = data->slider.value;
 		break;
-	case MENUOP_GET_SLIDER_LABEL:
+	case MENUOP_GETSLIDERLABEL:
 		if (data->slider.value == 100) {
-			sprintf(data->slider.label, lang_get(L_MPMENU_112)); // "No Limit"
+			sprintf(data->slider.label, langGet(L_MPMENU_112)); // "No Limit"
 		} else {
-			sprintf(data->slider.label, lang_get(L_MPMENU_113), data->slider.value + 1); // "%d"
+			sprintf(data->slider.label, langGet(L_MPMENU_113), data->slider.value + 1); // "%d"
 		}
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_team_score_limit_slider(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpTeamScoreLimitSlider(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_GET_SLIDER_VALUE:
-		data->slider.value = mp_calculate_team_score_limit();
+	case MENUOP_GETSLIDER:
+		data->slider.value = mpCalculateTeamScoreLimit();
 		break;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_MpSetup.teamscorelimit = data->slider.value;
 		break;
-	case MENUOP_GET_SLIDER_LABEL:
+	case MENUOP_GETSLIDERLABEL:
 		if (data->slider.value == 400) {
-			sprintf(data->slider.label, lang_get(L_MPMENU_112)); // "No Limit"
+			sprintf(data->slider.label, langGet(L_MPMENU_112)); // "No Limit"
 		} else {
-			sprintf(data->slider.label, lang_get(L_MPMENU_113), data->slider.value + 1); // "%d"
+			sprintf(data->slider.label, langGet(L_MPMENU_113), data->slider.value + 1); // "%d"
 		}
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_restore_score_defaults(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpRestoreScoreDefaults(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		mp_init_limits();
+	if (operation == MENUOP_SET) {
+		func0f187fec();
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_handicap_player(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpHandicapPlayer(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_IS_HIDDEN:
+	case MENUOP_CHECKHIDDEN:
 		if ((g_MpSetup.chrslots & (1 << item->param)) == 0) {
 			return 1;
 		}
 		break;
-	case MENUOP_GET_SLIDER_VALUE:
+	case MENUOP_GETSLIDER:
 		data->slider.value = g_PlayerConfigsArray[item->param].handicap;
 		break;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_PlayerConfigsArray[item->param].handicap = (u16)data->slider.value;
 		break;
-	case MENUOP_GET_SLIDER_LABEL:
-		sprintf(data->slider.label, "%s%s%.00f%%\n", "", "", mp_handicap_to_value(g_PlayerConfigsArray[item->param].handicap) * 100);
+	case MENUOP_GETSLIDERLABEL:
+		sprintf(data->slider.label, "%s%s%.00f%%\n", "", "", mpHandicapToDamageScale(g_PlayerConfigsArray[item->param].handicap) * 100);
 		break;
 	}
 
 	return 0;
 }
 
-char *mp_menu_text_handicap_player_name(struct menuitem *item)
+char *mpMenuTextHandicapPlayerName(struct menuitem *item)
 {
 	if (g_MpSetup.chrslots & (1 << item->param)) {
 		return g_PlayerConfigsArray[item->param].base.name;
@@ -2312,9 +2529,9 @@ char *mp_menu_text_handicap_player_name(struct menuitem *item)
 	return "";
 }
 
-MenuItemHandlerResult menuhandler_mp_restore_handicap_defaults(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpRestoreHandicapDefaults(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		s32 i;
 
 		for (i = 0; i < MAX_PLAYERS; i++) {
@@ -2325,26 +2542,36 @@ MenuItemHandlerResult menuhandler_mp_restore_handicap_defaults(s32 operation, st
 	return 0;
 }
 
-MenuDialogHandlerResult menudialog_mp_ready(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialogMpReady(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
-	if (operation == MENUOP_ON_OPEN) {
+	if (operation == MENUOP_OPEN) {
 		if (g_PlayerConfigsArray[g_MpPlayerNum].fileguid.fileid && g_PlayerConfigsArray[g_MpPlayerNum].fileguid.deviceserial) {
-			filemgr_save_or_load(&g_PlayerConfigsArray[g_MpPlayerNum].fileguid, FILEOP_SAVE_MPPLAYER, g_MpPlayerNum);
+			filemgrSaveOrLoad(&g_PlayerConfigsArray[g_MpPlayerNum].fileguid, FILEOP_SAVE_MPPLAYER, g_MpPlayerNum);
 		}
 	}
 
 	return false;
 }
 
-MenuDialogHandlerResult menudialog_mp_simulant(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialogMpSimulant(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
-	if (operation == MENUOP_ON_TICK) {
+	if (operation == MENUOP_TICK) {
 		if ((u8)g_BotConfigsArray[g_Menus[g_MpPlayerNum].mpsetup.slotindex].base.name[0] == '\0') {
-			menu_pop_dialog();
+			menuPopDialog();
 		}
 	}
 
 	return false;
+}
+
+MenuDialogHandlerResult mpLoadSettingsDialogHandler(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+{
+	if (operation == MENUOP_TICK) {
+		if (menuAltAnyPressed(g_MpPlayerNum)) {
+			u8 presets = g_Menus[g_MpPlayerNum].mpsetup.showpresets;
+			g_Menus[g_MpPlayerNum].mpsetup.showpresets = 1 - presets;
+		}
+	}
 }
 
 struct menuitem g_MpCharacterMenuItems[] = {
@@ -2352,7 +2579,7 @@ struct menuitem g_MpCharacterMenuItems[] = {
 		MENUITEMTYPE_LABEL,
 		0,
 		MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_SELECTABLE_CENTRE | MENUITEMFLAG_SMALLFONT | MENUITEMFLAG_DARKERBG,
-		(uintptr_t)&mp_menu_text_body_name,
+		(uintptr_t)&mpMenuTextBodyName,
 		0,
 		NULL,
 	},
@@ -2362,7 +2589,7 @@ struct menuitem g_MpCharacterMenuItems[] = {
 		0,
 		0,
 		0x00000022,
-		menuhandler_mp_character_head,
+		menuhandlerMpCharacterHead,
 	},
 	{
 		MENUITEMTYPE_CAROUSEL,
@@ -2370,7 +2597,7 @@ struct menuitem g_MpCharacterMenuItems[] = {
 		0,
 		0,
 		0x0000001b,
-		menuhandler_mp_character_body,
+		menuhandlerMpCharacterBody,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -2379,8 +2606,8 @@ struct menudialogdef g_MpCharacterMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_MPMENU_143, // "Character"
 	g_MpCharacterMenuItems,
-	menudialog_mp_human_character,
-	MENUDIALOGFLAG_ALLOW_MODELS,
+	menudialog0017a174,
+	MENUDIALOGFLAG_0002,
 	NULL,
 };
 
@@ -2391,7 +2618,7 @@ struct menuitem g_MpPlayerNameMenuItems[] = {
 		0,
 		0,
 		0,
-		mp_player_name_menu_handler,
+		mpPlayerNameMenuHandler,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -2412,13 +2639,29 @@ struct menuitem g_MpLoadSettingsMenuItems[] = {
 		0,
 		0x00000078,
 		0x00000042,
-		mp_load_settings_menu_handler,
+		mpLoadSettingsMenuHandler,
 	},
 	{
 		MENUITEMTYPE_MARQUEE,
 		0,
 		MENUITEMFLAG_SMALLFONT | MENUITEMFLAG_MARQUEE_FADEBOTHSIDES,
-		(uintptr_t)&mp_menu_text_mpconfig_marquee,
+		(uintptr_t)&mpMenuTextMpconfigMarquee,
+		0,
+		NULL,
+	},
+	{
+		MENUITEMTYPE_SEPARATOR,
+		0,
+		0,
+		0,
+		0,
+		NULL,
+	},
+	{
+		MENUITEMTYPE_LABEL,
+		0,
+		MENUITEMFLAG_LITERAL_TEXT | MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_SMALLFONT,
+		(uintptr_t)"Menu Alt: Toggle Presets\n",
 		0,
 		NULL,
 	},
@@ -2429,7 +2672,7 @@ struct menudialogdef g_MpLoadSettingsMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_MPMENU_139, // "Load Game Settings"
 	g_MpLoadSettingsMenuItems,
-	NULL,
+	mpLoadSettingsDialogHandler,
 	MENUDIALOGFLAG_CLOSEONSELECT,
 	NULL,
 };
@@ -2441,13 +2684,13 @@ struct menuitem g_MpLoadPresetMenuItems[] = {
 		0,
 		0x00000078,
 		0x00000042,
-		mp_load_settings_menu_handler,
+		mpLoadSettingsMenuHandler,
 	},
 	{
 		MENUITEMTYPE_MARQUEE,
 		0,
 		MENUITEMFLAG_SMALLFONT | MENUITEMFLAG_MARQUEE_FADEBOTHSIDES,
-		(uintptr_t)&mp_menu_text_mpconfig_marquee,
+		(uintptr_t)&mpMenuTextMpconfigMarquee,
 		0,
 		NULL,
 	},
@@ -2470,7 +2713,7 @@ struct menuitem g_MpLoadPlayerMenuItems[] = {
 		0,
 		0x0000007e,
 		0x00000042,
-		mp_load_player_menu_handler,
+		mpLoadPlayerMenuHandler,
 	},
 	{
 		MENUITEMTYPE_LABEL,
@@ -2499,7 +2742,7 @@ struct menuitem g_MpArenaMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		0x00000078,
 		0x0000004d,
-		mp_arena_menu_handler,
+		mpArenaMenuHandler,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -2520,7 +2763,7 @@ struct menuitem g_MpLimitsMenuItems[] = {
 		MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_108, // "Time"
 		0x0000003c,
-		menuhandler_mp_time_limit_slider,
+		menuhandlerMpTimeLimitSlider,
 	},
 	{
 		MENUITEMTYPE_SLIDER,
@@ -2528,7 +2771,7 @@ struct menuitem g_MpLimitsMenuItems[] = {
 		MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_109, // "Score"
 		0x00000064,
-		menuhandler_mp_score_limit_slider,
+		menuhandlerMpScoreLimitSlider,
 	},
 	{
 		MENUITEMTYPE_SLIDER,
@@ -2536,7 +2779,7 @@ struct menuitem g_MpLimitsMenuItems[] = {
 		MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_LOCKABLEMINOR,
 		L_MISC_447, // "Team Score"
 		0x00000190,
-		menuhandler_mp_team_score_limit_slider,
+		menuhandlerMpTeamScoreLimitSlider,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -2552,7 +2795,7 @@ struct menuitem g_MpLimitsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_LOCKABLEMAJOR,
 		L_MPMENU_110, // "Restore Defaults"
 		0,
-		menuhandler_mp_restore_score_defaults,
+		menuhandlerMpRestoreScoreDefaults,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -2579,33 +2822,33 @@ struct menuitem g_MpHandicapsMenuItems[] = {
 		MENUITEMTYPE_SLIDER,
 		0,
 		MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_handicap_player_name,
+		(uintptr_t)&mpMenuTextHandicapPlayerName,
 		0x000000ff,
-		menuhandler_mp_handicap_player,
+		menuhandlerMpHandicapPlayer,
 	},
 	{
 		MENUITEMTYPE_SLIDER,
 		1,
 		MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_handicap_player_name,
+		(uintptr_t)&mpMenuTextHandicapPlayerName,
 		0x000000ff,
-		menuhandler_mp_handicap_player,
+		menuhandlerMpHandicapPlayer,
 	},
 	{
 		MENUITEMTYPE_SLIDER,
 		2,
 		MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_handicap_player_name,
+		(uintptr_t)&mpMenuTextHandicapPlayerName,
 		0x000000ff,
-		menuhandler_mp_handicap_player,
+		menuhandlerMpHandicapPlayer,
 	},
 	{
 		MENUITEMTYPE_SLIDER,
 		3,
 		MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_handicap_player_name,
+		(uintptr_t)&mpMenuTextHandicapPlayerName,
 		0x000000ff,
-		menuhandler_mp_handicap_player,
+		menuhandlerMpHandicapPlayer,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -2621,7 +2864,7 @@ struct menuitem g_MpHandicapsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_LOCKABLEMAJOR,
 		L_MPMENU_110, // "Restore Defaults"
 		0,
-		menuhandler_mp_restore_handicap_defaults,
+		menuhandlerMpRestoreHandicapDefaults,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -2659,12 +2902,12 @@ struct menudialogdef g_MpReadyMenuDialog = {
 	MENUDIALOGTYPE_SUCCESS,
 	L_MPMENU_105, // "Ready!"
 	g_MpReadyMenuItems,
-	menudialog_mp_ready,
+	menudialogMpReady,
 	MENUDIALOGFLAG_CLOSEONSELECT,
 	NULL,
 };
 
-MenuItemHandlerResult mp_add_change_simulant_menu_handler(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult mpAddChangeSimulantMenuHandler(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	s32 i;
 	s32 count = 0;
@@ -2678,39 +2921,39 @@ MenuItemHandlerResult mp_add_change_simulant_menu_handler(s32 operation, struct 
 	bool creating;
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 		for (i = 0; i < ARRAYCOUNT(g_BotProfiles); i++) {
-			if (challenge_is_feature_unlocked(g_BotProfiles[i].requirefeature)) {
+			if (challengeIsFeatureUnlocked(g_BotProfiles[i].requirefeature)) {
 				count++;
 			}
 		}
 
 		data->list.value = count;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
+	case MENUOP_GETOPTIONTEXT:
 		for (i = 0; i < ARRAYCOUNT(g_BotProfiles); i++) {
-			if (challenge_is_feature_unlocked(g_BotProfiles[i].requirefeature)) {
+			if (challengeIsFeatureUnlocked(g_BotProfiles[i].requirefeature)) {
 				if (count == data->list.value) {
-					return (s32)lang_get(g_BotProfiles[i].name);
+					return (uintptr_t)langGet(g_BotProfiles[i].name);
 				}
 
 				count++;
 			}
 		}
 		break;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		botnum = g_Menus[g_MpPlayerNum].mpsetup.slotindex;
 		creating = false;
 
 		if (botnum < 0) {
-			botnum = mp_get_slot_for_new_bot();
+			botnum = mpGetSlotForNewBot();
 			creating = 1;
 		} else if ((g_MpSetup.chrslots & (1 << (botnum + 4))) == 0) {
 			creating = 1;
 		}
 
 		for (i = 0; i < ARRAYCOUNT(g_BotProfiles); i++) {
-			if (challenge_is_feature_unlocked(g_BotProfiles[i].requirefeature)) {
+			if (challengeIsFeatureUnlocked(g_BotProfiles[i].requirefeature)) {
 				if (count == data->list.value) {
 					break;
 				}
@@ -2720,21 +2963,21 @@ MenuItemHandlerResult mp_add_change_simulant_menu_handler(s32 operation, struct 
 		}
 
 		if (creating) {
-			mp_create_bot_from_profile(botnum, i);
+			mpCreateBotFromProfile(botnum, i);
 		} else {
 			g_BotConfigsArray[botnum].type = g_BotProfiles[i].type;
 
 			if (g_BotConfigsArray[botnum].type == BOTTYPE_GENERAL) {
-				mp_set_bot_difficulty(botnum, g_BotProfiles[i].difficulty);
+				mpSetBotDifficulty(botnum, g_BotProfiles[i].difficulty);
 			}
 		}
 
-		mp_generate_bot_names();
+		mpGenerateBotNames();
 		g_Menus[g_MpPlayerNum].mpsetup.slotcount = data->list.value;
 		break;
-	case MENUOP_ON_OPTION_FOCUS:
+	case MENUOP_LISTITEMFOCUS:
 		for (i = 0; i < ARRAYCOUNT(g_BotProfiles); i++) {
-			if (challenge_is_feature_unlocked(g_BotProfiles[i].requirefeature)) {
+			if (challengeIsFeatureUnlocked(g_BotProfiles[i].requirefeature)) {
 				if (count == data->list.value) {
 					break;
 				}
@@ -2743,19 +2986,19 @@ MenuItemHandlerResult mp_add_change_simulant_menu_handler(s32 operation, struct 
 			}
 		}
 
-		g_Menus[g_MpPlayerNum].mpsetup.botprofileindex = i;
+		g_Menus[g_MpPlayerNum].mpsetup.unke24 = i;
 		// fall-through
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		data->list.value = g_Menus[g_MpPlayerNum].mpsetup.slotcount;
 		break;
-	case MENUOP_GET_OPTGROUP_COUNT:
+	case MENUOP_GETOPTGROUPCOUNT:
 		data->list.value = 2;
 		break;
-	case MENUOP_GET_OPTGROUP_TEXT:
-		return (s32)lang_get(groups[data->list.value].name);
-	case MENUOP_GET_OPTGROUP_START_INDEX:
+	case MENUOP_GETOPTGROUPTEXT:
+		return (uintptr_t)langGet(groups[data->list.value].name);
+	case MENUOP_GETGROUPSTARTINDEX:
 		for (i = 0; i < groups[data->list.value].offset; i++) {
-			if (challenge_is_feature_unlocked(g_BotProfiles[i].requirefeature)) {
+			if (challengeIsFeatureUnlocked(g_BotProfiles[i].requirefeature)) {
 				count++;
 			}
 		}
@@ -2767,30 +3010,29 @@ MenuItemHandlerResult mp_add_change_simulant_menu_handler(s32 operation, struct 
 	return 0;
 }
 
-char *mp_menu_text_simulant_description(struct menuitem *item)
+char *mpMenuTextSimulantDescription(struct menuitem *item)
 {
-	return lang_get(L_MISC_106 + g_Menus[g_MpPlayerNum].mpsetup.botprofileindex);
+	return langGet(L_MISC_106 + g_Menus[g_MpPlayerNum].mpsetup.unke24);
 }
 
-MenuItemHandlerResult menuhandler_mp_simulant_head(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpSimulantHead(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	s32 start = 0;
 
 	if (item->param2 == 1) {
-		// Selecting a perfect head
-		start = mp_get_num_heads();
+		start = mpGetNumHeads();
 	}
 
 	/**
 	 * Rare developers forgot to add a break statement to the first case,
 	 * and when they noticed a problem their fix was to add an additional
-	 * MENUOP_ON_FOCUS check in the next case.
+	 * MENUOP_FOCUS check in the next case.
 	 */
 	switch (operation) {
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_BotConfigsArray[g_Menus[g_MpPlayerNum].mpsetup.slotindex].base.mpheadnum = start + data->carousel.value;
-	case MENUOP_ON_FOCUS:
-		if (operation == MENUOP_ON_FOCUS
+	case MENUOP_FOCUS:
+		if (operation == MENUOP_FOCUS
 				&& item->param2 == 1
 				&& g_BotConfigsArray[g_Menus[g_MpPlayerNum].mpsetup.slotindex].base.mpheadnum < start) {
 			g_BotConfigsArray[g_Menus[g_MpPlayerNum].mpsetup.slotindex].base.mpheadnum = start;
@@ -2798,47 +3040,47 @@ MenuItemHandlerResult menuhandler_mp_simulant_head(s32 operation, struct menuite
 		break;
 	}
 
-	return mp_character_head_menu_handler(operation, item, data, g_BotConfigsArray[g_Menus[g_MpPlayerNum].mpsetup.slotindex].base.mpheadnum, 0);
+	return mpCharacterHeadMenuHandler(operation, item, data, g_BotConfigsArray[g_Menus[g_MpPlayerNum].mpsetup.slotindex].base.mpheadnum, 0);
 }
 
-MenuItemHandlerResult menuhandler_mp_simulant_body(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpSimulantBody(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		g_BotConfigsArray[g_Menus[g_MpPlayerNum].mpsetup.slotindex].base.mpbodynum = data->carousel.value;
 	}
 
-	return mp_character_body_menu_handler(operation, item, data,
+	return mpCharacterBodyMenuHandler(operation, item, data,
 			g_BotConfigsArray[g_Menus[g_MpPlayerNum].mpsetup.slotindex].base.mpbodynum,
 			g_BotConfigsArray[g_Menus[g_MpPlayerNum].mpsetup.slotindex].base.mpheadnum,
 			false);
 }
 
-MenuDialogHandlerResult menudialog_mp_bot_character(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialog0017ccfc(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_ON_TICK:
+	case MENUOP_TICK:
 		if (g_Menus[g_MpPlayerNum].curdialog->definition == dialogdef
 				&& g_Menus[g_MpPlayerNum].curdialog->focuseditem != &dialogdef->items[0]
 				&& g_Menus[g_MpPlayerNum].curdialog->focuseditem != &dialogdef->items[1]) {
 			union handlerdata data;
-			menuhandler_mp_character_body(MENUOP_ON_CAROUSEL_TICK, &dialogdef->items[1], &data);
+			menuhandlerMpCharacterBody(MENUOP_11, &dialogdef->items[1], &data);
 		}
 	}
 
-	return menudialog_mp_simulant(operation, dialogdef, data);
+	return menudialogMpSimulant(operation, dialogdef, data);
 }
 
-MenuItemHandlerResult mp_bot_difficulty_menu_handler(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult mpBotDifficultyMenuHandler(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	s32 count = 0;
 	s32 i;
 
 	switch (operation) {
-	case MENUOP_CONFIRM:
-		mp_set_bot_difficulty(g_Menus[g_MpPlayerNum].mpsetup.slotindex, data->dropdown.value);
-		mp_generate_bot_names();
+	case MENUOP_SET:
+		mpSetBotDifficulty(g_Menus[g_MpPlayerNum].mpsetup.slotindex, data->dropdown.value);
+		mpGenerateBotNames();
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		if (g_BotConfigsArray[g_Menus[g_MpPlayerNum].mpsetup.slotindex].difficulty >= 0
 				&& g_BotConfigsArray[g_Menus[g_MpPlayerNum].mpsetup.slotindex].difficulty < BOTDIFF_DISABLED) {
 			data->dropdown.value = g_BotConfigsArray[g_Menus[g_MpPlayerNum].mpsetup.slotindex].difficulty;
@@ -2846,93 +3088,111 @@ MenuItemHandlerResult mp_bot_difficulty_menu_handler(s32 operation, struct menui
 			data->dropdown.value = 0;
 		}
 		break;
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 		for (i = 0; i < BOTDIFF_DISABLED; i++) {
-			if (challenge_is_feature_unlocked(g_BotProfiles[i].requirefeature)) {
+			if (challengeIsFeatureUnlocked(g_BotProfiles[i].requirefeature)) {
 				count++;
 			}
 		}
 
 		data->dropdown.value = count;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
+	case MENUOP_GETOPTIONTEXT:
 		for (i = 0; i < BOTDIFF_DISABLED; i++) {
-			if (challenge_is_feature_unlocked(g_BotProfiles[i].requirefeature)) {
+			if (challengeIsFeatureUnlocked(g_BotProfiles[i].requirefeature)) {
 				if (count == data->dropdown.value) {
 					// "Meat", "Easy", "Normal" etc
-					return (s32) lang_get(L_MISC_082 + i);
+					return (uintptr_t) langGet(L_MISC_082 + i);
 				}
 
 				count++;
 			}
 		}
 
-		return (s32)"\n";
+		return (uintptr_t)"\n";
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_delete_simulant(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpDeleteSimulant(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		mp_remove_simulant(g_Menus[g_MpPlayerNum].mpsetup.slotindex);
-		menu_pop_dialog();
+	if (operation == MENUOP_SET) {
+		mpRemoveSimulant(g_Menus[g_MpPlayerNum].mpsetup.slotindex);
+		menuPopDialog();
 	}
 
 	return 0;
 }
 
-char *mp_menu_title_edit_simulant(struct menudialogdef *dialogdef)
+#ifndef PLATFORM_N64
+MenuItemHandlerResult menuhandlerMpCopySimulant(s32 operation, struct menuitem *item, union handlerdata *data)
+{
+	switch (operation) {
+	case MENUOP_SET:
+		mpCopySimulant(g_Menus[g_MpPlayerNum].mpsetup.slotindex);
+		menuPopDialog();
+		break;
+	case MENUOP_CHECKDISABLED:
+		if (mpHasUnusedBotSlots() == 0) {
+			return true;
+		}
+	}
+
+	return 0;
+}
+#endif
+
+char *mpMenuTitleEditSimulant(struct menudialogdef *dialogdef)
 {
 	sprintf(g_StringPointer, "%s", &g_BotConfigsArray[g_Menus[g_MpPlayerNum].mpsetup.slotindex].base.name);
 	return g_StringPointer;
 }
 
-MenuItemHandlerResult menuhandler_mp_change_simulant_type(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpChangeSimulantType(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		s32 i;
 		s32 count = 0;
-		s32 profilenum = mp_find_bot_profile(
+		s32 profilenum = mpFindBotProfile(
 				g_BotConfigsArray[g_Menus[g_MpPlayerNum].mpsetup.slotindex].type,
 				g_BotConfigsArray[g_Menus[g_MpPlayerNum].mpsetup.slotindex].difficulty);
 
 		for (i = 0; i < profilenum; i++) {
-			if (challenge_is_feature_unlocked(g_BotProfiles[i].requirefeature)) {
+			if (challengeIsFeatureUnlocked(g_BotProfiles[i].requirefeature)) {
 				count++;
 			}
 		}
 
 		g_Menus[g_MpPlayerNum].mpsetup.slotcount = count;
 
-		menu_push_dialog(&g_MpChangeSimulantMenuDialog);
+		menuPushDialog(&g_MpChangeSimulantMenuDialog);
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_clear_all_simulants(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpClearAllSimulants(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		s32 i;
 		for (i = 0; i < MAX_BOTS; i++) {
-			mp_remove_simulant(i);
+			mpRemoveSimulant(i);
 		}
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_add_simulant(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpAddSimulant(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_Menus[g_MpPlayerNum].mpsetup.slotindex = -1;
-		menu_push_dialog(&g_MpAddSimulantMenuDialog);
+		menuPushDialog(&g_MpAddSimulantMenuDialog);
 		break;
-	case MENUOP_IS_DISABLED:
-		if (mp_has_unused_bot_slots() == 0) {
+	case MENUOP_CHECKDISABLED:
+		if (mpHasUnusedBotSlots() == 0) {
 			return true;
 		}
 	}
@@ -2940,27 +3200,27 @@ MenuItemHandlerResult menuhandler_mp_add_simulant(s32 operation, struct menuitem
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_simulant_slot(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpSimulantSlot(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_Menus[g_MpPlayerNum].mpsetup.slotindex = item->param;
 
 		if ((g_MpSetup.chrslots & (1 << (item->param + 4))) == 0) {
-			menu_push_dialog(&g_MpAddSimulantMenuDialog);
+			menuPushDialog(&g_MpAddSimulantMenuDialog);
 		} else if (IS4MB()) {
-			menu_push_dialog(&g_MpEditSimulant4MbMenuDialog);
+			menuPushDialog(&g_MpEditSimulant4MbMenuDialog);
 		} else {
-			menu_push_dialog(&g_MpEditSimulantMenuDialog);
+			menuPushDialog(&g_MpEditSimulantMenuDialog);
 		}
 		break;
-	case MENUOP_IS_HIDDEN:
-		if (item->param >= 4 && !challenge_is_feature_unlocked(MPFEATURE_8BOTS)) {
+	case MENUOP_CHECKHIDDEN:
+		if (item->param >= 4 && !challengeIsFeatureUnlocked(MPFEATURE_8BOTS)) {
 			return true;
 		}
 		break;
-	case MENUOP_IS_DISABLED:
-		if (!mp_is_sim_slot_enabled(item->param)) {
+	case MENUOP_CHECKDISABLED:
+		if (!mpIsSimSlotEnabled(item->param)) {
 			return true;
 		}
 	}
@@ -2968,7 +3228,7 @@ MenuItemHandlerResult menuhandler_mp_simulant_slot(s32 operation, struct menuite
 	return 0;
 }
 
-char *mp_menu_text_simulant_name(struct menuitem *item)
+char *mpMenuTextSimulantName(struct menuitem *item)
 {
 	s32 index = item->param;
 
@@ -2979,11 +3239,12 @@ char *mp_menu_text_simulant_name(struct menuitem *item)
 	return g_BotConfigsArray[index].base.name;
 }
 
-char *mp_menu_text_simulant_num(struct menuitem *item)
+char *func0f17d3dc(struct menuitem *item)
 {
 	s32 index = item->param;
 
-	if (g_BotConfigsArray[index].base.name[0] == '\0' || (g_MpSetup.chrslots & 1 << (index + 4)) == 0) {
+	if (g_BotConfigsArray[index].base.name[0] == '\0'
+			|| ((g_MpSetup.chrslots & 1 << (index + 4)) == 0)) {
 		return "";
 	}
 
@@ -2991,9 +3252,9 @@ char *mp_menu_text_simulant_num(struct menuitem *item)
 	return g_StringPointer;
 }
 
-MenuDialogHandlerResult menudialog_mp_simulants(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialogMpSimulants(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
-	if (operation == MENUOP_ON_OPEN) {
+	if (operation == MENUOP_OPEN) {
 		g_Menus[g_MpPlayerNum].mpsetup.slotcount = 0;
 	}
 
@@ -3007,13 +3268,13 @@ struct menuitem g_MpAddChangeSimulantMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		0x00000078,
 		0x00000042,
-		mp_add_change_simulant_menu_handler,
+		mpAddChangeSimulantMenuHandler,
 	},
 	{
 		MENUITEMTYPE_MARQUEE,
 		0,
 		MENUITEMFLAG_SMALLFONT | MENUITEMFLAG_MARQUEE_FADEBOTHSIDES,
-		(uintptr_t)&mp_menu_text_simulant_description,
+		(uintptr_t)&mpMenuTextSimulantDescription,
 		0,
 		NULL,
 	},
@@ -3033,7 +3294,7 @@ struct menudialogdef g_MpChangeSimulantMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_MPMENU_102, // "Change Simulant"
 	g_MpAddChangeSimulantMenuItems,
-	menudialog_mp_simulant,
+	menudialogMpSimulant,
 	MENUDIALOGFLAG_CLOSEONSELECT | MENUDIALOGFLAG_MPLOCKABLE,
 	NULL,
 };
@@ -3045,7 +3306,7 @@ struct menuitem g_MpSimulantCharacterMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		0,
 		0x00000025,
-		menuhandler_mp_simulant_head,
+		menuhandlerMpSimulantHead,
 	},
 	{
 		MENUITEMTYPE_CAROUSEL,
@@ -3053,7 +3314,7 @@ struct menuitem g_MpSimulantCharacterMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		0,
 		0x0000001b,
-		menuhandler_mp_simulant_body,
+		menuhandlerMpSimulantBody,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -3062,8 +3323,8 @@ struct menudialogdef g_MpSimulantCharacterMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_MPMENU_100, // "Simulant Character"
 	g_MpSimulantCharacterMenuItems,
-	menudialog_mp_bot_character,
-	MENUDIALOGFLAG_ALLOW_MODELS | MENUDIALOGFLAG_MPLOCKABLE,
+	menudialog0017ccfc,
+	MENUDIALOGFLAG_0002 | MENUDIALOGFLAG_MPLOCKABLE,
 	NULL,
 };
 
@@ -3074,7 +3335,7 @@ struct menuitem g_MpEditSimulantMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_095, // "Difficulty:"
 		0,
-		mp_bot_difficulty_menu_handler,
+		mpBotDifficultyMenuHandler,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -3082,7 +3343,7 @@ struct menuitem g_MpEditSimulantMenuItems[] = {
 		0,
 		L_MPMENU_096, // "Change Type..."
 		0,
-		menuhandler_mp_change_simulant_type,
+		menuhandlerMpChangeSimulantType,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -3100,13 +3361,23 @@ struct menuitem g_MpEditSimulantMenuItems[] = {
 		0,
 		NULL,
 	},
+#ifndef PLATFORM_N64
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Copy Simulant\n",
+		0,
+		menuhandlerMpCopySimulant,
+	},
+#endif
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_098, // "Delete Simulant"
 		0,
-		menuhandler_mp_delete_simulant,
+		menuhandlerMpDeleteSimulant,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -3121,9 +3392,9 @@ struct menuitem g_MpEditSimulantMenuItems[] = {
 
 struct menudialogdef g_MpEditSimulantMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
-	(uintptr_t)&mp_menu_title_edit_simulant,
+	(uintptr_t)&mpMenuTitleEditSimulant,
 	g_MpEditSimulantMenuItems,
-	menudialog_mp_simulant,
+	menudialogMpSimulant,
 	MENUDIALOGFLAG_MPLOCKABLE,
 	NULL,
 };
@@ -3135,7 +3406,7 @@ struct menuitem g_MpSimulantsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_084, // "Add Simulant..."
 		0,
-		menuhandler_mp_add_simulant,
+		menuhandlerMpAddSimulant,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -3150,64 +3421,64 @@ struct menuitem g_MpSimulantsMenuItems[] = {
 		0,
 		0,
 		L_MPMENU_085, // "1:"
-		(uintptr_t)&mp_menu_text_simulant_name,
-		menuhandler_mp_simulant_slot,
+		(uintptr_t)&mpMenuTextSimulantName,
+		menuhandlerMpSimulantSlot,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		1,
 		0,
 		L_MPMENU_086, // "2:"
-		(uintptr_t)&mp_menu_text_simulant_name,
-		menuhandler_mp_simulant_slot,
+		(uintptr_t)&mpMenuTextSimulantName,
+		menuhandlerMpSimulantSlot,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		2,
 		0,
 		L_MPMENU_087, // "3:"
-		(uintptr_t)&mp_menu_text_simulant_name,
-		menuhandler_mp_simulant_slot,
+		(uintptr_t)&mpMenuTextSimulantName,
+		menuhandlerMpSimulantSlot,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		3,
 		0,
 		L_MPMENU_088, // "4:"
-		(uintptr_t)&mp_menu_text_simulant_name,
-		menuhandler_mp_simulant_slot,
+		(uintptr_t)&mpMenuTextSimulantName,
+		menuhandlerMpSimulantSlot,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		4,
 		0,
 		L_MPMENU_089, // "5:"
-		(uintptr_t)&mp_menu_text_simulant_name,
-		menuhandler_mp_simulant_slot,
+		(uintptr_t)&mpMenuTextSimulantName,
+		menuhandlerMpSimulantSlot,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		5,
 		0,
 		L_MPMENU_090, // "6:"
-		(uintptr_t)&mp_menu_text_simulant_name,
-		menuhandler_mp_simulant_slot,
+		(uintptr_t)&mpMenuTextSimulantName,
+		menuhandlerMpSimulantSlot,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		6,
 		0,
 		L_MPMENU_091, // "7:"
-		(uintptr_t)&mp_menu_text_simulant_name,
-		menuhandler_mp_simulant_slot,
+		(uintptr_t)&mpMenuTextSimulantName,
+		menuhandlerMpSimulantSlot,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		7,
 		0,
 		L_MPMENU_092, // "8:"
-		(uintptr_t)&mp_menu_text_simulant_name,
-		menuhandler_mp_simulant_slot,
+		(uintptr_t)&mpMenuTextSimulantName,
+		menuhandlerMpSimulantSlot,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -3223,7 +3494,7 @@ struct menuitem g_MpSimulantsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_093, // "Clear All"
 		0,
-		menuhandler_mp_clear_all_simulants,
+		menuhandlerMpClearAllSimulants,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -3240,20 +3511,20 @@ struct menudialogdef g_MpSimulantsMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_MPMENU_083, // "Simulants"
 	g_MpSimulantsMenuItems,
-	menudialog_mp_simulants,
+	menudialogMpSimulants,
 	MENUDIALOGFLAG_MPLOCKABLE,
 	NULL,
 };
 
-MenuItemHandlerResult menuhandler_mp_n_teams(s32 operation, struct menuitem *item, union handlerdata *data, s32 numteams)
+MenuItemHandlerResult menuhandlerMpNTeams(s32 operation, struct menuitem *item, union handlerdata *data, s32 numteams)
 {
-	if (operation == MENUOP_CONFIRM) {
-		s32 numchrs = mp_get_num_chrs();
+	if (operation == MENUOP_SET) {
+		s32 numchrs = mpGetNumChrs();
 		s32 array[] = {0, 0, 0, 0};
 		s32 somevalue = (numchrs + numteams - 1) / numteams;
 		s32 teamsremaining = numteams;
 		s32 chrsremaining = numchrs;
-		s32 start = random() % numchrs;
+		s32 start = rngRandom() % numchrs;
 
 		s32 i;
 		s32 teamnum;
@@ -3267,7 +3538,7 @@ MenuItemHandlerResult menuhandler_mp_n_teams(s32 operation, struct menuitem *ite
 		i = (start + 1) % numchrs;
 
 		do {
-			struct mpchrconfig *mpchr = mp_get_chr_config_by_slot_num(i);
+			struct mpchrconfig *mpchr = mpGetChrConfigBySlotNum(i);
 
 #if VERSION >= VERSION_NTSC_1_0
 			if (teamsremaining);
@@ -3276,7 +3547,7 @@ MenuItemHandlerResult menuhandler_mp_n_teams(s32 operation, struct menuitem *ite
 #endif
 
 			if (teamsremaining >= chrsremaining) {
-				teamnum = random() % numteams;
+				teamnum = rngRandom() % numteams;
 
 				while (true) {
 					if (array[teamnum] == 0) {
@@ -3291,7 +3562,7 @@ MenuItemHandlerResult menuhandler_mp_n_teams(s32 operation, struct menuitem *ite
 					}
 				}
 			} else {
-				teamnum = random() % numteams;
+				teamnum = rngRandom() % numteams;
 
 				while (true) {
 					if (array[teamnum] < somevalue) {
@@ -3317,30 +3588,30 @@ MenuItemHandlerResult menuhandler_mp_n_teams(s32 operation, struct menuitem *ite
 			i = (i + 1) % numchrs;
 		} while (true);
 
-		menu_pop_dialog();
+		menuPopDialog();
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_two_teams(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpTwoTeams(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	return menuhandler_mp_n_teams(operation, item, data, 2);
+	return menuhandlerMpNTeams(operation, item, data, 2);
 }
 
-MenuItemHandlerResult menuhandler_mp_three_teams(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpThreeTeams(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	return menuhandler_mp_n_teams(operation, item, data, 3);
+	return menuhandlerMpNTeams(operation, item, data, 3);
 }
 
-MenuItemHandlerResult menuhandler_mp_four_teams(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpFourTeams(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	return menuhandler_mp_n_teams(operation, item, data, 4);
+	return menuhandlerMpNTeams(operation, item, data, 4);
 }
 
-MenuItemHandlerResult menuhandler_mp_maximum_teams(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpMaximumTeams(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		s32 i;
 		u8 team = 0;
 
@@ -3350,21 +3621,21 @@ MenuItemHandlerResult menuhandler_mp_maximum_teams(s32 operation, struct menuite
 
 				mpchr->team = team++;
 
-				if (team >= scenario_get_max_teams()) {
+				if (team >= scenarioGetMaxTeams()) {
 					team = 0;
 				}
 			}
 		}
 
-		menu_pop_dialog();
+		menuPopDialog();
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_humans_vs_simulants(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpHumansVsSimulants(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		s32 i;
 
 		for (i = 0; i != MAX_MPCHRS; i++) {
@@ -3375,15 +3646,15 @@ MenuItemHandlerResult menuhandler_mp_humans_vs_simulants(s32 operation, struct m
 			}
 		}
 
-		menu_pop_dialog();
+		menuPopDialog();
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_human_simulant_pairs(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpHumanSimulantPairs(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		u8 team_ids[4] = {0, 1, 2, 3};
 		s32 i;
 		s32 playerindex = 0;
@@ -3405,15 +3676,15 @@ MenuItemHandlerResult menuhandler_mp_human_simulant_pairs(s32 operation, struct 
 			}
 		}
 
-		menu_pop_dialog();
+		menuPopDialog();
 	}
 
 	return 0;
 }
 
-char *mp_menu_text_chr_name_for_team_setup(struct menuitem *item)
+char *mpMenuTextChrNameForTeamSetup(struct menuitem *item)
 {
-	struct mpchrconfig *mpchr = mp_get_chr_config_by_slot_num(item->param);
+	struct mpchrconfig *mpchr = mpGetChrConfigBySlotNum(item->param);
 
 	if (mpchr) {
 		return mpchr->name;
@@ -3422,34 +3693,34 @@ char *mp_menu_text_chr_name_for_team_setup(struct menuitem *item)
 	return "";
 }
 
-MenuItemHandlerResult menuhandler_mp_team_slot2(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult func0f17dac4(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
-		data->list.value = scenario_get_max_teams();
+	case MENUOP_GETOPTIONCOUNT:
+		data->list.value = scenarioGetMaxTeams();
 		break;
-	case MENUOP_GET_OPTION_TEXT:
+	case MENUOP_GETOPTIONTEXT:
 		if ((g_MpSetup.options & MPOPTION_TEAMSENABLED) == 0) {
-			return (s32) "\n";
+			return (uintptr_t) "\n";
 		}
 
-		return (s32) g_BossFile.teamnames[data->list.value];
+		return (uintptr_t) g_BossFile.teamnames[data->list.value];
 	}
 
-	return menuhandler_mp_teams_label(operation, item, data);
+	return menuhandlerMpTeamsLabel(operation, item, data);
 }
 
-MenuItemHandlerResult menuhandler_mp_team_slot(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpTeamSlot(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	struct mpchrconfig *mpchr;
 
 	switch (operation) {
-	case MENUOP_CONFIRM:
-		mpchr = mp_get_chr_config_by_slot_num(item->param);
+	case MENUOP_SET:
+		mpchr = mpGetChrConfigBySlotNum(item->param);
 		mpchr->team = data->dropdown.value;
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
-		mpchr = mp_get_chr_config_by_slot_num(item->param);
+	case MENUOP_GETSELECTEDINDEX:
+		mpchr = mpGetChrConfigBySlotNum(item->param);
 
 		if (!mpchr) {
 			data->dropdown.value = 0xff;
@@ -3458,26 +3729,26 @@ MenuItemHandlerResult menuhandler_mp_team_slot(s32 operation, struct menuitem *i
 		}
 
 		break;
-	case MENUOP_IS_DISABLED:
-		mpchr = mp_get_chr_config_by_slot_num(item->param);
+	case MENUOP_CHECKDISABLED:
+		mpchr = mpGetChrConfigBySlotNum(item->param);
 
 		if (!mpchr) {
 			return 1;
 		}
 
-		return menuhandler_mp_teams_label(operation, item, data);
+		return menuhandlerMpTeamsLabel(operation, item, data);
 	}
 
-	return menuhandler_mp_team_slot2(operation, item, data);
+	return func0f17dac4(operation, item, data);
 }
 
-char *mp_menu_text_select_tune_or_tunes(struct menuitem *item)
+char *mpMenuTextSelectTuneOrTunes(struct menuitem *item)
 {
-	if (mp_get_using_multiple_tunes()) {
-		return lang_get(L_MPMENU_069); // "Select Tune"
+	if (mpGetUsingMultipleTunes()) {
+		return langGet(L_MPMENU_069); // "Select Tune"
 	}
 
-	return lang_get(L_MPMENU_068); // "Select Tunes"
+	return langGet(L_MPMENU_068); // "Select Tunes"
 }
 
 struct menuitem g_MpAutoTeamMenuItems[] = {
@@ -3487,7 +3758,7 @@ struct menuitem g_MpAutoTeamMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_076, // "Two Teams"
 		0,
-		menuhandler_mp_two_teams,
+		menuhandlerMpTwoTeams,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -3495,7 +3766,7 @@ struct menuitem g_MpAutoTeamMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_077, // "Three Teams"
 		0,
-		menuhandler_mp_three_teams,
+		menuhandlerMpThreeTeams,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -3503,7 +3774,7 @@ struct menuitem g_MpAutoTeamMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_078, // "Four Teams"
 		0,
-		menuhandler_mp_four_teams,
+		menuhandlerMpFourTeams,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -3511,7 +3782,7 @@ struct menuitem g_MpAutoTeamMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_079, // "Maximum Teams"
 		0,
-		menuhandler_mp_maximum_teams,
+		menuhandlerMpMaximumTeams,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -3519,7 +3790,7 @@ struct menuitem g_MpAutoTeamMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_080, // "Humans vs. Simulants"
 		0,
-		menuhandler_mp_humans_vs_simulants,
+		menuhandlerMpHumansVsSimulants,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -3527,7 +3798,7 @@ struct menuitem g_MpAutoTeamMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_081, // "Human-Simulant Pairs"
 		0,
-		menuhandler_mp_human_simulant_pairs,
+		menuhandlerMpHumanSimulantPairs,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -3564,7 +3835,7 @@ struct menuitem g_MpTeamsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_071, // "Teams Enabled"
 		0x00000002,
-		menuhandler_mp_teams_enabled,
+		menuhandlerMpTeamsEnabled,
 	},
 #if VERSION >= VERSION_PAL_FINAL
 	{
@@ -3581,103 +3852,103 @@ struct menuitem g_MpTeamsMenuItems[] = {
 		MENUITEMFLAG_LESSLEFTPADDING,
 		L_MPMENU_072, // "Teams:"
 		0,
-		menuhandler_mp_teams_label,
+		menuhandlerMpTeamsLabel,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		0,
 		MENUITEMFLAG_ADJUSTWIDTH | MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		1,
 		MENUITEMFLAG_ADJUSTWIDTH | MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		2,
 		MENUITEMFLAG_ADJUSTWIDTH | MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		3,
 		MENUITEMFLAG_ADJUSTWIDTH | MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		4,
 		MENUITEMFLAG_ADJUSTWIDTH | MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		5,
 		MENUITEMFLAG_ADJUSTWIDTH | MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		6,
 		MENUITEMFLAG_ADJUSTWIDTH | MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		7,
 		MENUITEMFLAG_ADJUSTWIDTH | MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		8,
 		MENUITEMFLAG_ADJUSTWIDTH | MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		9,
 		MENUITEMFLAG_ADJUSTWIDTH | MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		10,
 		MENUITEMFLAG_ADJUSTWIDTH | MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		11,
 		MENUITEMFLAG_ADJUSTWIDTH | MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 #else
 	{
@@ -3694,103 +3965,103 @@ struct menuitem g_MpTeamsMenuItems[] = {
 		MENUITEMFLAG_LESSLEFTPADDING,
 		L_MPMENU_072, // "Teams:"
 		0,
-		menuhandler_mp_teams_label,
+		menuhandlerMpTeamsLabel,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		0,
 		MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		1,
 		MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		2,
 		MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		3,
 		MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		4,
 		MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		5,
 		MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		6,
 		MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		7,
 		MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		8,
 		MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		9,
 		MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		10,
 		MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
 		11,
 		MENUITEMFLAG_LOCKABLEMINOR,
-		(uintptr_t)&mp_menu_text_chr_name_for_team_setup,
+		(uintptr_t)&mpMenuTextChrNameForTeamSetup,
 		0,
-		menuhandler_mp_team_slot,
+		menuhandlerMpTeamSlot,
 	},
 #endif
 	{
@@ -3829,6 +4100,13 @@ struct menudialogdef g_MpTeamsMenuDialog = {
 	NULL,
 };
 
+u32 var80085ce8[] = {
+	L_MISC_166, // "Random"
+	L_MISC_167, // "Select All"
+	L_MISC_168, // "Select None"
+	L_MISC_169, // "Randomize"
+};
+
 /**
  * List handler for the select tune dialog.
  *
@@ -3838,95 +4116,88 @@ struct menudialogdef g_MpTeamsMenuDialog = {
  * If multiple tracks are disabled, the listing contains the track listing plus
  * 3 items for Select All, Select None and Randomize.
  */
-MenuItemHandlerResult mp_select_tune_list_handler(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult mpSelectTuneListHandler(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	static s32 specialoptions[] = {
-		L_MISC_166, // "Random"
-		L_MISC_167, // "Select All"
-		L_MISC_168, // "Select None"
-		L_MISC_169, // "Randomize"
-	};
-
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
-		data->list.value = mp_get_num_unlocked_tracks();
+	case MENUOP_GETOPTIONCOUNT:
+		data->list.value = mpGetNumUnlockedTracks();
 
-		if (mp_get_using_multiple_tunes()) {
+		if (mpGetUsingMultipleTunes()) {
 			data->list.value += 3;
 		} else {
 			data->list.value++;
 		}
 		break;
-	case MENUOP_GET_OPTION_TEXT:
+	case MENUOP_GETOPTIONTEXT:
 		{
-			s32 numtracks = mp_get_num_unlocked_tracks();
+			s32 numtracks = mpGetNumUnlockedTracks();
 
 			if (data->list.value < numtracks) {
-				return (s32) mp_get_track_name(data->list.value);
+				return (uintptr_t) mpGetTrackName(data->list.value);
 			}
 
-			if (mp_get_using_multiple_tunes()) {
-				return (s32) lang_get(specialoptions[1 + data->list.value - numtracks]);
+			if (mpGetUsingMultipleTunes()) {
+				return (uintptr_t) langGet(var80085ce8[1 + data->list.value - numtracks]);
 			}
 
-			return (s32) lang_get(specialoptions[data->list.value - numtracks]);
+			return (uintptr_t) langGet(var80085ce8[data->list.value - numtracks]);
 		}
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		{
-			s32 numtracks = mp_get_num_unlocked_tracks();
+			s32 numtracks = mpGetNumUnlockedTracks();
 
 			if (data->list.value < numtracks) {
 				if (data->list.unk04 == 0) {
-					mp_set_track_slot_enabled(data->list.value);
+					mpSetTrackSlotEnabled(data->list.value);
 				}
 				g_Vars.modifiedfiles |= MODFILE_MPSETUP;
-			} else if (mp_get_using_multiple_tunes()) {
+			} else if (mpGetUsingMultipleTunes()) {
 				s32 index = data->list.value - numtracks;
 
 				switch (index) {
 				case 0:
-					mp_enable_all_multi_tracks();
+					mpEnableAllMultiTracks();
 					g_Vars.modifiedfiles |= MODFILE_MPSETUP;
 					break;
 				case 1:
-					mp_disable_all_multi_tracks();
+					mpDisableAllMultiTracks();
 					g_Vars.modifiedfiles |= MODFILE_MPSETUP;
 					break;
 				case 2:
-					mp_randomise_multi_tracks();
+					mpRandomiseMultiTracks();
 					g_Vars.modifiedfiles |= MODFILE_MPSETUP;
 					break;
 				}
 			} else {
-				mp_set_track_to_random();
+				mpSetTrackToRandom();
 				g_Vars.modifiedfiles |= MODFILE_MPSETUP;
 			}
 		}
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
-		if (mp_get_using_multiple_tunes()) {
+	case MENUOP_GETSELECTEDINDEX:
+		if (mpGetUsingMultipleTunes()) {
 			data->list.value = 0x000fffff;
 		} else {
-			s32 slotnum = mp_get_current_track_slot_num();
+			s32 slotnum = mpGetCurrentTrackSlotNum();
 
 			if (slotnum < 0) {
-				data->list.value = mp_get_num_unlocked_tracks();
+				data->list.value = mpGetNumUnlockedTracks();
 			} else {
 				data->list.value = slotnum;
 			}
 		}
 		break;
-	case MENUOP_ON_OPTION_FOCUS:
-		if (data->list.value < mp_get_num_unlocked_tracks()) {
-			music_start_track_as_menu(mp_get_track_music_num(data->list.value));
+	case MENUOP_LISTITEMFOCUS:
+		if (data->list.value < mpGetNumUnlockedTracks()) {
+			musicStartTrackAsMenu(mpGetTrackMusicNum(data->list.value));
 		}
 		break;
-	case MENUOP_IS_OPTION_CHECKED:
+	case MENUOP_GETLISTITEMCHECKBOX:
 		{
-			s32 numtracks = mp_get_num_unlocked_tracks();
+			s32 numtracks = mpGetNumUnlockedTracks();
 
-			if (mp_get_using_multiple_tunes() && data->list.value < numtracks) {
-				data->list.unk04 = mp_is_multi_track_slot_enabled(data->list.value);
+			if (mpGetUsingMultipleTunes() && data->list.value < numtracks) {
+				data->list.unk04 = mpIsMultiTrackSlotEnabled(data->list.value);
 			}
 		}
 		break;
@@ -3935,56 +4206,56 @@ MenuItemHandlerResult mp_select_tune_list_handler(s32 operation, struct menuitem
 	return 0;
 }
 
-MenuDialogHandlerResult menudialog_mp_select_tune(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialogMpSelectTune(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
-	if (operation == MENUOP_ON_OPEN) {
+	if (operation == MENUOP_OPEN) {
 		g_MusicInterval240 = 80;
 	}
 
-	if (operation == MENUOP_ON_CLOSE) {
+	if (operation == MENUOP_CLOSE) {
 		g_MusicInterval240 = 15;
 	}
 
 	return false;
 }
 
-char *mp_menu_text_current_track(struct menuitem *item)
+char *mpMenuTextCurrentTrack(struct menuitem *item)
 {
 	s32 slotnum;
 
-	if (mp_get_using_multiple_tunes()) {
-		return lang_get(L_MPMENU_066); // "Multiple Tunes"
+	if (mpGetUsingMultipleTunes()) {
+		return langGet(L_MPMENU_066); // "Multiple Tunes"
 	}
 
-	slotnum = mp_get_current_track_slot_num();
+	slotnum = mpGetCurrentTrackSlotNum();
 
 	if (slotnum >= 0) {
-		return mp_get_track_name(slotnum);
+		return mpGetTrackName(slotnum);
 	}
 
-	return lang_get(L_MPMENU_067); // "Random"
+	return langGet(L_MPMENU_067); // "Random"
 }
 
-MenuItemHandlerResult menuhandler_mp_multiple_tunes(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpMultipleTunes(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_IS_CHECKED:
-		return mp_get_using_multiple_tunes();
-	case MENUOP_CONFIRM:
-		mp_set_using_multiple_tunes(data->checkbox.value);
+	case MENUOP_GET:
+		return mpGetUsingMultipleTunes();
+	case MENUOP_SET:
+		mpSetUsingMultipleTunes(data->checkbox.value);
 		g_Vars.modifiedfiles |= MODFILE_MPSETUP;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult mp_team_name_menu_handler(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult mpTeamNameMenuHandler(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	char *name = data->keyboard.string;
 	s32 i;
 
 	switch (operation) {
-	case MENUOP_GET_KEYBOARD_STRING:
+	case MENUOP_GETTEXT:
 		i = 0;
 
 		while (g_BossFile.teamnames[g_Menus[g_MpPlayerNum].mpsetup.slotindex][i] != '\n'
@@ -3999,7 +4270,7 @@ MenuItemHandlerResult mp_team_name_menu_handler(s32 operation, struct menuitem *
 			i++;
 		}
 		break;
-	case MENUOP_SET_KEYBOARD_STRING:
+	case MENUOP_SETTEXT:
 		i = 0;
 
 		while (i < 11 && name[i] != '\0') {
@@ -4027,7 +4298,7 @@ MenuItemHandlerResult mp_team_name_menu_handler(s32 operation, struct menuitem *
  * colours are consecutive, so the index of the team is determined by
  * subtracting the first team's colour text ID.
  */
-char *mp_menu_text_team_name(struct menuitem *item)
+char *mpMenuTextTeamName(struct menuitem *item)
 {
 	s32 index = item->param2;
 	index -= L_OPTIONS_008;
@@ -4035,55 +4306,55 @@ char *mp_menu_text_team_name(struct menuitem *item)
 	return g_BossFile.teamnames[index];
 }
 
-MenuItemHandlerResult menuhandler_mp_team_name_slot(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpTeamNameSlot(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		g_Menus[g_MpPlayerNum].mpsetup.slotindex = item->param2 - 0x5608;
-		menu_push_dialog(&g_MpChangeTeamNameMenuDialog);
+		menuPushDialog(&g_MpChangeTeamNameMenuDialog);
 	}
 
 	return 0;
 }
 
-char *menutext_mp_challenge_name(struct menudialogdef *dialogdef)
+char *func0f17e318(struct menudialogdef *dialogdef)
 {
-	sprintf(g_StringPointer, lang_get(L_MPMENU_056), challenge_get_name_by_slot(g_Menus[g_MpPlayerNum].mpsetup.slotindex));
+	sprintf(g_StringPointer, langGet(L_MPMENU_056), challengeGetNameBySlot(g_Menus[g_MpPlayerNum].mpsetup.slotindex));
 	return g_StringPointer;
 }
 
 /**
  * An "Accept" item somewhere. Probably accepting a challenge.
  */
-MenuItemHandlerResult menuhandler_mp_accept_challenge(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandler0017e38c(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 #if VERSION >= VERSION_NTSC_1_0
-		challenge_unset_current();
+		challengeUnsetCurrent();
 #endif
 
-		menu_pop_dialog();
-		challenge_set_current_by_slot(g_Menus[g_MpPlayerNum].mpsetup.slotindex);
+		menuPopDialog();
+		challengeSetCurrentBySlot(g_Menus[g_MpPlayerNum].mpsetup.slotindex);
 	}
 
 	return 0;
 }
 
-MenuDialogHandlerResult menudialog_mp_confirm_challenge(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialog0017e3fc(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_ON_OPEN:
+	case MENUOP_OPEN:
 		g_Menus[g_MpPlayerNum].menumodel.curparams = 0;
 
-		g_Menus[g_MpPlayerNum].training.mpconfig = challenge_load_by_slot(
+		g_Menus[g_MpPlayerNum].training.mpconfig = challengeLoadBySlot(
 				g_Menus[g_MpPlayerNum].training.unke1c,
 				g_Menus[g_MpPlayerNum].menumodel.allocstart,
 				g_Menus[g_MpPlayerNum].menumodel.alloclen);
 		break;
-	case MENUOP_ON_CLOSE:
+	case MENUOP_CLOSE:
 		break;
-	case MENUOP_ON_TICK:
+	case MENUOP_TICK:
 		if (g_BossFile.locktype == MPLOCKTYPE_CHALLENGE) {
-			menu_pop_dialog();
+			menuPopDialog();
 		}
 		break;
 	}
@@ -4098,16 +4369,16 @@ struct menuitem g_MpSelectTunesMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		0x00000078,
 		0x0000004d,
-		mp_select_tune_list_handler,
+		mpSelectTuneListHandler,
 	},
 	{ MENUITEMTYPE_END },
 };
 
 struct menudialogdef g_MpSelectTunesMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
-	(uintptr_t)&mp_menu_text_select_tune_or_tunes,
+	(uintptr_t)&mpMenuTextSelectTuneOrTunes,
 	g_MpSelectTunesMenuItems,
-	menudialog_mp_select_tune,
+	menudialogMpSelectTune,
 	MENUDIALOGFLAG_MPLOCKABLE,
 	NULL,
 };
@@ -4126,7 +4397,7 @@ struct menuitem g_MpSoundtrackMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_003, // ""
-		(uintptr_t)&mp_menu_text_current_track,
+		(uintptr_t)&mpMenuTextCurrentTrack,
 		NULL,
 	},
 	{
@@ -4141,7 +4412,7 @@ struct menuitem g_MpSoundtrackMenuItems[] = {
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		MENUITEMFLAG_SELECTABLE_OPENSDIALOG,
-		(uintptr_t)&mp_menu_text_select_tune_or_tunes,
+		(uintptr_t)&mpMenuTextSelectTuneOrTunes,
 		0,
 		(void *)&g_MpSelectTunesMenuDialog,
 	},
@@ -4151,7 +4422,7 @@ struct menuitem g_MpSoundtrackMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_064, // "Multiple Tunes"
 		0,
-		menuhandler_mp_multiple_tunes,
+		menuhandlerMpMultipleTunes,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -4188,7 +4459,7 @@ struct menuitem g_MpChangeTeamNameMenuItems[] = {
 		0,
 		0,
 		0,
-		mp_team_name_menu_handler,
+		mpTeamNameMenuHandler,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -4208,64 +4479,64 @@ struct menuitem g_MpTeamNamesMenuItems[] = {
 		0,
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_OPTIONS_008, // "Red"
-		(uintptr_t)&mp_menu_text_team_name,
-		menuhandler_mp_team_name_slot,
+		(uintptr_t)&mpMenuTextTeamName,
+		menuhandlerMpTeamNameSlot,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_OPTIONS_009, // "Yellow"
-		(uintptr_t)&mp_menu_text_team_name,
-		menuhandler_mp_team_name_slot,
+		(uintptr_t)&mpMenuTextTeamName,
+		menuhandlerMpTeamNameSlot,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_OPTIONS_010, // "Blue"
-		(uintptr_t)&mp_menu_text_team_name,
-		menuhandler_mp_team_name_slot,
+		(uintptr_t)&mpMenuTextTeamName,
+		menuhandlerMpTeamNameSlot,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_OPTIONS_011, // "Magenta"
-		(uintptr_t)&mp_menu_text_team_name,
-		menuhandler_mp_team_name_slot,
+		(uintptr_t)&mpMenuTextTeamName,
+		menuhandlerMpTeamNameSlot,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_OPTIONS_012, // "Cyan"
-		(uintptr_t)&mp_menu_text_team_name,
-		menuhandler_mp_team_name_slot,
+		(uintptr_t)&mpMenuTextTeamName,
+		menuhandlerMpTeamNameSlot,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_OPTIONS_013, // "Orange"
-		(uintptr_t)&mp_menu_text_team_name,
-		menuhandler_mp_team_name_slot,
+		(uintptr_t)&mpMenuTextTeamName,
+		menuhandlerMpTeamNameSlot,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_OPTIONS_014, // "Pink"
-		(uintptr_t)&mp_menu_text_team_name,
-		menuhandler_mp_team_name_slot,
+		(uintptr_t)&mpMenuTextTeamName,
+		menuhandlerMpTeamNameSlot,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_OPTIONS_015, // "Brown"
-		(uintptr_t)&mp_menu_text_team_name,
-		menuhandler_mp_team_name_slot,
+		(uintptr_t)&mpMenuTextTeamName,
+		menuhandlerMpTeamNameSlot,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -4318,7 +4589,7 @@ struct menuitem g_MpConfirmChallengeViaListOrDetailsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_LOCKABLEMAJOR,
 		L_MPMENU_057, // "Accept"
 		0,
-		menuhandler_mp_accept_challenge,
+		menuhandler0017e38c,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -4333,9 +4604,9 @@ struct menuitem g_MpConfirmChallengeViaListOrDetailsMenuItems[] = {
 
 struct menudialogdef g_MpConfirmChallengeViaListOrDetailsMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
-	(uintptr_t)&menutext_mp_challenge_name,
+	(uintptr_t)&func0f17e318,
 	g_MpConfirmChallengeViaListOrDetailsMenuItems,
-	menudialog_mp_confirm_challenge,
+	menudialog0017e3fc,
 	MENUDIALOGFLAG_STARTSELECTS | MENUDIALOGFLAG_MPLOCKABLE,
 	NULL,
 };
@@ -4347,7 +4618,7 @@ struct menuitem g_MpChallengesListOrDetailsMenuItems[] = {
 		MENUITEMFLAG_LIST_CUSTOMRENDER,
 		0x00000078,
 		0x0000004d,
-		mp_challenges_list_menu_handler,
+		mpChallengesListMenuHandler,
 	},
 #if VERSION < VERSION_NTSC_1_0
 	{
@@ -4365,7 +4636,7 @@ struct menuitem g_MpChallengesListOrDetailsMenuItems[] = {
 		0,
 		0x0000007c,
 		PAL ? 0x41 : 0x37,
-		menuhandler_mp_challenge_description_and_separator,
+		menuhandler0017e9d8,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -4373,7 +4644,7 @@ struct menuitem g_MpChallengesListOrDetailsMenuItems[] = {
 		0,
 		0,
 		0,
-		menuhandler_mp_challenge_description_and_separator,
+		menuhandler0017e9d8,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -4381,7 +4652,7 @@ struct menuitem g_MpChallengesListOrDetailsMenuItems[] = {
 		0,
 		L_MPWEAPONS_171, // "Start Challenge"
 		0,
-		menuhandler_mp_start_challenge,
+		menuhandlerMpStartChallenge,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -4389,7 +4660,7 @@ struct menuitem g_MpChallengesListOrDetailsMenuItems[] = {
 		0,
 		L_MPMENU_051, // "Abort Challenge"
 		0,
-		menuhandler_mp_abort_challenge,
+		menuhandlerMpAbortChallenge,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -4397,12 +4668,12 @@ struct menuitem g_MpChallengesListOrDetailsMenuItems[] = {
 struct menudialogdef g_MpChallengeListOrDetailsMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 #if VERSION >= VERSION_NTSC_1_0
-	(uintptr_t)&mp_menu_text_challenge_name,
+	(uintptr_t)&mpMenuTextChallengeName,
 #else
 	0x5032,
 #endif
 	g_MpChallengesListOrDetailsMenuItems,
-	mp_combat_challenges_menu_dialog,
+	mpCombatChallengesMenuDialog,
 #if VERSION >= VERSION_NTSC_1_0
 	0x00000808,
 #else
@@ -4416,12 +4687,12 @@ struct menudialogdef g_MpAdvancedSetupViaAdvChallengeMenuDialog;
 struct menudialogdef g_MpChallengeListOrDetailsViaAdvChallengeMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 #if VERSION >= VERSION_NTSC_1_0
-	(uintptr_t)&mp_menu_text_challenge_name,
+	(uintptr_t)&mpMenuTextChallengeName,
 #else
 	0x5032,
 #endif
 	g_MpChallengesListOrDetailsMenuItems,
-	mp_combat_challenges_menu_dialog,
+	mpCombatChallengesMenuDialog,
 #if VERSION >= VERSION_NTSC_1_0
 	0x00000808,
 	&g_MpAdvancedSetupViaAdvChallengeMenuDialog,
@@ -4454,7 +4725,7 @@ struct menuitem g_MpConfirmChallengeMenuItems[] = {
 		0,
 		L_MPMENU_057, // "Accept"
 		0,
-		menuhandler_mp_accept_challenge2,
+		menuhandler0017ec64,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -4469,14 +4740,14 @@ struct menuitem g_MpConfirmChallengeMenuItems[] = {
 
 struct menudialogdef g_MpConfirmChallengeMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
-	(uintptr_t)&menutext_mp_challenge_name,
+	(uintptr_t)&func0f17e318,
 	g_MpConfirmChallengeMenuItems,
-	menudialog_mp_confirm_challenge,
+	menudialog0017e3fc,
 	MENUDIALOGFLAG_STARTSELECTS,
 	NULL,
 };
 
-MenuItemHandlerResult mp_challenges_list_menu_handler(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult mpChallengesListMenuHandler(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	Gfx *gdl;
 	struct menuitemrenderdata *renderdata;
@@ -4487,15 +4758,15 @@ MenuItemHandlerResult mp_challenges_list_menu_handler(s32 operation, struct menu
 	s32 i;
 
 	switch (operation) {
-	case MENUOP_IS_HIDDEN:
+	case MENUOP_CHECKHIDDEN:
 		if (g_BossFile.locktype == MPLOCKTYPE_CHALLENGE) {
 			return 1;
 		}
 		break;
-	case MENUOP_GET_OPTION_COUNT:
-		data->list.value = challenge_get_num_available();
+	case MENUOP_GETOPTIONCOUNT:
+		data->list.value = challengeGetNumAvailable();
 		break;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		if (data->list.unk04 != 0) {
 			data->list.unk04 = 2;
 		}
@@ -4503,22 +4774,22 @@ MenuItemHandlerResult mp_challenges_list_menu_handler(s32 operation, struct menu
 		g_Menus[g_MpPlayerNum].mpsetup.slotindex = data->list.value;
 
 		if (item->param == 0) {
-			menu_push_dialog(&g_MpConfirmChallengeViaListOrDetailsMenuDialog);
+			menuPushDialog(&g_MpConfirmChallengeViaListOrDetailsMenuDialog);
 		} else if (IS4MB()) {
-			menu_push_dialog(&g_MpConfirmChallenge4MbMenuDialog);
+			menuPushDialog(&g_MpConfirmChallenge4MbMenuDialog);
 		} else {
-			menu_push_dialog(&g_MpConfirmChallengeMenuDialog);
+			menuPushDialog(&g_MpConfirmChallengeMenuDialog);
 		}
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		data->list.value = 0xfffff;
 		break;
-	case MENUOP_GET_OPTGROUP_COUNT:
+	case MENUOP_GETOPTGROUPCOUNT:
 		data->list.value = 0;
 		break;
-	case MENUOP_GET_OPTGROUP_TEXT:
+	case MENUOP_GETOPTGROUPTEXT:
 		return 0;
-	case MENUOP_GET_OPTGROUP_START_INDEX:
+	case MENUOP_GETGROUPSTARTINDEX:
 		data->list.groupstartindex = 0;
 		break;
 	case MENUOP_RENDER:
@@ -4534,9 +4805,9 @@ MenuItemHandlerResult mp_challenges_list_menu_handler(s32 operation, struct menu
 		x = renderdata->x + 10;
 		y = renderdata->y + 1;
 
-		gdl = text_begin(gdl);
-		gdl = text_render_v2(gdl, &x, &y, challenge_get_name_by_slot(data->type19.unk04), g_CharsHandelGothicSm, g_FontHandelGothicSm, renderdata->colour, vi_get_width(), vi_get_height(), 0, 0);
-		gdl = text_end(gdl);
+		gdl = text0f153628(gdl);
+		gdl = textRenderProjected(gdl, &x, &y, challengeGetNameBySlot(data->type19.unk04), g_CharsHandelGothicSm, g_FontHandelGothicSm, renderdata->colour, viGetWidth(), viGetHeight(), 0, 0);
+		gdl = text0f153780(gdl);
 
 		gDPPipeSync(gdl++);
 		gDPSetTexturePersp(gdl++, G_TP_NONE);
@@ -4544,20 +4815,20 @@ MenuItemHandlerResult mp_challenges_list_menu_handler(s32 operation, struct menu
 		gDPSetTextureLOD(gdl++, G_TL_TILE);
 		gDPSetTextureConvert(gdl++, G_TC_FILT);
 
-		tex_select(&gdl, &g_TexGeneralConfigs[TEX_GENERAL_ENVSTAR], 2, 0, 2, 1, NULL);
+		texSelect(&gdl, &g_TexGeneralConfigs[35], 2, 0, 2, 1, NULL);
 
 		gDPSetCycleType(gdl++, G_CYC_1CYCLE);
 		gDPSetTextureFilter(gdl++, G_TF_POINT);
 
 		for (i = 0; i < maxchrs; i++) {
 #if VERSION >= VERSION_NTSC_1_0
-			if (challenge_is_completed_by_any_chr_with_num_players_by_slot(data->type19.unk04, i + 1)) {
+			if (challengeIsCompletedByAnyChrWithNumPlayersBySlot(data->type19.unk04, i + 1)) {
 				gDPSetEnvColorViaWord(gdl++, (renderdata->colour & 0xff) * 0xff >> 8 | 0xffe56500);
 			} else {
 				gDPSetEnvColorViaWord(gdl++, (renderdata->colour & 0xff) * 0xff >> 8 | 0x43430000);
 			}
 #else
-			if (challenge_is_completed_by_any_chr_with_num_players_by_slot(data->type19.unk04, i + 1)) {
+			if (challengeIsCompletedByAnyChrWithNumPlayersBySlot(data->type19.unk04, i + 1)) {
 				gDPSetEnvColorViaWord(gdl++, 0xffe565ff);
 			} else {
 				gDPSetEnvColorViaWord(gdl++, 0x434300ff);
@@ -4571,14 +4842,14 @@ MenuItemHandlerResult mp_challenges_list_menu_handler(s32 operation, struct menu
 				TEXEL0, 0, ENVIRONMENT, 0);
 
 			gSPTextureRectangle(gdl++,
-				((renderdata->x + marginleft) << 2) * g_UiScaleX, (renderdata->y + 11) << 2,
-				((renderdata->x + marginleft + 11) << 2) * g_UiScaleX, (renderdata->y + 22) << 2,
-				G_TX_RENDERTILE, 0, 0x0160, 1024 / g_UiScaleX, -1024);
+				((renderdata->x + marginleft) << 2) * g_ScaleX, (renderdata->y + 11) << 2,
+				((renderdata->x + marginleft + 11) << 2) * g_ScaleX, (renderdata->y + 22) << 2,
+				G_TX_RENDERTILE, 0, 0x0160, 1024 / g_ScaleX, -1024);
 
 			marginleft += 13;
 		}
-		return (s32)gdl;
-	case MENUOP_GET_OPTION_HEIGHT:
+		return (uintptr_t)gdl;
+	case MENUOP_GETOPTIONHEIGHT:
 		data->list.value = 26;
 		break;
 	}
@@ -4590,9 +4861,9 @@ MenuItemHandlerResult mp_challenges_list_menu_handler(s32 operation, struct menu
  * This is for a separator and fixed height thing in the dialog at:
  * Combat Simulator > Advanced Setup > Challenges > pick one > Accept
  */
-MenuItemHandlerResult menuhandler_mp_challenge_description_and_separator(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandler0017e9d8(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_IS_HIDDEN) {
+	if (operation == MENUOP_CHECKHIDDEN) {
 		if (g_BossFile.locktype != MPLOCKTYPE_CHALLENGE) {
 			return true;
 		}
@@ -4601,76 +4872,76 @@ MenuItemHandlerResult menuhandler_mp_challenge_description_and_separator(s32 ope
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_abort_challenge(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpAbortChallenge(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_IS_HIDDEN) {
+	if (operation == MENUOP_CHECKHIDDEN) {
 		if (g_BossFile.locktype != MPLOCKTYPE_CHALLENGE) {
 			return true;
 		}
 	}
 
-	if (operation == MENUOP_CONFIRM) {
-		challenge_remove_player_lock();
+	if (operation == MENUOP_SET) {
+		challengeRemovePlayerLock();
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_start_challenge(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpStartChallenge(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_IS_HIDDEN) {
+	if (operation == MENUOP_CHECKHIDDEN) {
 		if (g_BossFile.locktype != MPLOCKTYPE_CHALLENGE) {
 			return true;
 		}
 	}
-	if (operation == MENUOP_CONFIRM) {
-		menu_push_dialog(&g_MpReadyMenuDialog);
+	if (operation == MENUOP_SET) {
+		menuPushDialog(&g_MpReadyMenuDialog);
 	}
 
 	return 0;
 }
 
-char *mp_menu_text_challenge_name(struct menuitem *item)
+char *mpMenuTextChallengeName(struct menuitem *item)
 {
 #if VERSION >= VERSION_NTSC_1_0
 	if (g_BossFile.locktype != MPLOCKTYPE_CHALLENGE) {
-		return lang_get(L_MPMENU_050); // "Combat Challenges"
+		return langGet(L_MPMENU_050); // "Combat Challenges"
 	}
 #endif
 
-	sprintf(g_StringPointer, "%s:\n", challenge_get_name(challenge_get_current()));
+	sprintf(g_StringPointer, "%s:\n", challengeGetName(challengeGetCurrent()));
 	return g_StringPointer;
 }
 
-MenuDialogHandlerResult mp_combat_challenges_menu_dialog(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult mpCombatChallengesMenuDialog(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
-	if (operation == MENUOP_ON_TICK) {
+	if (operation == MENUOP_TICK) {
 		if (g_BossFile.locktype == MPLOCKTYPE_CHALLENGE
 				&& g_Menus[g_MpPlayerNum].curdialog
 				&& g_Menus[g_MpPlayerNum].curdialog->definition == dialogdef
-				&& !challenge_is_loaded()) {
+				&& !challengeIsLoaded()) {
 			g_Menus[g_MpPlayerNum].menumodel.curparams = 0x4fac5ace;
 
-			challenge_load_and_store_current(
+			challengeLoadAndStoreCurrent(
 					g_Menus[g_MpPlayerNum].menumodel.allocstart,
 					g_Menus[g_MpPlayerNum].menumodel.alloclen);
 		}
 	}
 
-	if (operation == MENUOP_ON_CLOSE) {
+	if (operation == MENUOP_CLOSE) {
 		if (g_Menus[g_MpPlayerNum].menumodel.curparams == 0x4fac5ace) {
-			challenge_unset_current();
+			challengeUnsetCurrent();
 		}
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_accept_challenge2(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandler0017ec64(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		challenge_set_current_by_slot(g_Menus[g_MpPlayerNum].mpsetup.slotindex);
-		menu_save_and_push_root_dialog(&g_MpQuickGoMenuDialog, MENUROOT_MPSETUP);
+	if (operation == MENUOP_SET) {
+		challengeSetCurrentBySlot(g_Menus[g_MpPlayerNum].mpsetup.slotindex);
+		func0f0f820c(&g_MpQuickGoMenuDialog, 3);
 	}
 
 	return 0;
@@ -4683,7 +4954,7 @@ struct menuitem g_MpChallengesMenuItems[] = {
 		MENUITEMFLAG_LIST_CUSTOMRENDER,
 		0x00000078,
 		0x0000004d,
-		mp_challenges_list_menu_handler,
+		mpChallengesListMenuHandler,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -4692,12 +4963,12 @@ struct menudialogdef g_MpChallengesMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_MPMENU_050, // "Combat Challenges"
 	g_MpChallengesMenuItems,
-	mp_combat_challenges_menu_dialog,
+	mpCombatChallengesMenuDialog,
 	0,
 	NULL,
 };
 
-MenuItemHandlerResult menuhandler_mp_lock(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpLock(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	u16 labels[] = {
 		L_MPMENU_045, // "None"
@@ -4707,111 +4978,108 @@ MenuItemHandlerResult menuhandler_mp_lock(s32 operation, struct menuitem *item, 
 	};
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
-		data->dropdown.value = mp_get_lock_type() == MPLOCKTYPE_CHALLENGE ? 1 : 5;
+	case MENUOP_GETOPTIONCOUNT:
+		data->dropdown.value = mpGetLockType() == MPLOCKTYPE_CHALLENGE ? 1 : 5;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
-		if (mp_get_lock_type() == MPLOCKTYPE_CHALLENGE) {
-			return (s32) lang_get(L_MPMENU_049); // "Challenge"
+	case MENUOP_GETOPTIONTEXT:
+		if (mpGetLockType() == MPLOCKTYPE_CHALLENGE) {
+			return (uintptr_t) langGet(L_MPMENU_049); // "Challenge"
 		}
 		if (data->dropdown.value <= 3) {
-			return (s32) lang_get(labels[data->dropdown.value]);
+			return (uintptr_t) langGet(labels[data->dropdown.value]);
 		}
-		if (mp_get_lock_type() == MPLOCKTYPE_PLAYER) {
-			return (s32) g_PlayerConfigsArray[mp_get_lock_player_num()].base.name;
+		if (mpGetLockType() == MPLOCKTYPE_PLAYER) {
+			return (uintptr_t) g_PlayerConfigsArray[mpGetLockPlayerNum()].base.name;
 		}
-		return (s32) mp_get_current_player_name(item);
-	case MENUOP_CONFIRM:
-		if (mp_get_lock_type() != MPLOCKTYPE_CHALLENGE) {
-			mp_set_lock(data->dropdown.value, g_MpPlayerNum);
+		return (uintptr_t) mpGetCurrentPlayerName(item);
+	case MENUOP_SET:
+		if (mpGetLockType() != MPLOCKTYPE_CHALLENGE) {
+			mpSetLock(data->dropdown.value, g_MpPlayerNum);
 		}
 		g_Vars.modifiedfiles |= MODFILE_MPSETUP;
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
-		data->dropdown.value = mp_get_lock_type() == MPLOCKTYPE_CHALLENGE ? 0 : mp_get_lock_type();
+	case MENUOP_GETSELECTEDINDEX:
+		data->dropdown.value = mpGetLockType() == MPLOCKTYPE_CHALLENGE ? 0 : mpGetLockType();
 		break;
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_save_player(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpSavePlayer(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		if (g_PlayerConfigsArray[g_MpPlayerNum].fileguid.fileid == 0) {
-			filemgr_push_select_location_dialog(6, FILETYPE_MPPLAYER);
+			filemgrPushSelectLocationDialog(6, FILETYPE_MPPLAYER);
 		} else {
-			menu_push_dialog(&g_MpSavePlayerMenuDialog);
+			menuPushDialog(&g_MpSavePlayerMenuDialog);
 		}
 	}
 
 	return 0;
 }
 
-char *mp_menu_text_save_player_or_copy(struct menuitem *item)
+char *mpMenuTextSavePlayerOrCopy(struct menuitem *item)
 {
 	if (g_PlayerConfigsArray[g_MpPlayerNum].fileguid.fileid == 0) {
-		return lang_get(L_MPMENU_038); // "Save Player"
+		return langGet(L_MPMENU_038); // "Save Player"
 	}
 
-	return lang_get(L_MPMENU_039); // "Save Copy of Player"
+	return langGet(L_MPMENU_039); // "Save Copy of Player"
 }
 
-MenuItemHandlerResult menuhandler_mp_abort_setup(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandler0017ef30(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		if (g_Vars.stagenum == STAGE_CITRAINING) {
 			if (IS4MB()) {
-				menu_save_and_push_root_dialog(&g_CiMenuViaPauseMenuDialog, MENUROOT_MAINMENU);
+				func0f0f820c(&g_CiMenuViaPauseMenuDialog, 2);
 			} else {
-				menu_save_and_push_root_dialog(&g_CiMenuViaPcMenuDialog, MENUROOT_MAINMENU);
+				func0f0f820c(&g_CiMenuViaPcMenuDialog, 2);
 			}
 		} else {
-			menu_save_and_push_root_dialog(&g_SoloMissionPauseMenuDialog, MENUROOT_MAINMENU);
+			func0f0f820c(&g_SoloMissionPauseMenuDialog, 2);
 		}
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_save_settings(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpSaveSettings(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		if (g_MpSetup.fileguid.fileid == 0) {
-			menu_push_dialog(&g_MpSaveSetupNameMenuDialog);
-		} else {
-#if VERSION >= VERSION_NTSC_1_0
-			filemgr_set_device1_by_serial(g_MpSetup.fileguid.deviceserial);
-#endif
-
-			menu_push_dialog(&g_MpSaveSetupExistsMenuDialog);
+	if (operation == MENUOP_SET) {
+		if (g_MpCurrentSetup < 0) {
+			menuPushDialog(&g_MpSaveSetupNameMenuDialog);
+		}
+		else {
+			menuPushDialog(&g_MpSaveSetupExistsMenuDialog);
 		}
 	}
 
 	return 0;
 }
 
-char *mp_menu_text_arena_name(struct menuitem *item)
+char *mpMenuTextArenaName(struct menuitem *item)
 {
 	s32 i;
 
 	for (i = 0; i != ARRAYCOUNT(g_MpArenas); i++) {
 		if (g_MpArenas[i].stagenum == g_MpSetup.stagenum) {
-			return lang_get(g_MpArenas[i].name);
+			return langGet(g_MpArenas[i].name);
 		}
 	}
 
 	return "\n";
 }
 
-char *mp_menu_text_weapon_set_name(struct menuitem *item)
+char *mpMenuTextWeaponSetName(struct menuitem *item)
 {
-	return mp_get_weaponset_name_by_slotnum(mp_get_weaponset_slotnum());
+	return mpGetWeaponSetName(mpGetWeaponSet());
 }
 
-MenuDialogHandlerResult menudialog_mp_game_setup(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialogMpGameSetup(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
-	if (operation == MENUOP_ON_OPEN) {
+	if (operation == MENUOP_OPEN) {
 		g_Vars.mpsetupmenu = MPSETUPMENU_ADVSETUP;
 		g_Vars.usingadvsetup = true;
 	}
@@ -4819,22 +5087,22 @@ MenuDialogHandlerResult menudialog_mp_game_setup(s32 operation, struct menudialo
 	return false;
 }
 
-MenuDialogHandlerResult menudialog_mp_quick_go(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialogMpQuickGo(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
-	if (operation == MENUOP_ON_OPEN) {
+	if (operation == MENUOP_OPEN) {
 		g_Vars.mpsetupmenu = MPSETUPMENU_QUICKGO;
 	}
 
 	return false;
 }
 
-void mp_configure_quick_team_players(void)
+void mpConfigureQuickTeamPlayers(void)
 {
 	s32 i;
 
 	if (g_Vars.mpquickteam != MPQUICKTEAM_NONE) {
 		for (i = 0; i < MAX_BOTS; i++) {
-			mp_remove_simulant(i);
+			mpRemoveSimulant(i);
 		}
 
 		switch (g_Vars.mpquickteam) {
@@ -4872,7 +5140,7 @@ void mp_configure_quick_team_players(void)
 	}
 }
 
-void mp_configure_quick_team_simulants(void)
+void mpConfigureQuickTeamSimulants(void)
 {
 	struct mpchrconfig *mpchr;
 	s32 numchrs;
@@ -4884,25 +5152,25 @@ void mp_configure_quick_team_simulants(void)
 		switch (g_Vars.mpquickteam) {
 		case MPQUICKTEAM_PLAYERSANDSIMS:
 			for (i = 0; i < g_Vars.mpquickteamnumsims; i++) {
-				botnum = mp_get_slot_for_new_bot();
+				botnum = mpGetSlotForNewBot();
 
 				if (botnum >= 0) {
-					mp_create_bot_from_profile(botnum, g_Vars.mpsimdifficulty);
+					mpCreateBotFromProfile(botnum, g_Vars.mpsimdifficulty);
 				}
 			}
 
-			mp_generate_bot_names();
+			mpGenerateBotNames();
 			break;
 		case MPQUICKTEAM_PLAYERSVSSIMS:
 			for (i = 0; i < g_Vars.mpquickteamnumsims; i++) {
-				botnum = mp_get_slot_for_new_bot();
+				botnum = mpGetSlotForNewBot();
 
 				if (botnum >= 0) {
-					mp_create_bot_from_profile(botnum, g_Vars.mpsimdifficulty);
+					mpCreateBotFromProfile(botnum, g_Vars.mpsimdifficulty);
 				}
 			}
 
-			mp_generate_bot_names();
+			mpGenerateBotNames();
 
 			for (i = 0; i < ARRAYCOUNT(g_BotConfigsArray); i++) {
 				g_BotConfigsArray[i].base.team = 1;
@@ -4910,20 +5178,20 @@ void mp_configure_quick_team_simulants(void)
 
 			break;
 		case MPQUICKTEAM_PLAYERSIMTEAMS:
-			for (i = mp_get_num_chrs() - 1; i >= 0; i--) {
-				mpchr = mp_get_chr_config_by_slot_num(i);
+			for (i = mpGetNumChrs() - 1; i >= 0; i--) {
+				mpchr = mpGetChrConfigBySlotNum(i);
 
 				for (j = 0; j < g_Vars.unk0004a0; j++) {
-					botnum = mp_get_slot_for_new_bot();
+					botnum = mpGetSlotForNewBot();
 
 					if (botnum >= 0) {
-						mp_create_bot_from_profile(botnum, g_Vars.mpsimdifficulty);
+						mpCreateBotFromProfile(botnum, g_Vars.mpsimdifficulty);
 						g_BotConfigsArray[botnum].base.team = mpchr->team;
 					}
 				}
 			}
 
-			mp_generate_bot_names();
+			mpGenerateBotNames();
 			break;
 		case MPQUICKTEAM_PLAYERSONLY:
 		case MPQUICKTEAM_PLAYERSTEAMS:
@@ -4932,35 +5200,35 @@ void mp_configure_quick_team_simulants(void)
 	}
 }
 
-void mp_apply_quickstart(void)
+void func0f17f428(void)
 {
-	mp_configure_quick_team_players();
+	mpConfigureQuickTeamPlayers();
 
 	if (IS4MB()) {
-		menu_save_and_push_root_dialog(&g_MpQuickGo4MbMenuDialog, MENUROOT_4MBMAINMENU);
+		func0f0f820c(&g_MpQuickGo4MbMenuDialog, MENUROOT_4MBMAINMENU);
 	} else {
-		menu_save_and_push_root_dialog(&g_MpQuickGoMenuDialog, MENUROOT_MPSETUP);
+		func0f0f820c(&g_MpQuickGoMenuDialog, MENUROOT_MPSETUP);
 	}
 }
 
-MenuItemHandlerResult menuhandler_mp_finished_setup(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpFinishedSetup(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 #if VERSION >= VERSION_NTSC_1_0
-	if (operation == MENUOP_IS_PREFOCUSED) {
+	if (operation == MENUOP_CHECKPREFOCUSED) {
 		return true;
 	}
 #endif
 
-	if (operation == MENUOP_CONFIRM) {
-		mp_apply_quickstart();
+	if (operation == MENUOP_SET) {
+		func0f17f428();
 	}
 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_quick_team_separator(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerQuickTeamSeparator(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_IS_HIDDEN) {
+	if (operation == MENUOP_CHECKHIDDEN) {
 		if (g_Vars.mpquickteam == MPQUICKTEAM_PLAYERSONLY) {
 			return true;
 		}
@@ -4969,30 +5237,30 @@ MenuItemHandlerResult menuhandler_quick_team_separator(s32 operation, struct men
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_player_team(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerPlayerTeam(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 #if VERSION >= VERSION_JPN_FINAL
-		data->dropdown.value = scenario_get_max_teams();
+		data->dropdown.value = scenarioGetMaxTeams();
 #else
 		data->dropdown.value = MAX_TEAMS;
 #endif
 		break;
-	case MENUOP_GET_OPTION_TEXT:
-		return (s32) &g_BossFile.teamnames[data->dropdown.value];
-	case MENUOP_CONFIRM:
+	case MENUOP_GETOPTIONTEXT:
+		return (uintptr_t) &g_BossFile.teamnames[data->dropdown.value];
+	case MENUOP_SET:
 		g_Vars.mpplayerteams[item->param] = data->dropdown.value;
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 #if VERSION >= VERSION_JPN_FINAL
-		if (g_Vars.mpplayerteams[item->param] >= scenario_get_max_teams()) {
-			g_Vars.mpplayerteams[item->param] %= scenario_get_max_teams();
+		if (g_Vars.mpplayerteams[item->param] >= scenarioGetMaxTeams()) {
+			g_Vars.mpplayerteams[item->param] %= scenarioGetMaxTeams();
 		}
 #endif
 		data->dropdown.value = g_Vars.mpplayerteams[item->param];
 		break;
-	case MENUOP_IS_HIDDEN:
+	case MENUOP_CHECKHIDDEN:
 		if (g_Vars.mpquickteam != MPQUICKTEAM_PLAYERSTEAMS) {
 			return true;
 		}
@@ -5002,22 +5270,22 @@ MenuItemHandlerResult menuhandler_player_team(s32 operation, struct menuitem *it
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_number_of_simulants(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpNumberOfSimulants(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
-		data->dropdown.value = !challenge_is_feature_unlocked(MPFEATURE_8BOTS) ? 4 : MAX_BOTS;
+	case MENUOP_GETOPTIONCOUNT:
+		data->dropdown.value = !challengeIsFeatureUnlocked(MPFEATURE_8BOTS) ? 4 : MAX_BOTS;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
+	case MENUOP_GETOPTIONTEXT:
 		sprintf(g_StringPointer, "%d\n", data->dropdown.value + 1);
-		return (s32) g_StringPointer;
-	case MENUOP_CONFIRM:
+		return (uintptr_t) g_StringPointer;
+	case MENUOP_SET:
 		g_Vars.mpquickteamnumsims = data->dropdown.value + 1;
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		data->dropdown.value = g_Vars.mpquickteamnumsims - 1;
 		break;
-	case MENUOP_IS_HIDDEN:
+	case MENUOP_CHECKHIDDEN:
 		if (g_Vars.mpquickteam != MPQUICKTEAM_PLAYERSANDSIMS
 				&& g_Vars.mpquickteam != MPQUICKTEAM_PLAYERSVSSIMS) {
 			return true;
@@ -5028,22 +5296,22 @@ MenuItemHandlerResult menuhandler_mp_number_of_simulants(s32 operation, struct m
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_simulants_per_team(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpSimulantsPerTeam(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 		data->dropdown.value = 2;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
+	case MENUOP_GETOPTIONTEXT:
 		sprintf(g_StringPointer, "%d\n", data->dropdown.value + 1);
-		return (s32) g_StringPointer;
-	case MENUOP_CONFIRM:
+		return (uintptr_t) g_StringPointer;
+	case MENUOP_SET:
 		g_Vars.unk0004a0 = data->dropdown.value + 1;
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		data->dropdown.value = g_Vars.unk0004a0 - 1;
 		break;
-	case MENUOP_IS_HIDDEN:
+	case MENUOP_CHECKHIDDEN:
 		if (g_Vars.mpquickteam != MPQUICKTEAM_PLAYERSIMTEAMS) {
 			return true;
 		}
@@ -5053,39 +5321,39 @@ MenuItemHandlerResult menuhandler_mp_simulants_per_team(s32 operation, struct me
 	return 0;
 }
 
-MenuItemHandlerResult mp_quick_team_simulant_difficulty_handler(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult mpQuickTeamSimulantDifficultyHandler(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	s32 count = 0;
 	s32 i;
 
 	switch (operation) {
-	case MENUOP_GET_OPTION_COUNT:
+	case MENUOP_GETOPTIONCOUNT:
 		for (i = 0; i < NUM_BOTDIFFS; i++) {
-			if (challenge_is_feature_unlocked(g_BotProfiles[i].requirefeature)) {
+			if (challengeIsFeatureUnlocked(g_BotProfiles[i].requirefeature)) {
 				count++;
 			}
 		}
 
 		data->dropdown.value = count;
 		break;
-	case MENUOP_GET_OPTION_TEXT:
+	case MENUOP_GETOPTIONTEXT:
 		for (i = 0; i < NUM_BOTDIFFS; i++) {
-			if (challenge_is_feature_unlocked(g_BotProfiles[i].requirefeature)) {
+			if (challengeIsFeatureUnlocked(g_BotProfiles[i].requirefeature)) {
 				if (count == data->dropdown.value) {
-					return (s32) lang_get(i + L_MISC_082);
+					return (uintptr_t) langGet(i + L_MISC_082);
 				}
 
 				count++;
 			}
 		}
 		break;
-	case MENUOP_CONFIRM:
+	case MENUOP_SET:
 		g_Vars.mpsimdifficulty = data->dropdown.value;
 		break;
-	case MENUOP_GET_SELECTED_INDEX:
+	case MENUOP_GETSELECTEDINDEX:
 		data->dropdown.value = g_Vars.mpsimdifficulty;
 		break;
-	case MENUOP_IS_HIDDEN:
+	case MENUOP_CHECKHIDDEN:
 		if (g_Vars.mpquickteam != MPQUICKTEAM_PLAYERSANDSIMS
 				&& g_Vars.mpquickteam != MPQUICKTEAM_PLAYERSVSSIMS
 				&& g_Vars.mpquickteam != MPQUICKTEAM_PLAYERSIMTEAMS) {
@@ -5096,13 +5364,13 @@ MenuItemHandlerResult mp_quick_team_simulant_difficulty_handler(s32 operation, s
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_mp_quick_team_option(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpQuickTeamOption(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 		g_Vars.mpquickteam = item->param;
 
-		if (mp_get_weaponset_slotnum() >= mp_get_num_weaponset_slots(false)) {
-			mp_set_weaponset_slotnum(0);
+		if (mpGetWeaponSet() >= func0f189058(0)) {
+			mpSetWeaponSet(0);
 		}
 
 		if (g_Vars.mpquickteam == MPQUICKTEAM_PLAYERSONLY ||
@@ -5113,15 +5381,15 @@ MenuItemHandlerResult menuhandler_mp_quick_team_option(s32 operation, struct men
 			}
 		}
 
-		menu_push_dialog(&g_MpQuickTeamGameSetupMenuDialog);
+		menuPushDialog(&g_MpQuickTeamGameSetupMenuDialog);
 	}
 
 	return 0;
 }
 
-MenuDialogHandlerResult menudialog_combat_simulator(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialogCombatSimulator(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
-	if (operation == MENUOP_ON_OPEN) {
+	if (operation == MENUOP_OPEN) {
 		g_Vars.waitingtojoin[0] = false;
 		g_Vars.waitingtojoin[1] = false;
 		g_Vars.waitingtojoin[2] = false;
@@ -5130,21 +5398,21 @@ MenuDialogHandlerResult menudialog_combat_simulator(s32 operation, struct menudi
 
 	if (g_Menus[g_MpPlayerNum].curdialog
 			&& g_Menus[g_MpPlayerNum].curdialog->definition == &g_CombatSimulatorMenuDialog
-			&& operation == MENUOP_ON_TICK) {
+			&& operation == MENUOP_TICK) {
 		g_Vars.mpsetupmenu = MPSETUPMENU_GENERAL;
 		g_Vars.mpquickteam = MPQUICKTEAM_NONE;
 		g_Vars.usingadvsetup = false;
-		challenge_unset_current();
-		challenge_remove_player_lock();
+		challengeUnsetCurrent();
+		challengeRemovePlayerLock();
 	}
 
 	return false;
 }
 
-MenuItemHandlerResult menuhandler_mp_advanced_setup(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerMpAdvancedSetup(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		menu_save_and_push_root_dialog(&g_MpAdvancedSetupMenuDialog, MENUROOT_MPSETUP);
+	if (operation == MENUOP_SET) {
+		func0f0f820c(&g_MpAdvancedSetupMenuDialog, 3);
 	}
 
 	return 0;
@@ -5154,7 +5422,7 @@ MenuItemHandlerResult menuhandler_mp_advanced_setup(s32 operation, struct menuit
  * When a player is loading a saved setup, check which dialogs the other players
  * have open and close them if they no longer apply or need to be updated.
  */
-void mp_close_dialogs_for_new_setup(void)
+void mpCloseDialogsForNewSetup(void)
 {
 	s32 i;
 	s32 prevplayernum = g_MpPlayerNum;
@@ -5198,7 +5466,7 @@ void mp_close_dialogs_for_new_setup(void)
 
 				// Close the leaf layer
 				if (!ok) {
-					menu_pop_dialog();
+					menuPopDialog();
 				}
 			}
 		}
@@ -5232,7 +5500,7 @@ struct menuitem g_MpStuffMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_044, // "Lock"
 		0,
-		menuhandler_mp_lock,
+		menuhandlerMpLock,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -5242,21 +5510,23 @@ struct menuitem g_MpStuffMenuItems[] = {
 		0,
 		NULL,
 	},
+#ifdef PLATFORM_N64
 	{
 		MENUITEMTYPE_DROPDOWN,
 		0,
 		0,
 		L_OPTIONS_216, // "Ratio"
 		0,
-		menuhandler_screen_ratio,
+		menuhandlerScreenRatio,
 	},
+#endif
 	{
 		MENUITEMTYPE_DROPDOWN,
 		0,
 		0,
 		L_MPWEAPONS_154, // "Split"
 		0,
-		menuhandler_screen_split,
+		menuhandlerScreenSplit,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -5317,7 +5587,7 @@ struct menuitem g_MpPlayerSetup234MenuItems[] = {
 		0,
 		MENUITEMFLAG_SELECTABLE_OPENSDIALOG,
 		L_MPMENU_030, // "Name"
-		(uintptr_t)&mp_get_current_player_name,
+		(uintptr_t)&mpGetCurrentPlayerName,
 		(void *)&g_MpPlayerNameMenuDialog,
 	},
 	{
@@ -5372,9 +5642,9 @@ struct menuitem g_MpPlayerSetup234MenuItems[] = {
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		0,
-		(uintptr_t)&mp_menu_text_save_player_or_copy,
+		(uintptr_t)&mpMenuTextSavePlayerOrCopy,
 		0,
-		menuhandler_mp_save_player,
+		menuhandlerMpSavePlayer,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -5421,7 +5691,7 @@ struct menuitem g_MpAbortMenuItems[] = {
 		0,
 		L_MPMENU_054, // "Abort"
 		0,
-		menuhandler_mp_abort_setup,
+		menuhandler0017ef30,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -5449,7 +5719,7 @@ struct menuitem g_MpAdvancedSetupMenuItems[] = {
 		0,
 		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_019, // "Scenario"
-		(uintptr_t)&mp_menu_text_scenario_short_name,
+		(uintptr_t)&mpMenuTextScenarioShortName,
 		(void *)&g_MpScenarioMenuDialog,
 	},
 	{
@@ -5458,14 +5728,14 @@ struct menuitem g_MpAdvancedSetupMenuItems[] = {
 		0,
 		L_MPMENU_021, // "Options"
 		0,
-		menuhandler_mp_open_options,
+		menuhandlerMpOpenOptions,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		MENUITEMFLAG_SELECTABLE_OPENSDIALOG,
 		L_MPMENU_020, // "Arena"
-		(uintptr_t)&mp_menu_text_arena_name,
+		(uintptr_t)&mpMenuTextArenaName,
 		(void *)&g_MpArenaMenuDialog,
 	},
 	{
@@ -5519,6 +5789,14 @@ struct menuitem g_MpAdvancedSetupMenuItems[] = {
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
+		MENUITEMFLAG_LITERAL_TEXT | MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_LOCKABLEMAJOR,
+		(uintptr_t)"Manage Settings\n",
+		0,
+		(void *)&g_ManageSettingsDialog,
+	},
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
 		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_LOCKABLEMAJOR,
 		L_MPMENU_018, // "Load Settings"
 		0,
@@ -5530,7 +5808,7 @@ struct menuitem g_MpAdvancedSetupMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_LOCKABLEMAJOR,
 		L_MPMENU_026, // "Save Settings"
 		0,
-		menuhandler_mp_save_settings,
+		menuhandlerMpSaveSettings,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -5539,7 +5817,7 @@ struct menudialogdef g_MpAdvancedSetupMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_MPMENU_017, // "Game Setup"
 	g_MpAdvancedSetupMenuItems,
-	menudialog_mp_game_setup,
+	menudialogMpGameSetup,
 	MENUDIALOGFLAG_MPLOCKABLE | MENUDIALOGFLAG_DROPOUTONCLOSE,
 	&g_MpPlayerSetupViaAdvMenuDialog,
 };
@@ -5548,7 +5826,7 @@ struct menudialogdef g_MpAdvancedSetupViaAdvChallengeMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_MPMENU_017, // "Game Setup"
 	g_MpAdvancedSetupMenuItems,
-	menudialog_mp_game_setup,
+	menudialogMpGameSetup,
 	MENUDIALOGFLAG_MPLOCKABLE | MENUDIALOGFLAG_DROPOUTONCLOSE,
 	&g_MpPlayerSetupViaAdvChallengeMenuDialog,
 };
@@ -5595,7 +5873,7 @@ struct menudialogdef g_MpQuickGoMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_MISC_460, // "Quick Go"
 	g_MpQuickGoMenuItems,
-	menudialog_mp_quick_go,
+	menudialogMpQuickGo,
 	0,
 	NULL,
 };
@@ -5606,7 +5884,7 @@ struct menuitem g_MpQuickTeamGameSetupMenuItems[] = {
 		0,
 		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_019, // "Scenario"
-		(uintptr_t)&mp_menu_text_scenario_short_name,
+		(uintptr_t)&mpMenuTextScenarioShortName,
 		(void *)&g_MpQuickTeamScenarioMenuDialog,
 	},
 	{
@@ -5615,14 +5893,14 @@ struct menuitem g_MpQuickTeamGameSetupMenuItems[] = {
 		0,
 		L_MPMENU_021, // "Options"
 		0,
-		menuhandler_mp_open_options,
+		menuhandlerMpOpenOptions,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
 		MENUITEMFLAG_SELECTABLE_OPENSDIALOG,
 		L_MPMENU_020, // "Arena"
-		(uintptr_t)&mp_menu_text_arena_name,
+		(uintptr_t)&mpMenuTextArenaName,
 		(void *)&g_MpArenaMenuDialog,
 	},
 	{
@@ -5630,7 +5908,7 @@ struct menuitem g_MpQuickTeamGameSetupMenuItems[] = {
 		0,
 		MENUITEMFLAG_SELECTABLE_OPENSDIALOG,
 		L_MPMENU_023, // "Weapons"
-		(uintptr_t)&mp_menu_text_weapon_set_name,
+		(uintptr_t)&mpMenuTextWeaponSetName,
 		(void *)&g_MpQuickTeamWeaponsMenuDialog,
 	},
 	{
@@ -5647,7 +5925,7 @@ struct menuitem g_MpQuickTeamGameSetupMenuItems[] = {
 		0,
 		0x00000082,
 		0,
-		menuhandler_quick_team_separator,
+		menuhandlerQuickTeamSeparator,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -5655,7 +5933,7 @@ struct menuitem g_MpQuickTeamGameSetupMenuItems[] = {
 		0,
 		L_MISC_449, // "Player 1 Team"
 		0,
-		menuhandler_player_team,
+		menuhandlerPlayerTeam,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -5663,7 +5941,7 @@ struct menuitem g_MpQuickTeamGameSetupMenuItems[] = {
 		0,
 		L_MISC_450, // "Player 2 Team"
 		0,
-		menuhandler_player_team,
+		menuhandlerPlayerTeam,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -5671,7 +5949,7 @@ struct menuitem g_MpQuickTeamGameSetupMenuItems[] = {
 		0,
 		L_MISC_451, // "Player 3 Team"
 		0,
-		menuhandler_player_team,
+		menuhandlerPlayerTeam,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -5679,7 +5957,7 @@ struct menuitem g_MpQuickTeamGameSetupMenuItems[] = {
 		0,
 		L_MISC_452, // "Player 4 Team"
 		0,
-		menuhandler_player_team,
+		menuhandlerPlayerTeam,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -5687,7 +5965,7 @@ struct menuitem g_MpQuickTeamGameSetupMenuItems[] = {
 		0,
 		L_MISC_453, // "Number Of Simulants"
 		0,
-		menuhandler_mp_number_of_simulants,
+		menuhandlerMpNumberOfSimulants,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -5695,7 +5973,7 @@ struct menuitem g_MpQuickTeamGameSetupMenuItems[] = {
 		0,
 		L_MISC_454, // "Simulants Per Team"
 		0,
-		menuhandler_mp_simulants_per_team,
+		menuhandlerMpSimulantsPerTeam,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -5703,7 +5981,7 @@ struct menuitem g_MpQuickTeamGameSetupMenuItems[] = {
 		0,
 		L_MISC_455, // "Simulant Difficulty"
 		0,
-		mp_quick_team_simulant_difficulty_handler,
+		mpQuickTeamSimulantDifficultyHandler,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -5719,7 +5997,7 @@ struct menuitem g_MpQuickTeamGameSetupMenuItems[] = {
 		0,
 		L_MISC_448, // "Finished Setup"
 		0,
-		menuhandler_mp_finished_setup,
+		menuhandlerMpFinishedSetup,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -5735,7 +6013,7 @@ struct menuitem g_MpQuickTeamGameSetupMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_LOCKABLEMAJOR,
 		L_MPMENU_026, // "Save Settings"
 		0,
-		menuhandler_mp_save_settings,
+		menuhandlerMpSaveSettings,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -5756,7 +6034,7 @@ struct menuitem g_MpQuickTeamMenuItems[] = {
 		MENUITEMFLAG_BIGFONT,
 		L_MISC_463, // "Players Only"
 		0,
-		menuhandler_mp_quick_team_option,
+		menuhandlerMpQuickTeamOption,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -5764,7 +6042,7 @@ struct menuitem g_MpQuickTeamMenuItems[] = {
 		MENUITEMFLAG_BIGFONT,
 		L_MISC_464, // "Players and Simulants"
 		0,
-		menuhandler_mp_quick_team_option,
+		menuhandlerMpQuickTeamOption,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -5780,7 +6058,7 @@ struct menuitem g_MpQuickTeamMenuItems[] = {
 		MENUITEMFLAG_BIGFONT,
 		L_MISC_465, // "Player Teams"
 		0,
-		menuhandler_mp_quick_team_option,
+		menuhandlerMpQuickTeamOption,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -5788,7 +6066,7 @@ struct menuitem g_MpQuickTeamMenuItems[] = {
 		MENUITEMFLAG_BIGFONT,
 		L_MISC_466, // "Players vs. Simulants"
 		0,
-		menuhandler_mp_quick_team_option,
+		menuhandlerMpQuickTeamOption,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -5796,7 +6074,7 @@ struct menuitem g_MpQuickTeamMenuItems[] = {
 		MENUITEMFLAG_BIGFONT,
 		L_MISC_467, // "Player-Simulant Teams"
 		0,
-		menuhandler_mp_quick_team_option,
+		menuhandlerMpQuickTeamOption,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -5841,7 +6119,7 @@ struct menuitem g_CombatSimulatorMenuItems[] = {
 		MENUITEMFLAG_BIGFONT,
 		L_MISC_444, // "Advanced Setup"
 		0x00000003,
-		menuhandler_mp_advanced_setup,
+		menuhandlerMpAdvancedSetup,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -5850,30 +6128,83 @@ struct menudialogdef g_CombatSimulatorMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_MISC_445, // "Combat Simulator"
 	g_CombatSimulatorMenuItems,
-	menudialog_combat_simulator,
+	menudialogCombatSimulator,
 	MENUDIALOGFLAG_STARTSELECTS,
 	NULL,
 };
 
-void mp_open_advanced_setup(s32 silent)
+void func0f17fcb0(s32 silent)
 {
 	g_Menus[g_MpPlayerNum].playernum = g_MpPlayerNum;
 
 	if (IS4MB()) {
-		menu_push_root_dialog(&g_AdvancedSetup4MbMenuDialog, MENUROOT_4MBMAINMENU);
-		menu_hide_pressstart_labels();
+		menuPushRootDialog(&g_AdvancedSetup4MbMenuDialog, MENUROOT_4MBMAINMENU);
+		func0f0f8300();
 	} else {
 		if (g_BossFile.locktype == MPLOCKTYPE_CHALLENGE) {
-			menu_push_root_dialog(&g_MpChallengeListOrDetailsViaAdvChallengeMenuDialog, MENUROOT_MPSETUP);
+			menuPushRootDialog(&g_MpChallengeListOrDetailsViaAdvChallengeMenuDialog, MENUROOT_MPSETUP);
 		} else {
-			menu_push_root_dialog(&g_MpAdvancedSetupMenuDialog, MENUROOT_MPSETUP);
+			menuPushRootDialog(&g_MpAdvancedSetupMenuDialog, MENUROOT_MPSETUP);
 		}
 
-		menu_hide_pressstart_labels();
+		func0f0f8300();
 	}
 
 	if (!silent) {
 		// Explosion sound
-		snd_start(var80095200, SFXMAP_809A_EXPLOSION, NULL, -1, -1, -1, -1, -1);
+		sndStart(var80095200, SFX_EXPLOSION_809A, NULL, -1, -1, -1, -1, -1);
 	}
 }
+
+struct menuitem g_MpExtGameOptionsMenuItems[] = {
+	{
+		MENUITEMTYPE_CHECKBOX,
+		0,
+		MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Start Armed",
+		MPOPTION_SPAWNWITHWEAPON,
+		menuhandlerMpCheckboxOption,
+	},
+	{
+		MENUITEMTYPE_CHECKBOX,
+		0,
+		MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"No Drug Blur",
+		MPOPTION_NODRUGBLUR,
+		menuhandlerMpCheckboxOption,
+	},
+	{
+		MENUITEMTYPE_CHECKBOX,
+		0,
+		MENUITEMFLAG_LOCKABLEMINOR,
+		L_OPTIONS_257, // "Friendly Fire"
+		MPOPTION_FRIENDLYFIRE,
+		menuhandlerMpDisplayTeam,
+	},
+	{
+		MENUITEMTYPE_CHECKBOX,
+		0,
+		MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"No Player on Radar",
+		MPOPTION_NOPLAYERONRADAR,
+		menuhandlerMpCheckboxOption,
+	},
+	{
+		MENUITEMTYPE_CHECKBOX,
+		0,
+		MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"No Doors",
+		MPOPTION_NODOORS,
+		menuhandlerMpCheckboxOption,
+	},
+	{ MENUITEMTYPE_END },
+};
+
+struct menudialogdef g_ExtGameOptionsMenuDialog = {
+	MENUDIALOGTYPE_DEFAULT,
+	(uintptr_t) "More Options\n",
+	g_MpExtGameOptionsMenuItems,
+	NULL,
+	MENUDIALOGFLAG_LITERAL_TEXT,
+	NULL,
+};

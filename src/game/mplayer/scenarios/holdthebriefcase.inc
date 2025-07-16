@@ -9,6 +9,8 @@
  * slightly slower but still have full access to their weaponry.
  */
 
+extern struct menudialogdef g_ExtGameOptionsMenuDialog;
+
 struct menuitem g_HtbOptionsMenuItems[] = {
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -16,7 +18,7 @@ struct menuitem g_HtbOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_222, // "One-Hit Kills"
 		MPOPTION_ONEHITKILLS,
-		menuhandler_mp_one_hit_kills,
+		menuhandlerMpOneHitKills,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -24,7 +26,7 @@ struct menuitem g_HtbOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_223, // "Slow Motion"
 		0,
-		menuhandler_mp_slow_motion,
+		menuhandlerMpSlowMotion,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -32,7 +34,7 @@ struct menuitem g_HtbOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_224, // "Fast Movement"
 		MPOPTION_FASTMOVEMENT,
-		menuhandler_mp_checkbox_option,
+		menuhandlerMpCheckboxOption,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -40,7 +42,7 @@ struct menuitem g_HtbOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_225, // "Display Team"
 		MPOPTION_DISPLAYTEAM,
-		menuhandler_mp_display_team,
+		menuhandlerMpDisplayTeam,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -48,7 +50,7 @@ struct menuitem g_HtbOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_226, // "No Radar"
 		MPOPTION_NORADAR,
-		menuhandler_mp_checkbox_option,
+		menuhandlerMpCheckboxOption,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -56,7 +58,7 @@ struct menuitem g_HtbOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_227, // "No Auto-Aim"
 		MPOPTION_NOAUTOAIM,
-		menuhandler_mp_checkbox_option,
+		menuhandlerMpCheckboxOption,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -64,7 +66,7 @@ struct menuitem g_HtbOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_OPTIONS_493, // "Kills Score"
 		MPOPTION_KILLSSCORE,
-		menuhandler_mp_checkbox_option,
+		menuhandlerMpCheckboxOption,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -80,7 +82,7 @@ struct menuitem g_HtbOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_237, // "Highlight Briefcase"
 		MPOPTION_HTB_HIGHLIGHTBRIEFCASE,
-		menuhandler_mp_checkbox_option,
+		menuhandlerMpCheckboxOption,
 	},
 	{
 		MENUITEMTYPE_CHECKBOX,
@@ -88,7 +90,7 @@ struct menuitem g_HtbOptionsMenuItems[] = {
 		MENUITEMFLAG_LOCKABLEMINOR,
 		L_MPMENU_238, // "Show on Radar"
 		MPOPTION_HTB_SHOWONRADAR,
-		menuhandler_mp_checkbox_option,
+		menuhandlerMpCheckboxOption,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -113,21 +115,21 @@ struct menudialogdef g_HtbOptionsMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
 	L_MPMENU_216, // "Briefcase Options"
 	g_HtbOptionsMenuItems,
-	mp_options_menu_dialog,
+	mpOptionsMenuDialog,
 	MENUDIALOGFLAG_MPLOCKABLE,
-	NULL,
+	&g_ExtGameOptionsMenuDialog,
 };
 
 struct defaultobj *var800869ec = NULL;
 
 struct weaponobj g_HtbTokenObj;
 
-void htb_init(void)
+void htbInit(void)
 {
 	g_ScenarioData.htb.token = NULL;
 }
 
-void htb_add_pad(s16 padnum)
+void htbAddPad(s16 padnum)
 {
 	struct scenariodata_htb *data = &g_ScenarioData.htb;
 
@@ -142,12 +144,12 @@ void htb_add_pad(s16 padnum)
 	}
 }
 
-s32 htb_num_props(void)
+s32 htbNumProps(void)
 {
 	return 1;
 }
 
-void htb_remove_ammo_crate_at_pad(s16 padnum)
+void htbRemoveAmmoCrateAtPad(s16 padnum)
 {
 	struct prop *prop = g_Vars.activeprops;
 
@@ -168,7 +170,7 @@ void htb_remove_ammo_crate_at_pad(s16 padnum)
 	}
 }
 
-void htb_reset(void)
+void htbReset(void)
 {
 	s32 i;
 
@@ -179,7 +181,7 @@ void htb_reset(void)
 	}
 }
 
-void htb_create_token(void)
+void htbCreateToken(void)
 {
 	struct weaponobj template = {
 		256,                    // extrascale
@@ -205,8 +207,8 @@ void htb_create_token(void)
 		0x0fff,                 // floorcol
 		0,                      // tiles
 		WEAPON_BRIEFCASE2,      // weaponnum
-		0,                      // upgradewant
-		0,                      // miscbyte
+		0,                      // unk5d
+		0,                      // unk5e
 		FUNC_PRIMARY,           // gunfunc
 		0,                      // fadeouttimer60
 		-1,                     // dualweaponnum
@@ -240,13 +242,13 @@ void htb_create_token(void)
 
 	// Choose the candidate and remove it
 	if (count > 0) {
-		count = random() % count;
+		count = rngRandom() % count;
 		var800869ec = candidates[count];
 		g_ScenarioData.htb.tokenpad = var800869ec->pad;
 		var800869ec->hidden |= OBJHFLAG_DELETING;
 		var800869ec->hidden2 |= OBJH2FLAG_CANREGEN;
 	} else if (g_ScenarioData.htb.nextindex > 0) {
-		g_ScenarioData.htb.tokenpad = g_ScenarioData.htb.padnums[random() % g_ScenarioData.htb.nextindex];
+		g_ScenarioData.htb.tokenpad = g_ScenarioData.htb.padnums[rngRandom() % g_ScenarioData.htb.nextindex];
 	} else {
 		g_ScenarioData.htb.tokenpad = 0;
 	}
@@ -255,7 +257,7 @@ void htb_create_token(void)
 	g_HtbTokenObj = template;
 	g_HtbTokenObj.base.pad = g_ScenarioData.htb.tokenpad;
 
-	setup_place_weapon(&g_HtbTokenObj, 999);
+	setupPlaceWeapon(&g_HtbTokenObj, 999);
 
 	g_HtbTokenObj.base.hidden2 &= ~OBJH2FLAG_CANREGEN;
 
@@ -266,13 +268,13 @@ void htb_create_token(void)
 	}
 }
 
-void htb_init_props(void)
+void htbInitProps(void)
 {
 	var800869ec = NULL;
-	htb_create_token();
+	htbCreateToken();
 }
 
-void htb_tick(void)
+void htbTick(void)
 {
 	s32 i;
 	u32 prevplayernum = g_Vars.currentplayernum;
@@ -306,16 +308,16 @@ void htb_tick(void)
 	// Check if a player is holding it
 	if (g_ScenarioData.htb.token == NULL) {
 		for (i = 0; i < PLAYERCOUNT(); i++) {
-			set_current_player_num(i);
+			setCurrentPlayerNum(i);
 
-			if (inv_has_briefcase()) {
+			if (invHasBriefcase()) {
 				g_ScenarioData.htb.token = g_Vars.currentplayer->prop;
 				break;
 			}
 		}
 	}
 
-	set_current_player_num(prevplayernum);
+	setCurrentPlayerNum(prevplayernum);
 
 	// Check if a simulant is holding it
 	if (g_ScenarioData.htb.token == NULL) {
@@ -333,7 +335,7 @@ void htb_tick(void)
 	}
 
 	if (g_ScenarioData.htb.token == NULL) {
-		htb_create_token();
+		htbCreateToken();
 	}
 
 	if (g_ScenarioData.htb.token == NULL) {
@@ -348,31 +350,31 @@ void htb_tick(void)
 	}
 }
 
-void htb_tick_chr(struct chrdata *chr)
+void htbTickChr(struct chrdata *chr)
 {
 	if (chr) {
 		if (chr->aibot->hasbriefcase) {
 			chr->aibot->htbheldtimer60 += g_Vars.lvupdate240;
 
 			if (chr->aibot->htbheldtimer60 >= TICKS(7200)) {
-				snd_start(var80095200, SFXNUM_05B8_MP_SCOREPOINT, NULL, -1, -1, -1, -1, -1);
-				g_MpAllChrConfigPtrs[mp_chr_to_chrindex(chr)]->numpoints++;
+				sndStart(var80095200, SFX_MP_SCOREPOINT, NULL, -1, -1, -1, -1, -1);
+				g_MpAllChrConfigPtrs[mpPlayerGetIndex(chr)]->numpoints++;
 				chr->aibot->htbheldtimer60 = 0;
 			}
 		} else {
 			chr->aibot->htbheldtimer60 = 0;
 		}
 	} else {
-		if (inv_has_briefcase()) {
+		if (invHasBriefcase()) {
 			g_Vars.currentplayerstats->tokenheldtime += g_Vars.lvupdate240;
 
 			if (g_Vars.currentplayerstats->tokenheldtime >= TICKS(7200)) {
-				snd_start(var80095200, SFXNUM_05B8_MP_SCOREPOINT, NULL, -1, -1, -1, -1, -1);
+				sndStart(var80095200, SFX_MP_SCOREPOINT, NULL, -1, -1, -1, -1, -1);
 				g_MpAllChrConfigPtrs[g_Vars.currentplayernum]->numpoints++;
 #if VERSION >= VERSION_JPN_FINAL
-				hudmsg_create_with_flags(lang_get(L_MPWEAPONS_024), HUDMSGTYPE_MPSCENARIO, HUDMSGFLAG_ONLYIFALIVE | HUDMSGFLAG_NOWRAP); // "1 Point!"
+				hudmsgCreateWithFlags(langGet(L_MPWEAPONS_024), HUDMSGTYPE_MPSCENARIO, HUDMSGFLAG_ONLYIFALIVE | HUDMSGFLAG_NOWRAP); // "1 Point!"
 #else
-				hudmsg_create_with_flags(lang_get(L_MPWEAPONS_024), HUDMSGTYPE_MPSCENARIO, HUDMSGFLAG_ONLYIFALIVE); // "1 Point!"
+				hudmsgCreateWithFlags(langGet(L_MPWEAPONS_024), HUDMSGTYPE_MPSCENARIO, HUDMSGFLAG_ONLYIFALIVE); // "1 Point!"
 #endif
 				g_Vars.currentplayerstats->tokenheldtime = 0;
 			}
@@ -389,7 +391,7 @@ void htb_tick_chr(struct chrdata *chr)
  *
  * PAL recognises that mins will always be 0 and simplifies the calculation.
  */
-Gfx *htb_render_hud(Gfx *gdl)
+Gfx *htbRenderHud(Gfx *gdl)
 {
 	s32 time240;
 	s32 mins;
@@ -400,9 +402,9 @@ Gfx *htb_render_hud(Gfx *gdl)
 	s32 y;
 	char text[64];
 
-	if (inv_has_briefcase()) {
-		x = vi_get_view_left() + vi_get_view_width() / 2;
-		y = vi_get_view_top() + 10;
+	if (invHasBriefcase()) {
+		x = viGetViewLeft() + viGetViewWidth() / 2;
+		y = viGetViewTop() + 10;
 
 		time240 = TICKS(7200) - g_Vars.currentplayerstats->tokenheldtime;
 
@@ -416,28 +418,39 @@ Gfx *htb_render_hud(Gfx *gdl)
 		sprintf(text, "%d:%02d", mins, secs);
 #endif
 
-		gdl = text_begin(gdl);
-		text_measure(&textheight, &textwidth, text, g_CharsHandelGothicXs, g_FontHandelGothicXs, 0);
+#ifndef PLATFORM_N64
+		const s32 playercount = PLAYERCOUNT();
+		if (playercount < 2 || (playercount == 2 && optionsGetScreenSplit() == SCREENSPLIT_HORIZONTAL)) {
+			gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+		}
+#endif
+
+		gdl = text0f153628(gdl);
+		textMeasure(&textheight, &textwidth, text, g_CharsHandelGothicXs, g_FontHandelGothicXs, 0);
 
 		x -= textwidth / 2;
 		textwidth += x;
 		textheight += y;
 
 #if VERSION >= VERSION_NTSC_1_0
-		gdl = text_draw_black_textbox(gdl, x, y, textwidth, textheight);
-		gdl = text_render_v1(gdl, &x, &y, text, g_CharsNumeric, g_FontNumeric, 0x00ff00a0, 0xa0, vi_get_width(), vi_get_height(), 0, 0);
+		gdl = text0f153990(gdl, x, y, textwidth, textheight);
+		gdl = textRender(gdl, &x, &y, text, g_CharsNumeric, g_FontNumeric, 0x00ff00a0, 0xa0, viGetWidth(), viGetHeight(), 0, 0);
 #else
-		gdl = text_draw_black_box(gdl, &x, &y, &textwidth, &textheight);
-		gdl = text_render_v1(gdl, &x, &y, text, g_CharsNumeric, g_FontNumeric, 0x00ff00a0, 0x88, vi_get_width(), vi_get_height(), 0, 0);
+		gdl = text0f153858(gdl, &x, &y, &textwidth, &textheight);
+		gdl = textRender(gdl, &x, &y, text, g_CharsNumeric, g_FontNumeric, 0x00ff00a0, 0x88, viGetWidth(), viGetHeight(), 0, 0);
 #endif
 
-		gdl = text_end(gdl);
+		gdl = text0f153780(gdl);
+
+#ifndef PLATFORM_N64
+		gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT);
+#endif
 	}
 
 	return gdl;
 }
 
-void htb_calculate_player_score(struct mpchrconfig *mpchr, s32 mpchrnum, s32 *score, s32 *deaths)
+void htbCalculatePlayerScore(struct mpchrconfig *mpchr, s32 mpchrnum, s32 *score, s32 *deaths)
 {
 	struct mpchrconfig *loopmpchr;
 	s32 i;
@@ -466,7 +479,7 @@ void htb_calculate_player_score(struct mpchrconfig *mpchr, s32 mpchrnum, s32 *sc
 	*deaths = mpchr->numdeaths;
 }
 
-Gfx *htb_radar_extra(Gfx *gdl)
+Gfx *htbRadarExtra(Gfx *gdl)
 {
 	if ((g_MpSetup.options & MPOPTION_HTB_SHOWONRADAR) &&
 			g_ScenarioData.htb.token != NULL &&
@@ -476,13 +489,13 @@ Gfx *htb_radar_extra(Gfx *gdl)
 		dist.x = g_ScenarioData.htb.pos.x - g_Vars.currentplayer->prop->pos.x;
 		dist.y = g_ScenarioData.htb.pos.y - g_Vars.currentplayer->prop->pos.y;
 		dist.z = g_ScenarioData.htb.pos.z - g_Vars.currentplayer->prop->pos.z;
-		gdl = radar_draw_dot(gdl, g_ScenarioData.htb.token, &dist, 0x00ff0000, 0, 1);
+		gdl = radarDrawDot(gdl, g_ScenarioData.htb.token, &dist, 0x00ff0000, 0, 1);
 	}
 
 	return gdl;
 }
 
-bool htb_radar_chr(Gfx **gdl, struct prop *prop)
+bool htbRadarChr(Gfx **gdl, struct prop *prop)
 {
 	if ((g_MpSetup.options & MPOPTION_HTB_SHOWONRADAR) &&
 			g_ScenarioData.htb.token &&
@@ -494,10 +507,10 @@ bool htb_radar_chr(Gfx **gdl, struct prop *prop)
 			dist.z = prop->pos.z - g_Vars.currentplayer->prop->pos.z;
 
 			if (g_MpSetup.options & MPOPTION_TEAMSENABLED) {
-				u32 colour = g_TeamColours[radar_get_team_index(prop->chr->team)];
-				*gdl = radar_draw_dot(*gdl, g_ScenarioData.htb.token, &dist, colour, 0, 1);
+				u32 colour = g_TeamColours[radarGetTeamIndex(prop->chr->team)];
+				*gdl = radarDrawDot(*gdl, g_ScenarioData.htb.token, &dist, colour, 0, 1);
 			} else {
-				*gdl = radar_draw_dot(*gdl, g_ScenarioData.htb.token, &dist, 0x00ff0000, 0, 1);
+				*gdl = radarDrawDot(*gdl, g_ScenarioData.htb.token, &dist, 0x00ff0000, 0, 1);
 			}
 
 			return true;
@@ -507,7 +520,7 @@ bool htb_radar_chr(Gfx **gdl, struct prop *prop)
 	return false;
 }
 
-bool htb_highlight_prop(struct prop *prop, s32 *colour)
+bool htbHighlightProp(struct prop *prop, s32 *colour)
 {
 	if ((g_MpSetup.options & MPOPTION_HTB_HIGHLIGHTBRIEFCASE) && prop == g_ScenarioData.htb.token) {
 		colour[0] = 0;
