@@ -107,6 +107,9 @@ typedef struct ALParam_s {
 	} yetstillmoredata;
 	s32 unk1c;
 	s32 unk20;
+#ifdef PLATFORM_64BIT
+	u8 _pad_[8];
+#endif
 } ALParam;
 
 typedef struct {
@@ -339,7 +342,7 @@ void            _collectPVoices(ALSynth *drvr);
 s32             _timeToSamples(ALSynth *ALSynth, s32 micros);
 ALMicroTime     _samplesToTime(ALSynth *synth, s32 samples);
 
-void            n_alFxInitlpfilter(ALLowPass *lp);
+void            _init_lpfilter(ALLowPass *lp);
 
 #endif
 
