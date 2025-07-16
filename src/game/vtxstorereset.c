@@ -5,35 +5,35 @@
 #include "data.h"
 #include "types.h"
 
-void vtxstore_reset(void)
+void vtxstoreReset(void)
 {
 	s32 i;
 	s32 j;
-	s32 numbatches;
-	s32 maxunits;
+	s32 num;
+	s32 val;
 
 	for (i = 0; i < ARRAYCOUNT(g_VtxstoreTypes); i++) {
 		if (PLAYERCOUNT() >= 2) {
-			maxunits = g_VtxstoreTypes[i].mpmaxunits;
-			numbatches = g_VtxstoreTypes[i].mpnumbatches;
+			val = g_VtxstoreTypes[i].valifmp;
+			num = g_VtxstoreTypes[i].numifmp;
 		} else if (g_Vars.stagenum >= STAGE_TITLE) {
-			maxunits = g_VtxstoreTypes[i].othermaxunits;
-			numbatches = g_VtxstoreTypes[i].othernumbatches;
+			val = g_VtxstoreTypes[i].valifspecial;
+			num = g_VtxstoreTypes[i].numifspecial;
 		} else {
-			maxunits = g_VtxstoreTypes[i].spmaxunits;
-			numbatches = g_VtxstoreTypes[i].spnumbatches;
+			val = g_VtxstoreTypes[i].valifsp;
+			num = g_VtxstoreTypes[i].numifsp;
 		}
 
-		if (numbatches > 0) {
-			g_VtxstoreTypes[i].batches = memp_alloc(numbatches * sizeof(struct vtxstorebatch), MEMPOOL_STAGE);
+		if (num > 0) {
+			g_VtxstoreTypes[i].unk24 = mempAlloc(num * sizeof(struct var8007e3d0_data), MEMPOOL_STAGE);
 		}
 
-		for (j = 0; j < numbatches; j++) {
-			g_VtxstoreTypes[i].batches[j].refcount = 0;
+		for (j = 0; j < num; j++) {
+			g_VtxstoreTypes[i].unk24[j].unk0e = 0;
 		}
 
-		g_VtxstoreTypes[i].numbatches = numbatches;
-		g_VtxstoreTypes[i].numunitsmax = maxunits;
-		g_VtxstoreTypes[i].numunitsfree = maxunits;
+		g_VtxstoreTypes[i].numallocated = num;
+		g_VtxstoreTypes[i].val1 = val;
+		g_VtxstoreTypes[i].val2 = val;
 	}
 }

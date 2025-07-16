@@ -13,27 +13,25 @@
 
 u32 g_ZbufWidth;
 u32 g_ZbufHeight;
-u16 g_ArtifactDepths0[384];
-u16 g_ArtifactDepths1[384];
-u16 g_ArtifactDepths2[384];
+u16 g_ArtifactsCfb0[0x180];
+u16 g_ArtifactsCfb1[0x180];
+u16 g_ArtifactsCfb2[0x180];
 
 u16 *g_ZbufPtr1 = NULL;
 u16 *g_ZbufPtr2 = NULL;
 
-void zbuf_allocate(void);
-
-void *zbuf_get_allocation(void)
+void *zbufGetAllocation(void)
 {
 	return g_ZbufPtr1;
 }
 
-void zbuf_reset(s32 stagenum)
+void zbufReset(s32 stagenum)
 {
 	g_ZbufPtr1 = NULL;
 	g_ZbufPtr2 = NULL;
 
 	if (stagenum != STAGE_TITLE) {
-		zbuf_allocate();
+		zbufAllocate();
 	}
 }
 
@@ -50,7 +48,7 @@ void zbuf_reset(s32 stagenum)
  * The allocation sizes need to enforce a minimum because the allocation is also
  * used by lighting initialisation code.
  */
-void zbuf_allocate(void)
+void zbufAllocate(void)
 {
 	if (IS4MB()) {
 		g_ZbufWidth = MAX(320, FBALLOC_WIDTH_LO);
@@ -70,25 +68,20 @@ void zbuf_allocate(void)
 		}
 	}
 
-	g_ZbufPtr1 = memp_alloc(g_ZbufWidth * g_ZbufHeight * sizeof(u16) + 0x40, MEMPOOL_STAGE);
+	g_ZbufPtr1 = mempAlloc(g_ZbufWidth * g_ZbufHeight * sizeof(u16) + 0x40, MEMPOOL_STAGE);
 	g_ZbufPtr1 = (void *) (((uintptr_t) g_ZbufPtr1 + 0x3f) & ~0x3f);
 	g_ZbufPtr2 = g_ZbufPtr1;
 }
 
 /**
- * In an older implementation, the game almost certainly had two z-buffers.
- * It needs a fresh z-buffer after rendering the scene and before rendering the
- * player's gun, but it also needs to read values off both z-buffers for
- * lighting purposes. In this older implementation, two z-buffers would have
- * been used and swapped.
+ * Note: There is only one z-buffer, so there is nothing to swap.
+ * Both of these pointers always have the same value.
  *
- * Due to memory limitations, this method was removed and an alternative
- * solution was used to read this values.
- *
- * This function is still called but it does nothing.
- * There is only one z-buffer, and both pointers always have the same value.
+ * We assume this is a swap function due to the context in which it's called.
+ * Perhaps the developers implemented two buffers with swapping before realising
+ * they only needed one.
  */
-void zbuf_swap(void)
+void zbufSwap(void)
 {
 	g_ZbufPtr2 = g_ZbufPtr1;
 }
@@ -99,19 +92,19 @@ void zbuf_swap(void)
  * a scissor on the viewport.
  *
  * This allows the z-buffer allocation to be half a screen instead of a full
- * screen, however zbuf_allocate allocates the full hi-res screen for 8MB,
+ * screen, however zbufAllocate allocates the full hi-res screen for 8MB,
  * so this benefit is not realised. The shifting code is likely from GE.
  */
-Gfx *zbuf_configure_rdp(Gfx *gdl)
+Gfx *zbufConfigureRdp(Gfx *gdl)
 {
 	u32 subamount;
 	uintptr_t addr;
 
 	if (g_Vars.normmplayerisrunning
 			&& (g_Vars.currentplayernum >= 2 || (PLAYERCOUNT() == 2 && g_Vars.currentplayernum == 1))) {
-		subamount = player_get_fb_width() * player_get_fb_height();
+		subamount = playerGetFbWidth() * playerGetFbHeight();
 
-		if (IS4MB() || options_get_screen_split() == SCREENSPLIT_VERTICAL) {
+		if (IS4MB() || optionsGetScreenSplit() == SCREENSPLIT_VERTICAL) {
 			subamount = 0;
 		}
 	} else {
@@ -130,49 +123,53 @@ Gfx *zbuf_configure_rdp(Gfx *gdl)
 /**
  * Clear the current player's portion of the z-buffer.
  */
-Gfx *zbuf_clear(Gfx *gdl)
+Gfx *zbufClear(Gfx *gdl)
 {
+#ifdef PLATFORM_N64
 	s32 left;
 	s32 right;
 
 	gDPPipeSync(gdl++);
 	gDPSetRenderMode(gdl++, G_RM_NOOP, G_RM_NOOP2);
-	gDPSetColorImage(gdl++, G_IM_FMT_RGBA, G_IM_SIZ_16b, vi_get_width(), OS_PHYSICAL_TO_K0(g_ZbufPtr2));
+	gDPSetColorImage(gdl++, G_IM_FMT_RGBA, G_IM_SIZ_16b, viGetWidth(), OS_PHYSICAL_TO_K0(g_ZbufPtr2));
 	gDPSetCycleType(gdl++, G_CYC_FILL);
 	gDPSetFillColor(gdl++, 0xfffcfffc);
-	gDPSetScissorFrac(gdl++, G_SC_NON_INTERLACE, 0, 0, player_get_fb_width() * 4.0f, player_get_fb_height() * 4.0f);
+	gDPSetScissorFrac(gdl++, G_SC_NON_INTERLACE, 0, 0, playerGetFbWidth() * 4.0f, playerGetFbHeight() * 4.0f);
 
 	if (PLAYERCOUNT() <= 2) {
 		left = 0;
-		right = player_get_fb_width() - 1;
+		right = playerGetFbWidth() - 1;
 	} else if (g_Vars.currentplayernum == 0 || g_Vars.currentplayernum == 2) {
 		left = 0;
-		right = player_get_fb_width() / 2 - 1;
+		right = playerGetFbWidth() / 2 - 1;
 	} else {
-		left = player_get_fb_width() / 2;
-		right = player_get_fb_width() - 1;
+		left = playerGetFbWidth() / 2;
+		right = playerGetFbWidth() - 1;
 	}
 
-	gDPFillRectangle(gdl++, left, 0, right, player_get_fb_height() - 1);
+	gDPFillRectangle(gdl++, left, 0, right, playerGetFbHeight() - 1);
 	gDPPipeSync(gdl++);
+#else
+	gDPClearDepthEXT(gdl++);
+#endif
 
 	return gdl;
 }
 
-u16 *zbuf_get_artifacts_depth_samples(s32 index)
+u16 *zbufGetArtifactsCfb(s32 index)
 {
 	u16 *addr;
 
 	if (index == 0) {
-		addr = g_ArtifactDepths0;
+		addr = g_ArtifactsCfb0;
 	}
 
 	if (index == 1) {
-		addr = g_ArtifactDepths1;
+		addr = g_ArtifactsCfb1;
 	}
 
 	if (index == 2) {
-		addr = g_ArtifactDepths2;
+		addr = g_ArtifactsCfb2;
 	}
 
 	addr = (u16 *) (((uintptr_t) addr + 0x3f) & ~0x3f);
@@ -181,13 +178,16 @@ u16 *zbuf_get_artifacts_depth_samples(s32 index)
 }
 
 /**
- * Append GDL commands which make the GPU read from the z-buffer as a texture
- * and write it to the scheduler's write artifacts list. Only the individual
- * pixels of interest are copied.
+ * This method is designed to save artifact depths
+ * prior to drawing the hands and weapon on-screen
+ * since drawing them requires clearing the zbuffer
+ * to avoid clipping the gun model on floors and walls.
+ *
+ * TODO: determine if this works with the PC port
  */
-Gfx *zbuf_save_artifact_depths(Gfx *gdl)
+Gfx *zbufSaveArtifactDepths(Gfx *gdl)
 {
-	struct artifact *artifacts = sched_get_write_artifacts();
+	struct artifact *artifacts = schedGetWriteArtifacts();
 	u32 stack;
 	u16 *zbuf = g_ZbufPtr1;
 	u32 numsamples = 0;
@@ -196,13 +196,12 @@ Gfx *zbuf_save_artifact_depths(Gfx *gdl)
 	u16 *zbufrow;
 	s32 i;
 
-	vi_get_back_buffer();
-	samples = zbuf_get_artifacts_depth_samples(g_SchedWriteArtifactsIndex);
-
-	g_SchedArtifactsWithDualBuffers[g_SchedWriteArtifactsIndex] = true;
+	viGetBackBuffer();
+	samples = zbufGetArtifactsCfb(g_SchedWriteArtifactsIndex);
+	g_SchedSpecialArtifactIndexes[g_SchedWriteArtifactsIndex] = 1;
 
 	gDPPipeSync(gdl++);
-	gDPSetColorImage(gdl++, G_IM_FMT_RGBA, G_IM_SIZ_16b, vi_get_buf_width(), OS_PHYSICAL_TO_K0(samples));
+	gDPSetColorImage(gdl++, G_IM_FMT_RGBA, G_IM_SIZ_16b, viGetBufWidth(), OS_PHYSICAL_TO_K0(samples));
 	gDPSetScissor(gdl++, G_SC_NON_INTERLACE, 0, 0, SCREEN_320, SCREEN_240);
 	gDPSetCycleType(gdl++, G_CYC_COPY);
 	gDPSetTile(gdl++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 0, 0x0000, 5, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
@@ -230,12 +229,12 @@ Gfx *zbuf_save_artifact_depths(Gfx *gdl)
 
 		if (artifacts[i].type != ARTIFACTTYPE_FREE) {
 			thissample = &samples[numsamples];
-			zbufrow = &zbuf[artifacts[i].screeny * vi_get_width()];
+			zbufrow = &zbuf[artifacts[i].screeny * viGetWidth()];
 
 			gDPPipeSync(gdl++);
 			gDPSetTextureImage(gdl++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_320, zbufrow);
 			gDPLoadSync(gdl++);
-			gDPLoadBlock(gdl++, 5, 0, 0, vi_get_width() - 1, 0);
+			gDPLoadBlock(gdl++, 5, 0, 0, viGetWidth() - 1, 0);
 			gDPPipeSync(gdl++);
 
 			gSPTextureRectangle(gdl++,
@@ -253,8 +252,8 @@ Gfx *zbuf_save_artifact_depths(Gfx *gdl)
 	gDPPipeSync(gdl++);
 	gDPLoadSync(gdl++);
 	gDPTileSync(gdl++);
-	gDPSetColorImage(gdl++, G_IM_FMT_RGBA, G_IM_SIZ_16b, vi_get_buf_width(), OS_PHYSICAL_TO_K0(vi_get_back_buffer()));
-	gDPSetScissorFrac(gdl++, G_SC_NON_INTERLACE, 0, 0, vi_get_width() * 4.0f, vi_get_height() * 4.0f);
+	gDPSetColorImage(gdl++, G_IM_FMT_RGBA, G_IM_SIZ_16b, viGetBufWidth(), OS_PHYSICAL_TO_K0(viGetBackBuffer()));
+	gDPSetScissorFrac(gdl++, G_SC_NON_INTERLACE, 0, 0, viGetWidth() * 4.0f, viGetHeight() * 4.0f);
 	gSPSetGeometryMode(gdl++, G_ZBUFFER);
 	gDPSetTextureFilter(gdl++, G_TF_BILERP);
 	gDPSetTexturePersp(gdl++, G_TP_PERSP);

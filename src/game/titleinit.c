@@ -4,7 +4,7 @@
 #include "data.h"
 #include "types.h"
 
-void title_init(void)
+void titleInit(void)
 {
 	g_TitleMode = -1;
 	g_TitleNextMode = TITLEMODE_LEGAL;

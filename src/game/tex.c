@@ -8,6 +8,7 @@
 #include "gbiex.h"
 #include "textures.h"
 #include "types.h"
+#include "platform.h"
 
 #define TXMODE_WRAP   0
 #define TXMODE_CLAMP  1
@@ -39,9 +40,12 @@ s32 g_TexLutMode;
 u32 var800ab5b4;
 struct tilestate g_TexTileStates[8];
 struct tilesize g_TexTileSizes[8];
+#ifndef PLATFORM_N64
+u32 g_TexFilter2D = G_TF_BILERP;
+#endif
 
 // Default
-u16 g_SurfaceTypeDefaultSounds[] = { SFXMAP_8087_HIT_STONE, SFXMAP_8088_HIT_STONE };
+u16 g_SurfaceTypeDefaultSounds[] = { SFX_HIT_STONE_8087, SFX_HIT_STONE_8088 };
 u8 g_SurfaceTypeDefaultTexes[] = { WALLHITTEX_BULLET2 };
 
 struct surfacetype g_SurfaceTypeDefault = {
@@ -49,7 +53,7 @@ struct surfacetype g_SurfaceTypeDefault = {
 };
 
 // Stone
-u16 g_SurfaceTypeStoneSounds[] = { SFXMAP_8087_HIT_STONE, SFXMAP_8088_HIT_STONE };
+u16 g_SurfaceTypeStoneSounds[] = { SFX_HIT_STONE_8087, SFX_HIT_STONE_8088 };
 u8 g_SurfaceTypeStoneTexes[] = { WALLHITTEX_BULLET1 };
 
 struct surfacetype g_SurfaceTypeStone = {
@@ -57,7 +61,7 @@ struct surfacetype g_SurfaceTypeStone = {
 };
 
 // Wood
-u16 g_SurfaceTypeWoodSounds[] = { SFXMAP_807E_HIT_WOOD, SFXMAP_807F_HIT_WOOD };
+u16 g_SurfaceTypeWoodSounds[] = { SFX_HIT_WOOD_807E, SFX_HIT_WOOD_807F };
 u8 g_SurfaceTypeWoodTexes[] = { WALLHITTEX_WOOD };
 
 struct surfacetype g_SurfaceTypeWood = {
@@ -65,7 +69,7 @@ struct surfacetype g_SurfaceTypeWood = {
 };
 
 // Metal
-u16 g_SurfaceTypeMetalSounds[] = { SFXMAP_8079_HIT_METAL, SFXMAP_807B_HIT_METAL };
+u16 g_SurfaceTypeMetalSounds[] = { SFX_HIT_METAL_8079, SFX_HIT_METAL_807B };
 u8 g_SurfaceTypeMetalTexes[] = { WALLHITTEX_METAL };
 
 struct surfacetype g_SurfaceTypeMetal = {
@@ -73,7 +77,7 @@ struct surfacetype g_SurfaceTypeMetal = {
 };
 
 // Glass
-u16 g_SurfaceTypeGlassSounds[] = { SFXMAP_8077_HIT_GLASS };
+u16 g_SurfaceTypeGlassSounds[] = { SFX_HIT_GLASS };
 u8 g_SurfaceTypeGlassTexes[] = { WALLHITTEX_GLASS1, WALLHITTEX_GLASS2, WALLHITTEX_GLASS3 };
 
 struct surfacetype g_SurfaceTypeGlass = {
@@ -81,7 +85,7 @@ struct surfacetype g_SurfaceTypeGlass = {
 };
 
 // Snow
-u16 g_SurfaceTypeSnowSounds[] = { SFXMAP_807D_HIT_SNOW };
+u16 g_SurfaceTypeSnowSounds[] = { SFX_HIT_SNOW };
 u8 g_SurfaceTypeSnowTexes[] = { WALLHITTEX_BULLET1 };
 
 struct surfacetype g_SurfaceTypeSnow = {
@@ -89,7 +93,7 @@ struct surfacetype g_SurfaceTypeSnow = {
 };
 
 // Dirt
-u16 g_SurfaceTypeDirtSounds[] = { SFXMAP_8084_HIT_DIRT, SFXMAP_8085_HIT_DIRT };
+u16 g_SurfaceTypeDirtSounds[] = { SFX_HIT_DIRT_8084, SFX_HIT_DIRT_8085 };
 u8 g_SurfaceTypeDirtTexes[] = { WALLHITTEX_SOFT };
 
 struct surfacetype g_SurfaceTypeDirt = {
@@ -97,7 +101,7 @@ struct surfacetype g_SurfaceTypeDirt = {
 };
 
 // Mud
-u16 g_SurfaceTypeMudSounds[] = { SFXMAP_8081_HIT_MUD, SFXMAP_8082_HIT_MUD, SFXMAP_8083_HIT_MUD };
+u16 g_SurfaceTypeMudSounds[] = { SFX_HIT_MUD_8081, SFX_HIT_MUD_8082, SFX_HIT_MUD_8083 };
 u8 g_SurfaceTypeMudTexes[] = { WALLHITTEX_SOFT };
 
 struct surfacetype g_SurfaceTypeMud = {
@@ -105,7 +109,7 @@ struct surfacetype g_SurfaceTypeMud = {
 };
 
 // Tile
-u16 g_SurfaceTypeTileSounds[] = { SFXMAP_8086_HIT_TILE };
+u16 g_SurfaceTypeTileSounds[] = { SFX_HIT_TILE };
 u8 g_SurfaceTypeTileTexes[] = { WALLHITTEX_BULLET1 };
 
 struct surfacetype g_SurfaceTypeTile = {
@@ -113,7 +117,7 @@ struct surfacetype g_SurfaceTypeTile = {
 };
 
 // Metal obj
-u16 g_SurfaceTypeMetalObjSounds[] = { SFXMAP_8089_HIT_METALOBJ, SFXMAP_808A_HIT_METALOBJ };
+u16 g_SurfaceTypeMetalObjSounds[] = { SFX_HIT_METALOBJ_8089, SFX_HIT_METALOBJ_808A };
 u8 g_SurfaceTypeMetalObjTexes[] = { WALLHITTEX_BULLET1, WALLHITTEX_BULLET2 };
 
 struct surfacetype g_SurfaceTypeMetalObj = {
@@ -121,7 +125,7 @@ struct surfacetype g_SurfaceTypeMetalObj = {
 };
 
 // Chr
-u16 g_SurfaceTypeChrSounds[] = { SFXMAP_8076_HIT_CHR };
+u16 g_SurfaceTypeChrSounds[] = { SFX_HIT_CHR };
 u8 g_SurfaceTypeChrTexes[] = { WALLHITTEX_SOFT };
 
 struct surfacetype g_SurfaceTypeChr = {
@@ -129,7 +133,7 @@ struct surfacetype g_SurfaceTypeChr = {
 };
 
 // Glass XLU
-u16 g_SurfaceTypeGlassXluSounds[] = { SFXMAP_8077_HIT_GLASS };
+u16 g_SurfaceTypeGlassXluSounds[] = { SFX_HIT_GLASS };
 u8 g_SurfaceTypeGlassXluTexes[] = { WALLHITTEX_GLASS1, WALLHITTEX_GLASS2, WALLHITTEX_GLASS3 };
 
 struct surfacetype g_SurfaceTypeGlassXlu = {
@@ -142,7 +146,7 @@ struct surfacetype g_SurfaceTypeNone = {
 };
 
 // Shallow water
-u16 g_SurfaceTypeShallowWaterSounds[] = { SFXMAP_8080_HIT_WATER };
+u16 g_SurfaceTypeShallowWaterSounds[] = { SFX_HIT_WATER };
 u8 g_SurfaceTypeShallowWaterTexes[] = { WALLHITTEX_WATER };
 
 struct surfacetype g_SurfaceTypeShallowWater = {
@@ -150,7 +154,7 @@ struct surfacetype g_SurfaceTypeShallowWater = {
 };
 
 // Deep water
-u16 g_SurfaceTypeDeepWaterSounds[] = { SFXMAP_8080_HIT_WATER };
+u16 g_SurfaceTypeDeepWaterSounds[] = { SFX_HIT_WATER };
 u8 g_SurfaceTypeDeepWaterTexes[] = { WALLHITTEX_WATER };
 
 struct surfacetype g_SurfaceTypeDeepWater = {
@@ -211,7 +215,7 @@ void tex0f173a00(void)
 	// empty
 }
 
-void tex_reset_tiles(void)
+void texResetTiles(void)
 {
 	s32 i;
 
@@ -223,7 +227,7 @@ void tex_reset_tiles(void)
 	g_TexLutMode = -1;
 }
 
-bool tex_try_set_lut_mode(u32 lutmode)
+bool texTrySetLutMode(u32 lutmode)
 {
 	if (g_TexLutMode == lutmode) {
 		return false;
@@ -233,7 +237,7 @@ bool tex_try_set_lut_mode(u32 lutmode)
 	return true;
 }
 
-bool tex_try_set_tile_state(s32 tile, s32 format, s32 depth, s32 line, s32 tmem, s32 smode, s32 tmode, s32 masks, s32 maskt, s32 shifts, s32 shiftt)
+bool texTrySetTileState(s32 tile, s32 format, s32 depth, s32 line, s32 tmem, s32 smode, s32 tmode, s32 masks, s32 maskt, s32 shifts, s32 shiftt)
 {
 	bool changed = false;
 
@@ -265,7 +269,7 @@ bool tex_try_set_tile_state(s32 tile, s32 format, s32 depth, s32 line, s32 tmem,
 	return changed;
 }
 
-bool tex_try_set_tile_size(s32 tile, s32 uls, s32 ult, s32 lrs, s32 lrt)
+bool texTrySetTileSize(s32 tile, s32 uls, s32 ult, s32 lrs, s32 lrt)
 {
 	bool changed = false;
 
@@ -285,7 +289,7 @@ bool tex_try_set_tile_size(s32 tile, s32 uls, s32 ult, s32 lrs, s32 lrt)
 	return changed;
 }
 
-s32 tex_get_width_at_lod(struct tex *tex, s32 lod)
+s32 texGetWidthAtLod(struct tex *tex, s32 lod)
 {
 	s32 i;
 	s32 width = tex->width;
@@ -311,7 +315,7 @@ s32 tex_get_width_at_lod(struct tex *tex, s32 lod)
 	return width;
 }
 
-s32 tex_get_height_at_lod(struct tex *tex, s32 lod)
+s32 texGetHeightAtLod(struct tex *tex, s32 lod)
 {
 	s32 i;
 	s32 height = tex->height;
@@ -337,10 +341,10 @@ s32 tex_get_height_at_lod(struct tex *tex, s32 lod)
 	return height;
 }
 
-s32 tex_get_line_size_in_bytes(struct tex *tex, s32 lod)
+s32 texGetLineSizeInBytes(struct tex *tex, s32 lod)
 {
 	s32 depth = tex->depth;
-	s32 width = tex_get_width_at_lod(tex, lod);
+	s32 width = texGetWidthAtLod(tex, lod);
 
 	if (depth == G_IM_SIZ_32b) {
 		return (width + 3) / 4;
@@ -357,12 +361,12 @@ s32 tex_get_line_size_in_bytes(struct tex *tex, s32 lod)
 	return (width + 15) / 16;
 }
 
-s32 tex_get_size_in_bytes(struct tex *tex, s32 lod)
+s32 texGetSizeInBytes(struct tex *tex, s32 lod)
 {
-	return tex_get_height_at_lod(tex, lod) * tex_get_line_size_in_bytes(tex, lod);
+	return texGetHeightAtLod(tex, lod) * texGetLineSizeInBytes(tex, lod);
 }
 
-void tex_get_depth_and_size(struct tex *tex, s32 *deptharg, s32 *lenarg)
+void texGetDepthAndSize(struct tex *tex, s32 *deptharg, s32 *lenarg)
 {
 	s32 depth = tex->depth;
 	s32 numlods = tex->numlods ? tex->numlods : 1;
@@ -381,11 +385,11 @@ void tex_get_depth_and_size(struct tex *tex, s32 *deptharg, s32 *lenarg)
 	}
 
 	for (lod = 0; lod < numlods; lod++) {
-		*lenarg += tex_get_size_in_bytes(tex, lod) * 4;
+		*lenarg += texGetSizeInBytes(tex, lod) * 4;
 	}
 }
 
-s32 tex_dimension_to_mask(s32 dimension)
+s32 texDimensionToMask(s32 dimension)
 {
 	s32 i = 0;
 
@@ -399,7 +403,7 @@ s32 tex_dimension_to_mask(s32 dimension)
 	return i;
 }
 
-s32 tex_mode_to_gbi_mode(s32 txmode)
+s32 texModeToGbiMode(s32 txmode)
 {
 	if (txmode == TXMODE_CLAMP) {
 		return G_TX_CLAMP;
@@ -412,7 +416,7 @@ s32 tex_mode_to_gbi_mode(s32 txmode)
 	return G_TX_WRAP;
 }
 
-Gfx *tex_write_tile_from_definition(Gfx *gdl, struct tex *tex, s32 offset, s32 shifts, s32 shiftt, s32 min)
+Gfx *texWriteTileFromDefinition(Gfx *gdl, struct tex *tex, s32 offset, s32 shifts, s32 shiftt, s32 min)
 {
 	struct texture *s0 = &g_Textures[tex->texturenum];
 	s32 masks;
@@ -424,21 +428,21 @@ Gfx *tex_write_tile_from_definition(Gfx *gdl, struct tex *tex, s32 offset, s32 s
 	s32 lrs;
 	s32 lrt;
 
-	masks = tex_dimension_to_mask(tex->width);
-	maskt = tex_dimension_to_mask(tex->height);
+	masks = texDimensionToMask(tex->width);
+	maskt = texDimensionToMask(tex->height);
 
-	line = tex_get_line_size_in_bytes(tex, 0);
+	line = texGetLineSizeInBytes(tex, 0);
 
 	gDPSetPrimColorViaWord(gdl++, min, 0, 0xffffffff);
 
-	if (tex_try_set_lut_mode(tex->lutmodeindex << G_MDSFT_TEXTLUT)) {
+	if (texTrySetLutMode(tex->lutmodeindex << G_MDSFT_TEXTLUT)) {
 		gDPSetTextureLUT(gdl++, tex->lutmodeindex << G_MDSFT_TEXTLUT);
 	}
 
-	if (tex_try_set_tile_state(0, tex->gbiformat, tex->depth, line, s0->unk04_00 + line * s0->unk04_04, 0, 0, masks - s0->unk04_08, maskt - s0->unk04_0c, shifts, shiftt)) {
+	if (texTrySetTileState(0, tex->gbiformat, tex->depth, line, s0->unk04_00 + line * s0->unk04_04, 0, 0, masks - s0->unk04_08, maskt - s0->unk04_0c, shifts, shiftt)) {
 		gDPSetTile(gdl++, tex->gbiformat, tex->depth, line, s0->unk04_00 + line * s0->unk04_04, 0, 0,
-				tex_mode_to_gbi_mode(TXMODE_WRAP), maskt - s0->unk04_0c, shiftt,
-				tex_mode_to_gbi_mode(TXMODE_WRAP), masks - s0->unk04_08, shifts);
+				texModeToGbiMode(TXMODE_WRAP), maskt - s0->unk04_0c, shiftt,
+				texModeToGbiMode(TXMODE_WRAP), masks - s0->unk04_08, shifts);
 	}
 
 	uls = (offset == 2 && !tex->hasloddata ? 2 : 0) + 0;
@@ -446,7 +450,7 @@ Gfx *tex_write_tile_from_definition(Gfx *gdl, struct tex *tex, s32 offset, s32 s
 	lrs = (offset == 2 && !tex->hasloddata ? 2 : 0) + ((tex->width - 1) << 2);
 	lrt = (offset == 2 && !tex->hasloddata ? 2 : 0) + ((tex->height - 1) << 2);
 
-	if (tex_try_set_tile_size(0, uls, ult, lrs, lrt)) {
+	if (texTrySetTileSize(0, uls, ult, lrs, lrt)) {
 		gDPSetTileSize(gdl++, 0, uls, ult, lrs, lrt);
 	}
 
@@ -462,7 +466,7 @@ Gfx *tex_write_tile_from_definition(Gfx *gdl, struct tex *tex, s32 offset, s32 s
  * If append is true then the command will be appended to the given gdl,
  * otherwise the existing texcmd will be patched in place.
  */
-Gfx *tex_write_texture_cmd(Gfx *gdl, Gfx *texcmd, struct tex *tex, bool append)
+Gfx *texWriteTextureCmd(Gfx *gdl, Gfx *texcmd, struct tex *tex, bool append)
 {
 	s32 lod = tex->numlods ? tex->numlods - 1 : 0;
 
@@ -487,12 +491,12 @@ Gfx *tex_write_texture_cmd(Gfx *gdl, Gfx *texcmd, struct tex *tex, bool append)
 	return gdl;
 }
 
-Gfx *tex_write_load_to_tmem_addr(Gfx *gdl, struct tex *tex, s32 tmemoffset)
+Gfx *texWriteLoadToTmemAddr(Gfx *gdl, struct tex *tex, s32 tmemoffset)
 {
 	s32 depth;
 	s32 len;
 
-	tex_get_depth_and_size(tex, &depth, &len);
+	texGetDepthAndSize(tex, &depth, &len);
 
 	if (tex->lutmodeindex == 0) {
 		gDPSetTextureImage(gdl++, tex->gbiformat, depth, 1, tex->data);
@@ -506,7 +510,7 @@ Gfx *tex_write_load_to_tmem_addr(Gfx *gdl, struct tex *tex, s32 tmemoffset)
 			gDPLoadSync(gdl++);
 			gDPLoadBlock(gdl++, G_TX_LOADTILE, 0, 0, len - 1, 0);
 		} else {
-			if (tex_try_set_tile_state(5, 0, depth, 0, tmemoffset, 0, 0, 0, 0, 0, 0)) {
+			if (texTrySetTileState(5, 0, depth, 0, tmemoffset, 0, 0, 0, 0, 0, 0)) {
 				gDPSetTile(gdl++, G_IM_FMT_RGBA, depth, 0, tmemoffset, 5, 0,
 						G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD,
 						G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
@@ -527,7 +531,7 @@ Gfx *tex_write_load_to_tmem_addr(Gfx *gdl, struct tex *tex, s32 tmemoffset)
 			gDPLoadSync(gdl++);
 			gDPLoadBlock(gdl++, G_TX_LOADTILE, 0, 0, len - 1, 0);
 		} else {
-			if (tex_try_set_tile_state(5, 0, depth, 0, tmemoffset, 0, 0, 0, 0, 0, 0)) {
+			if (texTrySetTileState(5, 0, depth, 0, tmemoffset, 0, 0, 0, 0, 0, 0)) {
 				gDPSetTile(gdl++, G_IM_FMT_RGBA, depth, 0, tmemoffset, 5, 0,
 						G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD,
 						G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
@@ -551,7 +555,7 @@ Gfx *tex_write_load_to_tmem_addr(Gfx *gdl, struct tex *tex, s32 tmemoffset)
 	return gdl;
 }
 
-Gfx *tex_write_tile_lods(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offset, s32 starttile, s32 numlodsarg, u32 tmemoffsetarg)
+Gfx *texWriteTileLods(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offset, s32 starttile, s32 numlodsarg, u32 tmemoffsetarg)
 {
 	u32 tmemoffset;
 	s32 numlods;
@@ -567,32 +571,32 @@ Gfx *tex_write_tile_lods(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 of
 	for (tile = starttile; tile < numlods + starttile && tile < 6; tile++) {
 		s32 stack[2];
 		s32 lod = tile - starttile;
-		s32 masks = tex_dimension_to_mask(tex_get_width_at_lod(tex, lod));
-		s32 maskt = tex_dimension_to_mask(tex_get_height_at_lod(tex, lod));
-		s32 line = tex_get_line_size_in_bytes(tex, lod);
+		s32 masks = texDimensionToMask(texGetWidthAtLod(tex, lod));
+		s32 maskt = texDimensionToMask(texGetHeightAtLod(tex, lod));
+		s32 line = texGetLineSizeInBytes(tex, lod);
 		s32 uls;
 		s32 ult;
 		s32 lrs;
 		s32 lrt;
-		s32 bytes = tex_get_size_in_bytes(tex, lod);
+		s32 bytes = texGetSizeInBytes(tex, lod);
 		bool hasloddata = tex->hasloddata;
 
-		if (tex_try_set_lut_mode(tex->lutmodeindex << G_MDSFT_TEXTLUT)) {
+		if (texTrySetLutMode(tex->lutmodeindex << G_MDSFT_TEXTLUT)) {
 			gDPSetTextureLUT(gdl++, tex->lutmodeindex << G_MDSFT_TEXTLUT);
 		}
 
-		if (tex_try_set_tile_state(tile, tex->gbiformat, tex->depth, line, tmemoffset, smode, tmode, masks, maskt, lod, lod)) {
+		if (texTrySetTileState(tile, tex->gbiformat, tex->depth, line, tmemoffset, smode, tmode, masks, maskt, lod, lod)) {
 			gDPSetTile(gdl++, tex->gbiformat, tex->depth, line, tmemoffset, tile, 0,
-					tex_mode_to_gbi_mode(tmode), maskt, lod,
-					tex_mode_to_gbi_mode(smode), masks, tile - starttile);
+					texModeToGbiMode(tmode), maskt, lod,
+					texModeToGbiMode(smode), masks, tile - starttile);
 		}
 
 		uls = (offset == 2 && hasloddata == false ? 2 : 0) + 0;
 		ult = (offset == 2 && hasloddata == false ? 2 : 0) + 0;
-		lrs = ((tex_get_width_at_lod(tex, lod) - 1) << 2) + (offset == 2 && hasloddata == false ? 2 : 0);
-		lrt = ((tex_get_height_at_lod(tex, lod) - 1) << 2) + (offset == 2 && hasloddata == false ? 2 : 0);
+		lrs = ((texGetWidthAtLod(tex, lod) - 1) << 2) + (offset == 2 && hasloddata == false ? 2 : 0);
+		lrt = ((texGetHeightAtLod(tex, lod) - 1) << 2) + (offset == 2 && hasloddata == false ? 2 : 0);
 
-		if (tex_try_set_tile_size(tile, uls, ult, lrs, lrt)) {
+		if (texTrySetTileSize(tile, uls, ult, lrs, lrt)) {
 			gDPSetTileSize(gdl++, tile, uls, ult, lrs, lrt);
 		}
 
@@ -602,12 +606,12 @@ Gfx *tex_write_tile_lods(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 of
 	return gdl;
 }
 
-Gfx *tex_write_load_to_tmem_zero(Gfx *gdl, struct tex *tex)
+Gfx *texWriteLoadToTmemZero(Gfx *gdl, struct tex *tex)
 {
 	s32 depth;
 	s32 len;
 
-	tex_get_depth_and_size(tex, &depth, &len);
+	texGetDepthAndSize(tex, &depth, &len);
 
 	if (tex->lutmodeindex == 0) {
 		gDPSetTextureImage(gdl++, tex->gbiformat, depth, 1, tex->data);
@@ -621,7 +625,7 @@ Gfx *tex_write_load_to_tmem_zero(Gfx *gdl, struct tex *tex)
 			gDPLoadSync(gdl++);
 			gDPLoadBlock(gdl++, G_TX_LOADTILE, 0, 0, len - 1, 0);
 		} else {
-			if (tex_try_set_tile_state(5, 0, depth, 0, 0, 0, 0, 0, 0, 0, 0)) {
+			if (texTrySetTileState(5, 0, depth, 0, 0, 0, 0, 0, 0, 0, 0)) {
 				gDPSetTile(gdl++, G_IM_FMT_RGBA, depth, 0, 0x0000, 5, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
 			}
 
@@ -640,7 +644,7 @@ Gfx *tex_write_load_to_tmem_zero(Gfx *gdl, struct tex *tex)
 			gDPLoadSync(gdl++);
 			gDPLoadBlock(gdl++, G_TX_LOADTILE, 0, 0, len - 1, 0);
 		} else {
-			if (tex_try_set_tile_state(5, 0, depth, 0, 0, 0, 0, 0, 0, 0, 0)) {
+			if (texTrySetTileState(5, 0, depth, 0, 0, 0, 0, 0, 0, 0, 0)) {
 				gDPSetTile(gdl++, G_IM_FMT_RGBA, depth, 0, 0x0000, 5, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
 			}
 
@@ -662,7 +666,7 @@ Gfx *tex_write_load_to_tmem_zero(Gfx *gdl, struct tex *tex)
 	return gdl;
 }
 
-Gfx *tex_write_tile(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offset, s32 tile)
+Gfx *texWriteTile(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offset, s32 tile)
 {
 	s32 masks;
 	s32 maskt;
@@ -673,19 +677,19 @@ Gfx *tex_write_tile(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offset,
 	s32 lrt;
 	bool hasloddata;
 
-	masks = tex_dimension_to_mask(tex->width);
-	maskt = tex_dimension_to_mask(tex->height);
-	line = tex_get_line_size_in_bytes(tex, 0);
+	masks = texDimensionToMask(tex->width);
+	maskt = texDimensionToMask(tex->height);
+	line = texGetLineSizeInBytes(tex, 0);
 	hasloddata = tex->hasloddata;
 
-	if (tex_try_set_lut_mode(tex->lutmodeindex << G_MDSFT_TEXTLUT)) {
+	if (texTrySetLutMode(tex->lutmodeindex << G_MDSFT_TEXTLUT)) {
 		gDPSetTextureLUT(gdl++, tex->lutmodeindex << G_MDSFT_TEXTLUT);
 	}
 
-	if (tex_try_set_tile_state(tile, tex->gbiformat, tex->depth, line, 0, smode, tmode, masks, maskt, 0, 0)) {
+	if (texTrySetTileState(tile, tex->gbiformat, tex->depth, line, 0, smode, tmode, masks, maskt, 0, 0)) {
 		gDPSetTile(gdl++, tex->gbiformat, tex->depth, line, 0x0000, tile, 0,
-				tex_mode_to_gbi_mode(tmode), maskt, G_TX_NOLOD,
-				tex_mode_to_gbi_mode(smode), masks, G_TX_NOLOD);
+				texModeToGbiMode(tmode), maskt, G_TX_NOLOD,
+				texModeToGbiMode(smode), masks, G_TX_NOLOD);
 	}
 
 	uls = (offset == 2 && hasloddata == false ? 2 : 0) + 0;
@@ -693,29 +697,29 @@ Gfx *tex_write_tile(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offset,
 	lrs = (offset == 2 && hasloddata == false ? 2 : 0) + ((tex->width - 1) << 2);
 	lrt = (offset == 2 && hasloddata == false ? 2 : 0) + ((tex->height - 1) << 2);
 
-	if (tex_try_set_tile_size(tile, uls, ult, lrs, lrt)) {
+	if (texTrySetTileSize(tile, uls, ult, lrs, lrt)) {
 		gDPSetTileSize(gdl++, tile, uls, ult, lrs, lrt);
 	}
 
 	return gdl;
 }
 
-Gfx *tex_handle_type2(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offset, bool flag)
+Gfx *texHandleType2(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offset, bool flag)
 {
 	s32 tile = 0;
 
-	gdl = tex_write_load_to_tmem_addr(gdl, tex, 0);
+	gdl = texWriteLoadToTmemAddr(gdl, tex, 0);
 
 	if (flag) {
-		gdl = tex_write_tile_lods(gdl, tex, smode, tmode, offset, tile, 1, 0);
+		gdl = texWriteTileLods(gdl, tex, smode, tmode, offset, tile, 1, 0);
 		tile++;
 	}
 
-	gdl = tex_write_tile_lods(gdl, tex, smode, tmode, offset, tile, -1, 0);
+	gdl = texWriteTileLods(gdl, tex, smode, tmode, offset, tile, -1, 0);
 	tile += tex->numlods;
 
 	if (!flag && tex->numlods == 1) {
-		gdl = tex_write_tile_lods(gdl, tex, smode, tmode, offset, tile, -1, 0);
+		gdl = texWriteTileLods(gdl, tex, smode, tmode, offset, tile, -1, 0);
 		tile += tex->numlods;
 	}
 
@@ -725,28 +729,28 @@ Gfx *tex_handle_type2(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offse
 	return gdl;
 }
 
-Gfx *tex_handle_type1(Gfx *gdl, struct tex *tex1, s32 smode, s32 tmode, s32 offset, struct tex *tex2, s32 shifts, s32 shiftt, s32 min, bool flag)
+Gfx *texHandleType1(Gfx *gdl, struct tex *tex1, s32 smode, s32 tmode, s32 offset, struct tex *tex2, s32 shifts, s32 shiftt, s32 min, bool flag)
 {
-	s32 size = tex_get_size_in_bytes(tex2, 0);
+	s32 size = texGetSizeInBytes(tex2, 0);
 	s32 tile = 0;
 
-	gdl = tex_write_load_to_tmem_zero(gdl, tex2);
+	gdl = texWriteLoadToTmemZero(gdl, tex2);
 	gDPTileSync(gdl++);
-	gdl = tex_write_load_to_tmem_addr(gdl, tex1, size);
+	gdl = texWriteLoadToTmemAddr(gdl, tex1, size);
 
-	gdl = tex_write_tile_from_definition(gdl, tex2, offset, shifts, shiftt, min);
+	gdl = texWriteTileFromDefinition(gdl, tex2, offset, shifts, shiftt, min);
 	tile++;
 
 	if (flag) {
-		gdl = tex_write_tile_lods(gdl, tex1, smode, tmode, offset, tile, 1, size);
+		gdl = texWriteTileLods(gdl, tex1, smode, tmode, offset, tile, 1, size);
 		tile++;
 	}
 
-	gdl = tex_write_tile_lods(gdl, tex1, smode, tmode, offset, tile, -1, size);
+	gdl = texWriteTileLods(gdl, tex1, smode, tmode, offset, tile, -1, size);
 	tile += tex1->numlods;
 
 	if (!flag && tex1->numlods == 1) {
-		gdl = tex_write_tile_lods(gdl, tex1, smode, tmode, offset, tile, -1, size);
+		gdl = texWriteTileLods(gdl, tex1, smode, tmode, offset, tile, -1, size);
 		tile += tex1->numlods;
 	}
 
@@ -756,25 +760,25 @@ Gfx *tex_handle_type1(Gfx *gdl, struct tex *tex1, s32 smode, s32 tmode, s32 offs
 	return gdl;
 }
 
-Gfx *tex_handle_type0(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offset, s32 shifts, s32 shiftt, s32 min, bool flag)
+Gfx *texHandleType0(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offset, s32 shifts, s32 shiftt, s32 min, bool flag)
 {
 	s32 tile = 0;
 
-	gdl = tex_write_load_to_tmem_addr(gdl, tex, 0);
+	gdl = texWriteLoadToTmemAddr(gdl, tex, 0);
 
-	gdl = tex_write_tile_from_definition(gdl, tex, offset, shifts, shiftt, min);
+	gdl = texWriteTileFromDefinition(gdl, tex, offset, shifts, shiftt, min);
 	tile++;
 
 	if (flag) {
-		gdl = tex_write_tile_lods(gdl, tex, smode, tmode, offset, tile, 1, 0);
+		gdl = texWriteTileLods(gdl, tex, smode, tmode, offset, tile, 1, 0);
 		tile++;
 	}
 
-	gdl = tex_write_tile_lods(gdl, tex, smode, tmode, offset, tile, -1, 0);
+	gdl = texWriteTileLods(gdl, tex, smode, tmode, offset, tile, -1, 0);
 	tile += tex->numlods;
 
 	if (!flag && tex->numlods == 1) {
-		gdl = tex_write_tile_lods(gdl, tex, smode, tmode, offset, tile, -1, 0);
+		gdl = texWriteTileLods(gdl, tex, smode, tmode, offset, tile, -1, 0);
 		tile += tex->numlods;
 	}
 
@@ -784,10 +788,10 @@ Gfx *tex_handle_type0(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offse
 	return gdl;
 }
 
-Gfx *tex_handle_type4(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offset)
+Gfx *texHandleType4(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offset)
 {
-	gdl = tex_write_load_to_tmem_zero(gdl, tex);
-	gdl = tex_write_tile(gdl, tex, smode, tmode, offset, 0);
+	gdl = texWriteLoadToTmemZero(gdl, tex);
+	gdl = texWriteTile(gdl, tex, smode, tmode, offset, 0);
 
 	gDPPipeSync(gdl++);
 	g_TexPipeSynced = true;
@@ -795,11 +799,11 @@ Gfx *tex_handle_type4(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offse
 	return gdl;
 }
 
-Gfx *tex_handle_type3(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offset)
+Gfx *texHandleType3(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offset)
 {
-	gdl = tex_write_load_to_tmem_zero(gdl, tex);
-	gdl = tex_write_tile(gdl, tex, smode, tmode, offset, 0);
-	gdl = tex_write_tile(gdl, tex, smode, tmode, offset, 1);
+	gdl = texWriteLoadToTmemZero(gdl, tex);
+	gdl = texWriteTile(gdl, tex, smode, tmode, offset, 0);
+	gdl = texWriteTile(gdl, tex, smode, tmode, offset, 1);
 
 	gDPPipeSync(gdl++);
 
@@ -820,7 +824,7 @@ Gfx *tex_handle_type3(Gfx *gdl, struct tex *tex, s32 smode, s32 tmode, s32 offse
  * The code that expands the C0 commands keeps track of RSP state and avoids
  * emitting duplicate or redundant commands.
  */
-s32 tex_load_from_gdl(Gfx *instart, s32 gdlsizeinbytes, Gfx *outstart, struct texpool *pool, u8 *vtxstart)
+s32 texLoadFromGdl(Gfx *instart, s32 gdlsizeinbytes, Gfx *outstart, struct texpool *pool, u8 *vtxstart)
 {
 	struct tex *tex1;
 	struct tex *tex2;
@@ -858,11 +862,15 @@ s32 tex_load_from_gdl(Gfx *instart, s32 gdlsizeinbytes, Gfx *outstart, struct te
 	ingdl = instart;
 	outgdl = outstart;
 
+#ifdef PLATFORM_64BIT
+	numcmdsremaining = gdlsizeinbytes >> 4;
+#else
 	numcmdsremaining = gdlsizeinbytes >> 3;
+#endif
 
-	tex_reset_tiles();
+	texResetTiles();
 
-	spe0 = dyntex_has_room();
+	spe0 = dyntexHasRoom();
 
 	if (spe0) {
 		for (j = 0; j < ARRAYCOUNT(sp90); j++) {
@@ -886,9 +894,9 @@ s32 tex_load_from_gdl(Gfx *instart, s32 gdlsizeinbytes, Gfx *outstart, struct te
 			texturenum = ingdl->words.w1 & 0xfff;
 			flag = ingdl->words.w0 & 0x200;
 
-			tex_load_from_texture_num(texturenum, pool);
+			texLoadFromTextureNum(texturenum, pool);
 
-			tex1 = tex_find_in_pool(texturenum, pool);
+			tex1 = texFindInPool(texturenum, pool);
 
 			if (tex1 != NULL) {
 				spf4 = tex1->unk0c_03;
@@ -897,7 +905,7 @@ s32 tex_load_from_gdl(Gfx *instart, s32 gdlsizeinbytes, Gfx *outstart, struct te
 			}
 
 			if (tex1 != NULL) {
-				outgdl = tex_write_texture_cmd(outgdl, texcmd, tex1, appendtex);
+				outgdl = texWriteTextureCmd(outgdl, texcmd, tex1, appendtex);
 				appendtex = false;
 				animated = false;
 
@@ -910,12 +918,12 @@ s32 tex_load_from_gdl(Gfx *instart, s32 gdlsizeinbytes, Gfx *outstart, struct te
 					shifts = (ingdl->words.w0 >> 14) & 0xf;
 					shiftt = (ingdl->words.w0 >> 10) & 0xf;
 
-					outgdl = tex_handle_type0(outgdl, tex1, smode, tmode, offset, shifts, shiftt, min, flag);
+					outgdl = texHandleType0(outgdl, tex1, smode, tmode, offset, shifts, shiftt, min, flag);
 					break;
 				case 1:
 					texturenum2 = (ingdl->words.w1 >> 12) & 0xfff;
-					tex_load_from_texture_num(texturenum2, pool);
-					tex2 = tex_find_in_pool(texturenum2, pool);
+					texLoadFromTextureNum(texturenum2, pool);
+					tex2 = texFindInPool(texturenum2, pool);
 
 					if (tex2 != NULL) {
 						min = (ingdl->words.w1 >> 24) & 0xff;
@@ -925,7 +933,7 @@ s32 tex_load_from_gdl(Gfx *instart, s32 gdlsizeinbytes, Gfx *outstart, struct te
 						shifts = (ingdl->words.w0 >> 14) & 0xf;
 						shiftt = (ingdl->words.w0 >> 10) & 0xf;
 
-						outgdl = tex_handle_type1(outgdl, tex1, smode, tmode, offset, tex2, shifts, shiftt, min, flag);
+						outgdl = texHandleType1(outgdl, tex1, smode, tmode, offset, tex2, shifts, shiftt, min, flag);
 					}
 					break;
 				case 2:
@@ -933,48 +941,48 @@ s32 tex_load_from_gdl(Gfx *instart, s32 gdlsizeinbytes, Gfx *outstart, struct te
 					tmode = (ingdl->words.w0 >> 20) & 3;
 					offset = (ingdl->words.w0 >> 18) & 3;
 
-					outgdl = tex_handle_type2(outgdl, tex1, smode, tmode, offset, flag);
+					outgdl = texHandleType2(outgdl, tex1, smode, tmode, offset, flag);
 					break;
 				case 3:
 					smode = (ingdl->words.w0 >> 22) & 3;
 					tmode = (ingdl->words.w0 >> 20) & 3;
 					offset = (ingdl->words.w0 >> 18) & 3;
 
-					outgdl = tex_handle_type3(outgdl, tex1, smode, tmode, offset);
+					outgdl = texHandleType3(outgdl, tex1, smode, tmode, offset);
 					break;
 				case 4:
 					smode = (ingdl->words.w0 >> 22) & 3;
 					tmode = (ingdl->words.w0 >> 20) & 3;
 					offset = (ingdl->words.w0 >> 18) & 3;
 
-					outgdl = tex_handle_type4(outgdl, tex1, smode, tmode, offset);
+					outgdl = texHandleType4(outgdl, tex1, smode, tmode, offset);
 					break;
 				}
 
 				if (spe0 != 0) {
 					// Deep Sea - green river under floor
 					if (texturenum == TEXTURE_06CB) {
-						dyntex_set_current_type(DYNTEXTYPE_RIVER);
+						dyntexSetCurrentType(DYNTEXTYPE_RIVER);
 						animated = true;
 					}
 
 					// Deep Sea - juice that flows inside SA megaweapon
 					// Attack Ship - juice that flows inside engine power node
 					if (texturenum == TEXTURE_0A6A) {
-						dyntex_set_current_type(DYNTEXTYPE_POWERJUICE);
+						dyntexSetCurrentType(DYNTEXTYPE_POWERJUICE);
 						animated = true;
 					}
 
 					// Deep Sea - white rings around SA megaweapon node
 					// Attack Ship - white rings around engine power node
 					if (texturenum == TEXTURE_0A69) {
-						dyntex_set_current_type(DYNTEXTYPE_POWERRING);
+						dyntexSetCurrentType(DYNTEXTYPE_POWERRING);
 						animated = true;
 					}
 
 					// Deep Sea - teleport
 					if (texturenum == TEXTURE_06E2) {
-						dyntex_set_current_type(DYNTEXTYPE_TELEPORTAL);
+						dyntexSetCurrentType(DYNTEXTYPE_TELEPORTAL);
 						animated = true;
 					}
 
@@ -984,26 +992,26 @@ s32 tex_load_from_gdl(Gfx *instart, s32 gdlsizeinbytes, Gfx *outstart, struct te
 					// 0dae - Villa - shallow water
 					// 0dae - Sewers (MP)
 					if (texturenum == TEXTURE_01C7 || texturenum == TEXTURE_0DAE) {
-						dyntex_set_current_type(DYNTEXTYPE_RIVER);
+						dyntexSetCurrentType(DYNTEXTYPE_RIVER);
 						animated = true;
 					}
 
 					// Air Force One - Monitor
 					if (texturenum == TEXTURE_029B) {
-						dyntex_set_current_type(DYNTEXTYPE_MONITOR);
+						dyntexSetCurrentType(DYNTEXTYPE_MONITOR);
 						animated = true;
 					}
 
 					// Villa - deep water
 					// Complex - water
 					if (texturenum == TEXTURE_090F) {
-						dyntex_set_current_type(DYNTEXTYPE_OCEAN);
+						dyntexSetCurrentType(DYNTEXTYPE_OCEAN);
 						animated = true;
 					}
 
 					// Attack Ship - triangular arrows
 					if (texturenum == TEXTURE_0A42) {
-						dyntex_set_current_type(DYNTEXTYPE_ARROWS);
+						dyntexSetCurrentType(DYNTEXTYPE_ARROWS);
 						animated = true;
 					}
 				}
@@ -1019,13 +1027,13 @@ s32 tex_load_from_gdl(Gfx *instart, s32 gdlsizeinbytes, Gfx *outstart, struct te
 				Vtx *vtx;
 
 				if (spe0) {
-					start = ingdl->bytes[1] & 0xf;
+					start = ingdl->bytes[GFX_W0_BYTE(1)] & 0xf;
 					count = ingdl->vtx.unk08 + 1;
-					vtx = (Vtx *)(ingdl->dma.addr & 0x00ffffff);
+					vtx = (Vtx *)(UNSEGADDR(ingdl->dma.addr) & 0x00ffffff);
 
 					for (i = start; i < start + count; i++) {
 						if (animated && sp90[i]) {
-							dyntex_add_vertex(spa0[i]);
+							dyntexAddVertex(spa0[i]);
 							sp90[i] = 0;
 						}
 
@@ -1039,7 +1047,7 @@ s32 tex_load_from_gdl(Gfx *instart, s32 gdlsizeinbytes, Gfx *outstart, struct te
 					Vtx *vtx;
 					s32 i;
 
-					offset = ingdl->dma.addr & 0x00ffffff;
+					offset = UNSEGADDR(ingdl->dma.addr) & 0x00ffffff;
 					vtx = (Vtx *) (vtxstart + offset);
 
 					for (i = 0; i < count; i++) {
@@ -1063,9 +1071,9 @@ s32 tex_load_from_gdl(Gfx *instart, s32 gdlsizeinbytes, Gfx *outstart, struct te
 		case (u8) G_TRI1:
 			if (animated) {
 				if (ingdl->texture.cmd == (u8) G_TRI1) {
-					sp90[ingdl->tri.tri.v[0] / 10] = 1;
-					sp90[ingdl->tri.tri.v[1] / 10] = 1;
-					sp90[ingdl->tri.tri.v[2] / 10] = 1;
+					sp90[ingdl->tri.tri.v[GFX_TRI_VTX(0)] / 10] = 1;
+					sp90[ingdl->tri.tri.v[GFX_TRI_VTX(1)] / 10] = 1;
+					sp90[ingdl->tri.tri.v[GFX_TRI_VTX(2)] / 10] = 1;
 				} else {
 					Gfx *tmp = ingdl;
 
@@ -1141,7 +1149,7 @@ s32 tex_load_from_gdl(Gfx *instart, s32 gdlsizeinbytes, Gfx *outstart, struct te
 
 				for (i = 0; i < ARRAYCOUNT(sp90); i++) {
 					if (sp90[i]) {
-						dyntex_add_vertex(spa0[i]);
+						dyntexAddVertex(spa0[i]);
 						sp90[i] = 0;
 					}
 				}
@@ -1152,14 +1160,19 @@ s32 tex_load_from_gdl(Gfx *instart, s32 gdlsizeinbytes, Gfx *outstart, struct te
 	return (uintptr_t) outgdl - (uintptr_t) outstart;
 }
 
-void tex_copy_gdls(Gfx *src, Gfx *dst, s32 count)
+void texCopyGdls(Gfx *src, Gfx *dst, s32 count)
 {
+#ifdef PLATFORM_64BIT
+	count = (count >> 4);
+#else
 	count = (count >> 3);
+#endif
+
 	src = src + (count - 1);
 	dst = dst + (count - 1);
 
 	while (count--) {
-		dst->force_structure_alignment = src->force_structure_alignment;
+		*dst = *src;
 		dst--;
 		src--;
 	}

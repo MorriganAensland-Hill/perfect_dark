@@ -7,7 +7,7 @@
 #include "data.h"
 #include "types.h"
 
-void title_reset(void)
+void titleReset(void)
 {
 	g_TitleMode = -1;
 	var800624d4 = 0;
@@ -21,7 +21,7 @@ void title_reset(void)
 		g_TitleNextMode = TITLEMODE_SKIP;
 	}
 
-	var8009cca0 = memp_alloc(TITLE_ALLOCSIZE, MEMPOOL_STAGE);
+	var8009cca0 = mempAlloc(TITLE_ALLOCSIZE, MEMPOOL_STAGE);
 
-	getitle_reset();
+	getitleReset();
 }

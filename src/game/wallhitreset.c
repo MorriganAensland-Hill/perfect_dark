@@ -27,7 +27,7 @@ f32 g_WallhitTargetBloodRatio;
  * Related to blood splats, bullet holes and scorch marks.
  * With this function nopped they do not appear.
  */
-void wallhit_reset(void)
+void wallhitReset(void)
 {
 	s32 stack;
 	s32 type = 2;
@@ -108,7 +108,7 @@ void wallhit_reset(void)
 		numberssize += 0xf;
 		numberssize &= ~0xf;
 
-		ptr = memp_alloc(structssize + numberssize, MEMPOOL_STAGE);
+		ptr = mempAlloc(structssize + numberssize, MEMPOOL_STAGE);
 
 		g_WallhitCountsPerRoom = ptr;
 		g_Wallhits = (struct wallhit *)((uintptr_t)ptr + numberssize);

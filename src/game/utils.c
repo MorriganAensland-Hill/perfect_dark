@@ -6,6 +6,14 @@
 #include "data.h"
 #include "types.h"
 
+const char var7f1b7cb0[] = "UM_Make : In\n";
+const char var7f1b7cc0[] = "UM_Make : Out\n";
+const char var7f1b7cd0[] = "Utils -> ERROR at Line %d of %s\n";
+const char var7f1b7cf4[] = "Utils -> UM_fVec3_NormaliseTo - Vec = %s%s (%f,%f,%f)\n";
+const char var7f1b7d2c[] = "";
+const char var7f1b7d30[] = "";
+const char var7f1b7d34[] = "Utils -> Attempt to normalise zeo length vector\n";
+
 void *var800ac0d0;
 u32 var800ac0d4;
 u32 var800ac0d8;
@@ -15,9 +23,9 @@ u32 var800ac0e4;
 u8 *var800ac0e8[4];
 u32 var800ac0f8[4];
 
-f32 g_UtilsMaxSaneFloat = 999999;
-f32 g_UtilsMinSaneFloat = 0.00001f;
-s32 g_UtilsSavedInt = 1;
+f32 var800845d0 = 999999;
+f32 var800845d4 = 0.00001f;
+s32 var800845d8 = 1;
 struct coord var800845dc = {0, 0, 0};
 u32 var800845e8 = 0x00000000;
 u32 var800845ec = 0x3f800000;
@@ -33,20 +41,20 @@ u8 *var80084618 = NULL;
 u32 var8008461c = 0x00000004;
 u32 var80084620 = 0x00000000;
 
-void utils_set_int(s32 value)
+void func0f176d70(s32 arg0)
 {
-	g_UtilsSavedInt = value;
+	var800845d8 = arg0;
 }
 
-s32 utils_get_int(void)
+s32 func0f176d7c(void)
 {
-	return g_UtilsSavedInt;
+	return var800845d8;
 }
 
 u32 align4(u32 arg0)
 {
 	if (arg0 & 3) {
-		arg0 = (arg0 & ~3) + 4;
+		arg0 = (arg0 & 0xfffffffc) + 4;
 	}
 
 	return arg0;
@@ -55,34 +63,32 @@ u32 align4(u32 arg0)
 u32 align16(u32 arg0)
 {
 	if (arg0 & 0xf) {
-		arg0 = (arg0 & ~15) + 16;
+		arg0 = (arg0 & 0xfffffff0) + 0x10;
 	}
 
 	return arg0;
 }
 
-u32 align32(u32 arg0)
+uintptr_t align32(uintptr_t arg0)
 {
 	if (arg0 & 0x1f) {
-		arg0 = (arg0 & ~31) + 32;
+		arg0 = (arg0 & ((intptr_t)~0x1f)) + 0x20;
 	}
 
 	return arg0;
 }
 
-void utils_init(void)
+void utilsInit(void)
 {
 	s32 i;
 	u32 stack;
 	u32 slotssize = 0x1900;
 	u32 allocsize;
 
-	osSyncPrintf("UM_Make : In\n");
-
-	var800ac0d0 = memp_alloc(10000, MEMPOOL_8);
+	var800ac0d0 = mempAlloc(10000, MEMPOOL_8);
 
 	allocsize = align16(0x3900);
-	var800ac0e8[0] = memp_alloc(allocsize, MEMPOOL_8);
+	var800ac0e8[0] = mempAlloc(allocsize, MEMPOOL_8);
 
 	if (var800ac0e8[0] != NULL) {
 		for (i = 0; i < ARRAYCOUNT(var800ac0e8); i++) {
@@ -97,57 +103,53 @@ void utils_init(void)
 	var80084610 = var800ac0e8[0] + slotssize;
 	var80084618 = var800ac0e8[0] + allocsize - 1;
 	var80084614 = var80084610;
-
-	osSyncPrintf("UM_Make : Out\n");
 }
 
-const char var7f1b7cd0[] = "Utils -> ERROR at Line %d of %s\n";
-
-s32 utils_get_ceiled_quotient(s32 dividend, s32 divisor)
+s32 func0f176eb0(s32 arg0, s32 arg1)
 {
-	if (dividend % divisor == 0) {
-		return dividend;
+	if (arg0 % arg1 == 0) {
+		return arg0;
 	}
 
-	return (dividend / divisor + 1) * divisor;
+	return (arg0 / arg1 + 1) * arg1;
 }
 
-void vec3f_sum2(struct coord *a, struct coord *b, struct coord *dst)
+void func0f176f34(struct coord *a, struct coord *b, struct coord *out)
 {
-	dst->x = a->x + b->x;
-	dst->y = a->y + b->y;
-	dst->z = a->z + b->z;
+	out->x = a->x + b->x;
+	out->y = a->y + b->y;
+	out->z = a->z + b->z;
 }
 
-void vec3f_sum3(struct coord *a, struct coord *b, struct coord *c, struct coord *dst)
+void func0f176f68(struct coord *a, struct coord *b, struct coord *c, struct coord *out)
 {
-	dst->x = a->x + b->x + c->x;
-	dst->y = a->y + b->y + c->y;
-	dst->z = a->z + b->z + c->z;
+	out->x = a->x + b->x + c->x;
+	out->y = a->y + b->y + c->y;
+	out->z = a->z + b->z + c->z;
 }
 
-void vec3f_sum4(struct coord *a, struct coord *b, struct coord *c, struct coord *d, struct coord *dst)
+void func0f176fb4(struct coord *a, struct coord *b, struct coord *c, struct coord *d, struct coord *out)
 {
-	dst->x = a->x + b->x + c->x + d->x;
-	dst->y = a->y + b->y + c->y + d->y;
-	dst->z = a->z + b->z + c->z + d->z;
+	out->x = a->x + b->x + c->x + d->x;
+	out->y = a->y + b->y + c->y + d->y;
+	out->z = a->z + b->z + c->z + d->z;
 }
 
-void vec3f_subtract(struct coord *a, struct coord *b, struct coord *dst)
+void func0f17701c(struct coord *a, struct coord *b, struct coord *out)
 {
-	dst->x = b->x - a->x;
-	dst->y = b->y - a->y;
-	dst->z = b->z - a->z;
+	out->x = b->x - a->x;
+	out->y = b->y - a->y;
+	out->z = b->z - a->z;
 }
 
-void vec3f_multiply_scalar(struct coord *a, f32 mult, struct coord *dst)
+void func0f177050(struct coord *a, f32 mult, struct coord *out)
 {
-	dst->x = a->x * mult;
-	dst->y = a->y * mult;
-	dst->z = a->z * mult;
+	out->x = a->x * mult;
+	out->y = a->y * mult;
+	out->z = a->z * mult;
 }
 
-f32 vec3f_sqdist(struct coord *a, struct coord *b)
+f32 func0f17707c(struct coord *a, struct coord *b)
 {
 	return a->x * b->x + a->y * b->y + a->z * b->z;
 }
@@ -159,44 +161,38 @@ void func0f1770ac(struct coord *a, struct coord *b, struct coord *out)
 	out->z = a->x * b->y - a->y * b->x;
 }
 
-void vec3f_copy(struct coord *src, struct coord *dst)
+void func0f177120(struct coord *in, struct coord *out)
 {
-	dst->x = src->x;
-	dst->y = src->y;
-	dst->z = src->z;
+	out->x = in->x;
+	out->y = in->y;
+	out->z = in->z;
 }
 
-void vec3f_invert(struct coord *src, struct coord *dst)
+void func0f17713c(struct coord *in, struct coord *out)
 {
-	dst->x = -src->x;
-	dst->y = -src->y;
-	dst->z = -src->z;
+	out->x = -in->x;
+	out->y = -in->y;
+	out->z = -in->z;
 }
 
-bool vec3f_normalise(struct coord *src, struct coord *dst, u32 line, char *file)
+bool func0f177164(struct coord *arg0, struct coord *arg1, u32 line, char *file)
 {
-	f32 hypotenuse;
+	f32 sqdist = arg0->x * arg0->x + arg0->y * arg0->y + arg0->z * arg0->z;
 	f32 mult;
 
-	osSyncPrintf("Utils -> UM_fVec3_NormaliseTo - Vec = %s%s (%f,%f,%f)\n", "", "", src->x, src->y, src->z);
-
-	hypotenuse = src->x * src->x + src->y * src->y + src->z * src->z;
-
-	if (hypotenuse < g_UtilsMinSaneFloat) {
-		osSyncPrintf("Utils -> Attempt to normalise zeo length vector\n");
-
-		src->x = var800845f4.x;
-		src->y = var800845f4.y;
-		src->z = var800845f4.z;
+	if (sqdist < var800845d4) {
+		arg0->x = var800845f4.x;
+		arg0->y = var800845f4.y;
+		arg0->z = var800845f4.z;
 
 		return false;
 	}
 
-	mult = 1.0f / sqrtf(hypotenuse);
+	mult = 1.0f / sqrtf(sqdist);
 
-	dst->x = src->x * mult;
-	dst->y = src->y * mult;
-	dst->z = src->z * mult;
+	arg1->x = arg0->x * mult;
+	arg1->y = arg0->y * mult;
+	arg1->z = arg0->z * mult;
 
 	return true;
 }
@@ -221,17 +217,17 @@ bool func0f177298(struct coord *a, struct coord *b, struct coord *c)
 	return diff.x * c->x + diff.y * c->y + diff.z * c->z < 0;
 }
 
-bool vec3f_is_practically_equal(struct coord *a, struct coord *b)
+bool func0f177300(struct coord *a, struct coord *b)
 {
 	f32 diff = a->x - b->x;
 
-	if (ABS(diff) < g_UtilsMinSaneFloat) {
+	if (ABS(diff) < var800845d4) {
 		diff = a->y - b->y;
 
-		if (ABS(diff) < g_UtilsMinSaneFloat) {
+		if (ABS(diff) < var800845d4) {
 			diff = a->z - b->z;
 
-			if (ABS(diff) < g_UtilsMinSaneFloat) {
+			if (ABS(diff) < var800845d4) {
 				return true;
 			}
 		}
@@ -240,18 +236,18 @@ bool vec3f_is_practically_equal(struct coord *a, struct coord *b)
 	return false;
 }
 
-bool vec3f_is_pos_within_radius(struct coord *pos, struct coord *radius)
+bool func0f1773c8(struct coord *a, struct coord *b)
 {
-	if (pos->x < radius->x && pos->x > -radius->x
-			&& pos->y < radius->y && pos->y > -radius->y
-			&& pos->z < radius->z && pos->z > -radius->z) {
+	if (a->x < b->x && -b->x < a->x
+			&& a->y < b->y && -b->y < a->y
+			&& a->z < b->z && -b->z < a->z) {
 		return true;
 	}
 
 	return false;
 }
 
-f32 vec3f_get_distance(struct coord *a, struct coord *b)
+f32 coordsGetDistance(struct coord *a, struct coord *b)
 {
 	f32 xdiff = b->x - a->x;
 	f32 ydiff = b->y - a->y;
@@ -260,19 +256,19 @@ f32 vec3f_get_distance(struct coord *a, struct coord *b)
 	return sqrtf(xdiff * xdiff + ydiff * ydiff + zdiff * zdiff);
 }
 
-bool vec3f_make_normal_to(struct coord *arg0, struct coord *arg1, struct coord *out)
+bool func0f1774b4(struct coord *arg0, struct coord *arg1, struct coord *out)
 {
 	struct coord a;
 	struct coord b;
 	struct coord c;
 	f32 mult;
 
-	if (!vec3f_normalise(arg1, &a, 702, "utils.c")) {
+	if (!func0f177164(arg1, &a, 702, "utils.c")) {
 		osSyncPrintf("UTILS -> DEBUG ERROR - UM_fVec3_MakeNormalTo - Cant normalise\n");
 		return false;
 	}
 
-	if (!vec3f_normalise(arg0, &b, 710, "utils.c")) {
+	if (!func0f177164(arg0, &b, 710, "utils.c")) {
 		osSyncPrintf("UTILS -> DEBUG ERROR - UM_fVec3_MakeNormalTo - Cant normalise\n");
 		return false;
 	}
@@ -312,7 +308,7 @@ void func0f177624(struct coord *arg0, struct coord *arg1, struct coord *arg2, st
 	f32 tmpx;
 	f32 tmpz;
 
-	vec3f_normalise(arg0, arg1, 771, "utils.c");
+	func0f177164(arg0, arg1, 771, "utils.c");
 
 	dist = sqrtf(arg1->x * arg1->x + arg1->z * arg1->z);
 
@@ -338,8 +334,8 @@ f32 func0f1776cc(struct coord *a, struct coord *b, struct coord *c)
 
 	f32 sqdist = xdiff * b->x + ydiff * b->y + zdiff * b->z;
 
-	if (sqdist < g_UtilsMinSaneFloat && sqdist > -g_UtilsMinSaneFloat) {
-		return g_UtilsMaxSaneFloat;
+	if (sqdist < var800845d4 && sqdist > -var800845d4) {
+		return var800845d0;
 	}
 
 	return (xdiff * xdiff + ydiff * ydiff + zdiff * zdiff) / sqdist;
@@ -367,7 +363,7 @@ bool func0f1777b8(struct coord *a, struct coord *b, struct coord *c, struct coor
 	return true;
 }
 
-void utils_reset(void)
+void utilsReset(void)
 {
 	s32 i;
 
@@ -399,14 +395,14 @@ bool func0f17781c(struct coord *arg0, s32 arg1)
 
 	func0f1770ac(&sp78, &sp6c, &sp60);
 
-	vec3f_normalise(&sp60, &sp60, 1101, "utils.c");
+	func0f177164(&sp60, &sp60, 1101, "utils.c");
 
 	for (i = 3; i < arg1; i++) {
 		sp50.x = arg0[i].x - arg0[0].x;
 		sp50.y = arg0[i].y - arg0[0].y;
 		sp50.z = arg0[i].z - arg0[0].z;
 
-		vec3f_normalise(&sp50, &sp50, 1109, "utils.c");
+		func0f177164(&sp50, &sp50, 1109, "utils.c");
 
 		f0 = sp50.x * sp60.x + sp50.y * sp60.y + sp50.z * sp60.z;
 
@@ -455,46 +451,46 @@ void func0f177a38(u32 arg0, u32 arg1, u32 arg2, u32 arg3)
 	}
 }
 
-s32 func0f177a54(u8 *src, s32 count, u8 *dst, s32 stepsize)
+s32 func0f177a54(u8 *arg0, s32 arg1, u8 *arg2, s32 arg3)
 {
 	s32 i = 0;
-	s32 dstlen = 0;
-	s32 accum = 0;
+	s32 v1 = 0;
+	s32 t0 = 0;
 
-	for (; i < count; i++) {
-		s32 index = i * stepsize;
+	for (; i < arg1; i++) {
+		s32 index = i * arg3;
 
-		if (src[index] != 0) {
-			u8 *srcptr = &src[index];
+		if (arg0[index] != 0) {
+			u8 *ptr = &arg0[index];
 
-			if (i != 0 && srcptr[-stepsize] == 0) {
-				dst[dstlen++] = 0;
+			if (i != 0 && ptr[-arg3] == 0) {
+				arg2[v1++] = 0;
 
-				if (accum == 255) {
-					dst[dstlen++] = 200;
-					dst[dstlen++] = 0;
-					accum -= 200;
+				if (t0 == 255) {
+					arg2[v1++] = 200;
+					arg2[v1++] = 0;
+					t0 -= 200;
 				} else {
-					while (accum > 255) {
-						dst[dstlen++] = 255;
-						accum -= 255;
+					while (t0 > 255) {
+						arg2[v1++] = 255;
+						t0 -= 255;
 					}
 				}
 
-				dst[dstlen++] = accum;
-				accum = 0;
+				arg2[v1++] = t0;
+				t0 = 0;
 			}
 
-			dst[dstlen++] = src[index];
+			arg2[v1++] = arg0[index];
 		} else {
-			accum++;
+			t0++;
 		}
 	}
 
-	dst[dstlen++] = 0;
-	dst[dstlen++] = 0;
+	arg2[v1++] = 0;
+	arg2[v1++] = 0;
 
-	return dstlen;
+	return v1;
 }
 
 u8 func0f177b44(u8 *arg0, s32 *arg1)

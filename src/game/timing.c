@@ -4,14 +4,17 @@
 #include "bss.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "system.h"
+#endif
 
-void frametime_init(void)
+void frametimeInit(void)
 {
 	g_Vars.thisframestartt = osGetCount();
 	g_Vars.prevframestartt = g_Vars.thisframestartt;
 }
 
-void frametime_apply(s32 diffframe60, s32 diffframe240, s32 frametime)
+void frametimeApply(s32 diffframe60, s32 diffframe240, s32 frametime)
 {
 	g_Vars.prevframestartt = g_Vars.thisframestartt;
 	g_Vars.thisframestartt = frametime;
@@ -27,7 +30,7 @@ void frametime_apply(s32 diffframe60, s32 diffframe240, s32 frametime)
 	g_Vars.diffframe240freal = PALUPF(g_Vars.diffframe240f);
 }
 
-void frametime_calculate(void)
+void frametimeCalculate(void)
 {
 	u32 count;
 	u32 diffframet;
@@ -41,14 +44,24 @@ void frametime_calculate(void)
 
 		diffframe60 = (g_Vars.lostframetime60t + diffframet + CYCLES_PER_FRAME / 2) / CYCLES_PER_FRAME;
 		diffframe240 = (g_Vars.lostframetime240t + diffframet + CYCLES_PER_FRAME / 2 / 4) / (CYCLES_PER_FRAME / 4);
-	} while (diffframe60 < g_Vars.mininc60);
+
+#ifndef PLATFORM_N64
+		if (g_TickExtraSleep) {
+			sysSleep(EXTRA_SLEEP_TIME);
+		}
+#endif
+	} while (g_Vars.mininc60 && diffframe60 < g_Vars.mininc60);
 
 	g_Vars.lostframetime60t = g_Vars.lostframetime60t + diffframet - diffframe60 * CYCLES_PER_FRAME;
 	g_Vars.lostframetime240t = g_Vars.lostframetime240t + diffframet - diffframe240 * (CYCLES_PER_FRAME / 4);
 
+#ifdef PLATFORM_N64
 	g_Vars.mininc60 = 1;
+#else
+	g_Vars.mininc60 = g_TickRateDiv;
+#endif
 
-	frametime_apply(diffframe60, diffframe240, count);
+	frametimeApply(diffframe60, diffframe240, count);
 }
 
 void func0f16cf8c(s32 arg0)
