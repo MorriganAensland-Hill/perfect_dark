@@ -18,19 +18,16 @@
 #define MAX_CHRSPERSQUADRON    16
 #define MAX_CHRSPERTEAM        32
 #define MAX_CHRWAYPOINTS       6
-#define MAX_EXPLOSIONS         6
 #define MAX_EYESPYDARTS        8
 #define MAX_MPCHRS             (MAX_PLAYERS + MAX_BOTS)
 #define MAX_MPPLAYERCONFIGS    (MAX_PLAYERS + 2)
 #define MAX_OBJECTIVES         10
-#define MAX_PORTALS            2048
 #define MAX_PLAYERS            4
 #define MAX_PROPSPERROOMCHUNK  7
 #define MAX_ROOMPROPLISTCHUNKS 256
-#define MAX_SHIELDHITS         20
 #define MAX_SQUADRONS          16
 #define MAX_TEAMS              8
-#define MAX_USERSTRING_LEN     10
+#define MAX_EXPLOSIONS_DEFAULT 6
 
 #define NUM_BOTDIFFS          6
 #define NUM_CYCLEABLE_WEAPONS 45
@@ -52,9 +49,10 @@
 #define ABS(val)            ((val) > 0 ? (val) : -(val))
 #define ABSF(val)           ((val) > 0.0f ? (val) : -(val))
 #define ALIGN2(val)         (((val) | 1) ^ 0x1)
+#define ALIGN4(val)         (((val) | 3) ^ 0x3)
 #define ALIGN8(val)         ((((val) + 0x7) | 0x7) ^ 0x7)
 #define ALIGN16(val)        ((((val) + 0xf) | 0xf) ^ 0xf)
-#define ALIGN64(val)        (((((u32)(val)) + 0x3f) | 0x3f) ^ 0x3f)
+#define ALIGN64(val)        (((((uintptr_t)(val)) + 0x3f) | 0x3f) ^ 0x3f)
 #define ARRAYCOUNT(a)       (s32)(sizeof(a) / sizeof(a[0]))
 #define CHRNAVSEED(chr)     ((g_Vars.lvframe60 >> 9) * 128 + chr->chrnum * 8)
 #define CHRRACE(chr)        (chr ? chr->race : RACE_HUMAN)
@@ -63,9 +61,9 @@
 #define IS4MB()             (g_Is4Mb == true)
 #define IS8MB()             (g_Is4Mb != true)
 #define LINEHEIGHT          (VERSION == VERSION_JPN_FINAL ? 14 : 11)
-#define MIXCOLOUR(dialog, property) dialog->transitionfrac < 0.0f ? g_MenuColours[dialog->type].property : colour_blend(g_MenuColours[dialog->type2].property, g_MenuColours[dialog->type].property, dialog->colourweight)
+#define MIXCOLOUR(dialog, property) dialog->transitionfrac < 0.0f ? g_MenuColours[dialog->type].property : colourBlend(g_MenuColours[dialog->type2].property, g_MenuColours[dialog->type].property, dialog->colourweight)
 #define MPCHR(index)        ((index) < MAX_PLAYERS ? &g_PlayerConfigsArray[index].base : &g_BotConfigsArray[(index) - MAX_PLAYERS].base)
-#define RANDOMFRAC()        (random() * (1.0f / U32_MAX))
+#define RANDOMFRAC()        (rngRandom() * (1.0f / U32_MAX))
 #define SECSTOTIME240(secs) (secs * 240)
 #define SECSTOTIME60(secs)  (secs * 60)
 #define PFS(device)         (device == SAVEDEVICE_GAMEPAK ? NULL : &g_Pfses[device])
@@ -111,13 +109,11 @@
 #define TICKS(val)    ((val) * 50 / 60)
 #define PALUP(val)    ((val) * 60 / 50)
 #define PALUPF(val)   ((val) * 1.2f)
-#define PALDOWNF(val) ((val) * (1.0f / 1.2f))
 #define FRAMEDURATION (1 / 50.0f)
 #else
 #define TICKS(val)    (val)
 #define PALUP(val)    (val)
 #define PALUPF(val)   (val)
-#define PALDOWNF(val) (val)
 #define FRAMEDURATION (1 / 60.0f)
 #endif
 
@@ -263,13 +259,13 @@
 #define AMMOTYPE_CLOAK        0x14
 #define AMMOTYPE_BOOST        0x15
 #define AMMOTYPE_PSYCHOSIS    0x16
-#define AMMOTYPE_BOMBCASE     0x17
+#define AMMOTYPE_17           0x17
 #define AMMOTYPE_BUG          0x18
 #define AMMOTYPE_MICROCAMERA  0x19
 #define AMMOTYPE_PLASTIQUE    0x1a
-#define AMMOTYPE_WATCHLASER   0x1b
+#define AMMOTYPE_1B           0x1b
 #define AMMOTYPE_1C           0x1c
-#define AMMOTYPE_TANK         0x1d
+#define AMMOTYPE_1D           0x1d
 #define AMMOTYPE_TOKEN        0x1e
 #define AMMOTYPE_1F           0x1f
 #define AMMOTYPE_ECM_MINE     0x20
@@ -316,11 +312,11 @@
 #define ATTACKFLAG_NOVERTICAL     0x0100 // don't aim up/down
 #define ATTACKFLAG_AIMATTARGET    0x0200 // aim/shoot at whatever is in the chr's `target` field
 
-#define AUDIOCONFIGFLAG_SPECIALPAN   0x01
+#define AUDIOCONFIGFLAG_01           0x01
 #define AUDIOCONFIGFLAG_RESPONDHELLO 0x04
-#define AUDIOCONFIGFLAG_IGNOREROOMS  0x08
+#define AUDIOCONFIGFLAG_08           0x08
 #define AUDIOCONFIGFLAG_OFFENSIVE    0x10
-#define AUDIOCONFIGFLAG_AMBIENT      0x20
+#define AUDIOCONFIGFLAG_20           0x20
 #define AUDIOCONFIGFLAG_40           0x40
 
 #define AWARD_MOSTSUICIDAL     0x00000001
@@ -408,12 +404,9 @@
 #define CHANNEL_5        5
 #define CHANNEL_6        6
 #define CHANNEL_7        7
-#define CHANNEL_DONTCARE 9
+#define CHANNEL_8        8
+#define CHANNEL_9        9
 #define CHANNEL_CUTSCENE 10
-
-#define CHANNELCOUNT()         (IS4MB() ? 30 : 40)
-#define CHANNEL_IS_AI(channel) (channel >= 0 && channel <= 7)
-#define CHANNEL_HEAP_FIRST     8
 
 #define CHEAT_HURRICANEFISTS         0
 #define CHEAT_CLOAKINGDEVICE         1
@@ -457,6 +450,7 @@
 #define CHEAT_DMC                    39
 #define CHEAT_AR53                   40
 #define CHEAT_RCP45                  41
+#define CHEAT_DUALWIELDALLGUNS       42
 
 #define CHEATFLAG_TIMED       0
 #define CHEATFLAG_ALWAYSON    1
@@ -578,7 +572,7 @@
 #define CHRHFLAG_TRIGGER_BUDDY_WARP   0x00004000
 #define CHRHFLAG_PERFECTACCURACY      0x00008000 // Duel opponents
 #define CHRHFLAG_DISGUISE_UNCOVERED   0x00010000
-#define CHRHFLAG_FINDROOMSFAST        0x00020000 // Can use if chr never goes out of bounds or in overlapping rooms
+#define CHRHFLAG_00020000             0x00020000
 #define CHRHFLAG_00040000             0x00040000 // Not used
 #define CHRHFLAG_DISGUISED            0x00080000
 #define CHRHFLAG_WARPONSCREEN         0x00100000 // Allow chr warp to occur onscreen
@@ -702,6 +696,7 @@
 #define CONTROLMODE_22 5
 #define CONTROLMODE_23 6
 #define CONTROLMODE_24 7
+#define CONTROLMODE_PC 8 // "pc port" controls; enabled in the .ini file
 
 #define COUNTDOWNTIMERREASON_AI        0x01
 #define COUNTDOWNTIMERREASON_NOCONTROL 0x10
@@ -721,7 +716,7 @@
 #define COVERCRITERIA_1000                   0x1000
 #define COVERCRITERIA_2000                   0x2000
 #define COVERCRITERIA_DISTTOFETCHPROP        0x4000
-#define COVERCRITERIA_ALLOWSOFT              0x8000
+#define COVERCRITERIA_ALLOWSOFT                   0x8000
 
 #define COVERFLAG_OUTOFSIGHT      0x0001
 #define COVERFLAG_INUSE           0x0002
@@ -804,19 +799,19 @@
 #define DIFFBIT_PA 0x04
 #define DIFFBIT_PD 0x08
 
-#define DOORFLAG_EXTENDEDY       0x0001 // GE bunker flexi door
+#define DOORFLAG_0001            0x0001
 #define DOORFLAG_WINDOWED        0x0002
 #define DOORFLAG_0004            0x0004
 #define DOORFLAG_FLIP            0x0008
 #define DOORFLAG_AUTOMATIC       0x0010
-#define DOORFLAG_REUSEGEO        0x0020
+#define DOORFLAG_0020            0x0020
 #define DOORFLAG_ROTATEDPAD      0x0040
-#define DOORFLAG_TRANSLATION     0x0080 // Door opens using simple translation (no rotation)
+#define DOORFLAG_0080            0x0080
 #define DOORFLAG_0100            0x0100
 #define DOORFLAG_LONGRANGE       0x0200
 #define DOORFLAG_DAMAGEONCONTACT 0x0400 // Lasers
 #define DOORFLAG_UNBLOCKABLEOPEN 0x0800 // Skip collision checks when opening
-#define DOORFLAG_4000            0x4000 // Unused. Two Investigation vertical doors after lasers
+#define DOORFLAG_4000            0x4000 // Two Investigation vertical doors after lasers
 
 #define DOORMODE_IDLE    0
 #define DOORMODE_OPENING 1
@@ -856,7 +851,7 @@
 #define DROPTYPE_SURRENDER    2
 #define DROPTYPE_THROWGRENADE 3
 #define DROPTYPE_HAT          4
-#define DROPTYPE_DEBRIS       5
+#define DROPTYPE_5            5
 #define DROPTYPE_OWNERREAP    6
 
 #define DYNTEXTYPE_RIVER       1
@@ -1073,7 +1068,7 @@
 #define GAILIST_BUSY                   0x000a
 #define GAILIST_CHOOSE_TARGET          0x000b
 #define GAILIST_COMBAT_WITH_TARGET     0x000c
-#define GAILIST_INIT_COMBAT            0x000d
+#define GAILIST_INIT_COMBAT            0x000d // unused
 #define GAILIST_SEE_THEN_ATTACK        0x000e // unused
 #define GAILIST_HAND_COMBAT            0x000f
 #define GAILIST_CIVILIAN_SAY_COMMENT   0x0010
@@ -1100,9 +1095,9 @@
 #define GAILIST_POINTLESS              (VERSION >= VERSION_NTSC_1_0 ? 0x0025 : 0x0024) // unused
 #define GAILIST_INIT_PSYCHOSIS         (VERSION >= VERSION_NTSC_1_0 ? 0x0026 : 0x0025)
 #define GAILIST_PSYCHOSISED            (VERSION >= VERSION_NTSC_1_0 ? 0x0027 : 0x0026)
-#define GAILIST_AIBOT_DEAD             (VERSION >= VERSION_NTSC_1_0 ? 0x0028 : 0x0027)
-#define GAILIST_AIBOT_INIT             (VERSION >= VERSION_NTSC_1_0 ? 0x0029 : 0x0028)
-#define GAILIST_AIBOT_MAIN             (VERSION >= VERSION_NTSC_1_0 ? 0x002a : 0x0029)
+#define GAILIST_AIBOT_DEAD             (VERSION >= VERSION_NTSC_1_0 ? 0x0028 : 0x0027) // unused
+#define GAILIST_AIBOT_INIT             (VERSION >= VERSION_NTSC_1_0 ? 0x0029 : 0x0028) // unused
+#define GAILIST_AIBOT_MAIN             (VERSION >= VERSION_NTSC_1_0 ? 0x002a : 0x0029) // unused
 #define GAILIST_AVOID                  (VERSION >= VERSION_NTSC_1_0 ? 0x002b : 0x002a) // unused
 #define GAILIST_INIT_SEARCH            (VERSION >= VERSION_NTSC_1_0 ? 0x002c : 0x002b) // unused
 #define GAILIST_INVINCIBLE_AND_IDLE    (VERSION >= VERSION_NTSC_1_0 ? 0x002d : 0x002c)
@@ -1203,11 +1198,6 @@
 #define GEOFLAG_DIE               0x4000
 #define GEOFLAG_LADDER_PLAYERONLY 0x8000 // Used for most ledges in Chicago, but not near drain pickup
 
-#define GEOTILEI_SIZE(geo) (sizeof(struct geotilei) + (geo->header.numvertices - ARRAYCOUNT(geo->vertices)) * sizeof(geo->vertices[0]))
-#define GEOTILEF_SIZE(geo) (sizeof(struct geotilef) + (geo->header.numvertices - ARRAYCOUNT(geo->vertices)) * sizeof(geo->vertices[0]))
-#define GEOBLOCK_SIZE(geo) sizeof(struct geoblock)
-#define GEOCYL_SIZE(geo)   sizeof(struct geocyl)
-
 #define GEOTYPE_TILE_I 0 // Tiles with integer vertices - used for BG
 #define GEOTYPE_TILE_F 1 // Tiles with float vertices - used for lifts
 #define GEOTYPE_BLOCK  2 // Most objects - multiple x/z vertices, and a single ymin and ymax
@@ -1227,17 +1217,11 @@
 #define GUNAMMOREASON_OPTION     0x01
 #define GUNAMMOREASON_NOCONTROL  0x02
 
-#define GUNAMMOSTATE_DEPLETED        -1
-#define GUNAMMOSTATE_NEEDRELOAD      0
-#define GUNAMMOSTATE_CLIPYES_HELDYES 1
-#define GUNAMMOSTATE_CLIPYES_HELDNO  2
-#define GUNAMMOSTATE_CLIPFULL        3
-
 #define GUNCMD_END               0
 #define GUNCMD_SHOWPART          1
 #define GUNCMD_HIDEPART          2
 #define GUNCMD_WAITFORZRELEASED  3
-#define GUNCMD_ALLOWFEATURE      4
+#define GUNCMD_WAITTIME          4
 #define GUNCMD_PLAYSOUND         5
 #define GUNCMD_INCLUDE           6
 #define GUNCMD_RANDOM            7
@@ -1245,11 +1229,6 @@
 #define GUNCMD_POPOUTSACKOFPILLS 9
 #define GUNCMD_PLAYANIMATION     10
 #define GUNCMD_SETSOUNDSPEED     11
-
-#define GUNFEATURE_RELOAD      1
-#define GUNFEATURE_ATTACK      2
-#define GUNFEATURE_ATTACKAGAIN 3
-#define GUNFEATURE_CLICK       5
 
 #define GUNMEMOWNER_BONDGUN  0
 #define GUNMEMOWNER_INVMENU  1
@@ -1313,8 +1292,8 @@
 #define HANDSTATE_AUTOSWITCH  8
 
 #define HANDSTATEFLAG_00000001 0x00000001
-#define HANDSTATEFLAG_BUSY     0x00000010
-#define HANDSTATEFLAG_FIRED    0x00000020
+#define HANDSTATEFLAG_00000010 0x00000010
+#define HANDSTATEFLAG_00000020 0x00000020
 #define HANDSTATEFLAG_00000040 0x00000040
 #define HANDSTATEFLAG_00000080 0x00000080
 
@@ -1630,7 +1609,7 @@
 #define MENUBG_CONEOPAQUE 9 // 4MB combat simulator
 
 #define MENUDIALOGFLAG_CLOSEONSELECT     0x0001
-#define MENUDIALOGFLAG_ALLOW_MODELS      0x0002
+#define MENUDIALOGFLAG_0002              0x0002
 #define MENUDIALOGFLAG_STARTSELECTS      0x0004
 #define MENUDIALOGFLAG_DISABLEITEMSCROLL 0x0008
 #define MENUDIALOGFLAG_MPLOCKABLE        0x0010
@@ -1639,9 +1618,12 @@
 #define MENUDIALOGFLAG_DISABLEBANNER     0x0080
 #define MENUDIALOGFLAG_DISABLETITLEBAR   0x0100
 #define MENUDIALOGFLAG_DISABLERESIZE     0x0200
-#define MENUDIALOGFLAG_NOVERTICALBORDERS 0x0400
+#define MENUDIALOGFLAG_0400              0x0400
 #define MENUDIALOGFLAG_DROPOUTONCLOSE    0x0800
-#define MENUDIALOGFLAG_LESSHEIGHT        0x1000
+#define MENUDIALOGFLAG_1000              0x1000
+#ifndef PLATFORM_N64
+#define MENUDIALOGFLAG_LITERAL_TEXT      0x2000
+#endif
 
 #define MENUDIALOGSTATE_PREOPEN    0
 #define MENUDIALOGSTATE_OPENING    1
@@ -1654,34 +1636,37 @@
 #define MENUDIALOGTYPE_4       4
 #define MENUDIALOGTYPE_WHITE   5
 
-#define MENUITEMFLAG_NEWCOLUMN                   0x00000001
-#define MENUITEMFLAG_00000002                    0x00000002 // never read
-#define MENUITEMFLAG_SELECTABLE_OPENSDIALOG      0x00000004
-#define MENUITEMFLAG_SELECTABLE_CLOSESDIALOG     0x00000008
-#define MENUITEMFLAG_LESSLEFTPADDING             0x00000010
-#define MENUITEMFLAG_SELECTABLE_CENTRE           0x00000020
-#define MENUITEMFLAG_LIST_WIDE                   0x00000040
-#define MENUITEMFLAG_DROPDOWN_BELOW              0x00000080
-#define MENUITEMFLAG_LABEL_ALTCOLOUR             0x00000100
-#define MENUITEMFLAG_SMALLFONT                   0x00000200
-#define MENUITEMFLAG_ALWAYSDISABLED              0x00000400
-#define MENUITEMFLAG_MARQUEE_FADEBOTHSIDES       0x00000800
-#define MENUITEMFLAG_SLIDER_FAST                 0x00000800
-#define MENUITEMFLAG_ADJUSTWIDTH                 0x00001000
-#define MENUITEMFLAG_SLIDER_HIDEVALUE            0x00002000
-#define MENUITEMFLAG_DARKERBG                    0x00004000
-#define MENUITEMFLAG_LABEL_HASRIGHTTEXT          0x00008000
-#define MENUITEMFLAG_DISABLESCROLL               0x00010000
-#define MENUITEMFLAG_LOCKABLEMINOR               0x00020000
-#define MENUITEMFLAG_LOCKABLEMAJOR               0x00040000
-#define MENUITEMFLAG_MPWEAPONSLOT                0x00080000
-#define MENUITEMFLAG_SLIDER_ALTSIZE              0x00100000
-#define MENUITEMFLAG_LIST_CUSTOMRENDER           0x00200000
-#define MENUITEMFLAG_BIGFONT                     0x00400000
-#define MENUITEMFLAG_LIST_AUTOWIDTH              0x00800000
-#define MENUITEMFLAG_LABEL_CUSTOMCOLOUR          0x01000000
-#define MENUITEMFLAG_LESSHEIGHT                  0x02000000
-#define MENUITEMFLAG_CAROUSEL_SCROLLWITHOUTFOCUS 0x04000000
+#define MENUITEMFLAG_NEWCOLUMN               0x00000001
+#define MENUITEMFLAG_00000002                0x00000002
+#define MENUITEMFLAG_SELECTABLE_OPENSDIALOG  0x00000004
+#define MENUITEMFLAG_SELECTABLE_CLOSESDIALOG 0x00000008
+#define MENUITEMFLAG_LESSLEFTPADDING         0x00000010
+#define MENUITEMFLAG_SELECTABLE_CENTRE       0x00000020
+#define MENUITEMFLAG_LIST_WIDE               0x00000040
+#define MENUITEMFLAG_DROPDOWN_BELOW          0x00000080
+#define MENUITEMFLAG_LABEL_ALTCOLOUR         0x00000100
+#define MENUITEMFLAG_SMALLFONT               0x00000200
+#define MENUITEMFLAG_ALWAYSDISABLED          0x00000400
+#define MENUITEMFLAG_MARQUEE_FADEBOTHSIDES   0x00000800
+#define MENUITEMFLAG_SLIDER_FAST             0x00000800
+#define MENUITEMFLAG_ADJUSTWIDTH             0x00001000
+#define MENUITEMFLAG_SLIDER_HIDEVALUE        0x00002000
+#define MENUITEMFLAG_DARKERBG                0x00004000
+#define MENUITEMFLAG_LABEL_HASRIGHTTEXT      0x00008000
+#define MENUITEMFLAG_00010000                0x00010000
+#define MENUITEMFLAG_LOCKABLEMINOR           0x00020000
+#define MENUITEMFLAG_LOCKABLEMAJOR           0x00040000
+#define MENUITEMFLAG_MPWEAPONSLOT            0x00080000
+#define MENUITEMFLAG_SLIDER_ALTSIZE          0x00100000
+#define MENUITEMFLAG_LIST_CUSTOMRENDER       0x00200000
+#define MENUITEMFLAG_BIGFONT                 0x00400000
+#define MENUITEMFLAG_LIST_AUTOWIDTH          0x00800000
+#define MENUITEMFLAG_LABEL_CUSTOMCOLOUR      0x01000000
+#define MENUITEMFLAG_LESSHEIGHT              0x02000000
+#define MENUITEMFLAG_CAROUSEL_04000000       0x04000000
+#define MENUITEMFLAG_LITERAL_TEXT            0x08000000
+#define MENUITEMFLAG_SLIDER_WIDE             0x10000000
+#define MENUITEMFLAG_SLIDER_DEFERRED         0x20000000
 
 #define MENUITEMTYPE_LABEL       0x01
 #define MENUITEMTYPE_LIST        0x02
@@ -1710,6 +1695,10 @@
 #define MENUITEMTYPE_CONTROLLER  0x19
 #define MENUITEMTYPE_END         0x1a
 
+#ifndef PLATFORM_N64
+#define MENUITEMTYPE_COLORBOX    0x1b
+#endif
+
 #define MENUMODELFLAG_HASSCALE    0x01
 #define MENUMODELFLAG_HASPOSITION 0x02
 #define MENUMODELFLAG_HASROTATION 0x04
@@ -1729,33 +1718,33 @@
 #define MENUMODELTYPE_3           3
 #define MENUMODELTYPE_CREDITSLOGO 4
 
-#define MENUOP_GET_OPTION_COUNT          1
-#define MENUOP_GET_OPTGROUP_COUNT        2
-#define MENUOP_GET_OPTION_TEXT           3
-#define MENUOP_GET_OPTGROUP_TEXT         4
-#define MENUOP_GET_OPTGROUP_START_INDEX  5
-#define MENUOP_CONFIRM                   6
-#define MENUOP_GET_SELECTED_INDEX        7
-#define MENUOP_IS_CHECKED                8
-#define MENUOP_GET_SLIDER_VALUE          9
-#define MENUOP_GET_SLIDER_LABEL          10
-#define MENUOP_ON_CAROUSEL_TICK          11
-#define MENUOP_IS_DISABLED               12
-#define MENUOP_ON_FOCUS                  13
-#define MENUOP_IS_OPTION_CHECKED         14
-#define MENUOP_IS_PREFOCUSED             15
-#define MENUOP_ON_OPTION_FOCUS           16
-#define MENUOP_GET_KEYBOARD_STRING       17
-#define MENUOP_SET_KEYBOARD_STRING       18
-#define MENUOP_RENDER                    19
-#define MENUOP_GET_OPTION_HEIGHT         20
-#define MENUOP_IS_CAROUSEL_OPTION_HIDDEN 21
-#define MENUOP_GET_LABEL_COLOURS         22
-#define MENUOP_IS_HIDDEN                 24
-#define MENUOP_GET_OPTION_INDEX2         25
-#define MENUOP_ON_OPEN                   100
-#define MENUOP_ON_CLOSE                  101
-#define MENUOP_ON_TICK                   102
+#define MENUOP_GETOPTIONCOUNT      1
+#define MENUOP_GETOPTGROUPCOUNT    2
+#define MENUOP_GETOPTIONTEXT       3
+#define MENUOP_GETOPTGROUPTEXT     4
+#define MENUOP_GETGROUPSTARTINDEX  5
+#define MENUOP_SET                 6
+#define MENUOP_GETSELECTEDINDEX    7
+#define MENUOP_GET                 8
+#define MENUOP_GETSLIDER           9
+#define MENUOP_GETSLIDERLABEL      10
+#define MENUOP_11                  11
+#define MENUOP_CHECKDISABLED       12
+#define MENUOP_FOCUS               13
+#define MENUOP_GETLISTITEMCHECKBOX 14
+#define MENUOP_CHECKPREFOCUSED     15
+#define MENUOP_LISTITEMFOCUS       16
+#define MENUOP_GETTEXT             17
+#define MENUOP_SETTEXT             18
+#define MENUOP_RENDER              19
+#define MENUOP_GETOPTIONHEIGHT     20
+#define MENUOP_21                  21
+#define MENUOP_GETCOLOUR           22
+#define MENUOP_CHECKHIDDEN         24
+#define MENUOP_25                  25
+#define MENUOP_OPEN                100
+#define MENUOP_CLOSE               101
+#define MENUOP_TICK                102
 
 #define MENUPLANE_00 0
 #define MENUPLANE_01 1
@@ -1774,22 +1763,19 @@
 #define MENUREPEATMODE_SLOW     0
 #define MENUREPEATMODE_FAST     1
 
-#define MENUROOT_ENDSCREEN      1
-#define MENUROOT_MAINMENU       2
-#define MENUROOT_MPSETUP        3
-#define MENUROOT_MPPAUSE        4
-#define MENUROOT_MPENDSCREEN    5
-#define MENUROOT_FILEMGR        6
-#define MENUROOT_BOOTPAKMGR     7
-#define MENUROOT_PICKTARGET     8
-#define MENUROOT_COOPCONTINUE   9
-#define MENUROOT_4MBFILEMGR     10
-#define MENUROOT_4MBMAINMENU    11
-#define MENUROOT_12             12
-#define MENUROOT_TRAINING       13
-#define MENUROOT_START_MP_MATCH -5
-#define MENUROOT_END_MP_MATCH   -6
-#define MENUROOT_CHANGE_AGENT   -7
+#define MENUROOT_ENDSCREEN    1
+#define MENUROOT_MAINMENU     2
+#define MENUROOT_MPSETUP      3
+#define MENUROOT_MPPAUSE      4
+#define MENUROOT_MPENDSCREEN  5
+#define MENUROOT_FILEMGR      6
+#define MENUROOT_BOOTPAKMGR   7
+#define MENUROOT_PICKTARGET   8
+#define MENUROOT_COOPCONTINUE 9
+#define MENUROOT_4MBFILEMGR   10
+#define MENUROOT_4MBMAINMENU  11
+#define MENUROOT_12           12
+#define MENUROOT_TRAINING     13
 
 #define MENUSOUND_SWIPE          0x00 // Navigating to left/right dialog
 #define MENUSOUND_OPENDIALOG     0x01
@@ -2315,10 +2301,10 @@
 #define MODELPART_AUTOGUN_0006           0x0006 // position
 #define MODELPART_AUTOGUN_FLASHLEFT      0x0005 // gunfire
 #define MODELPART_AUTOGUN_FLASHRIGHT     0x0007 // gunfire
-#define MODELPART_BASIC_0064             0x0064 // geo
-#define MODELPART_BASIC_FLOORGEO         0x0065 // geo
-#define MODELPART_BASIC_WALLGEO          0x0066 // geo
-#define MODELPART_BASIC_SHIELD           0x0067 // bbox
+#define MODELPART_BASIC_0064             0x0064 // type19
+#define MODELPART_BASIC_0065             0x0065 // type19
+#define MODELPART_BASIC_0066             0x0066 // type19
+#define MODELPART_BASIC_0067             0x0067 // bbox
 #define MODELPART_BASIC_00C8             0x00c8 // toggle
 #define MODELPART_BASIC_00C9             0x00c9 // toggle
 #define MODELPART_BASIC_00CA             0x00ca // toggle
@@ -2398,7 +2384,7 @@
 #define MODELPART_DRCAROLL_0009          0x0009 // toggle
 #define MODELPART_DRCAROLL_000A          0x000a // toggle
 #define MODELPART_DRCAROLL_000B          0x000b // toggle
-#define MODELPART_DROPSHIP_0064          0x0064 // geo
+#define MODELPART_DROPSHIP_0064          0x0064 // type19
 #define MODELPART_DROPSHIP_INTERIOR      0x006e // toggle
 #define MODELPART_FALCON2_002E           0x002e // toggle
 #define MODELPART_FALCON2_002F           0x002f // toggle
@@ -2433,7 +2419,7 @@
 #define MODELPART_HEAD_HAT               0x0001 // toggle
 #define MODELPART_HEAD_HUDPIECE          0x0004 // toggle
 #define MODELPART_HEAD_SUNGLASSES        0x0000 // toggle
-#define MODELPART_HOVERBIKE_0064         0x0064 // geo
+#define MODELPART_HOVERBIKE_0064         0x0064 // type19
 #define MODELPART_HUDPIECE_0000          0x0000 // gundl
 #define MODELPART_HUDPIECE_0001          0x0001 // position
 #define MODELPART_HUDPIECE_0002          0x0002 // position
@@ -2462,13 +2448,13 @@
 #define MODELPART_LAPTOPGUN_MAGAZINE1    0x0029 // toggle
 #define MODELPART_LAPTOPGUN_MAGAZINE2    0x002a // toggle
 #define MODELPART_LASER_0042             0x0042 // toggle
-#define MODELPART_LIFT_DOORBLOCK         0x0004 // geo
-#define MODELPART_LIFT_FLOORNONRECT1     0x0005 // geo
-#define MODELPART_LIFT_FLOORNONRECT2     0x0006 // geo
+#define MODELPART_LIFT_DOORBLOCK         0x0004 // type19
+#define MODELPART_LIFT_FLOORNONRECT1     0x0005 // type19
+#define MODELPART_LIFT_FLOORNONRECT2     0x0006 // type19
 #define MODELPART_LIFT_FLOORRECT         0x0000 // bbox
-#define MODELPART_LIFT_WALL1             0x0001 // geo
-#define MODELPART_LIFT_WALL2             0x0002 // geo
-#define MODELPART_LIFT_WALL3             0x0003 // geo
+#define MODELPART_LIFT_WALL1             0x0001 // type19
+#define MODELPART_LIFT_WALL2             0x0002 // type19
+#define MODELPART_LIFT_WALL3             0x0003 // type19
 #define MODELPART_LOGO_0000              0x0000 // toggle
 #define MODELPART_LOGO_0001              0x0001 // toggle
 #define MODELPART_LOGO_FRONTSIDE         0x0002 // dl
@@ -2497,7 +2483,7 @@
 #define MODELPART_MAGNUM_CART4           0x002b // toggle
 #define MODELPART_MAGNUM_CART5           0x002c // toggle
 #define MODELPART_MAGNUM_CART6           0x002d // toggle
-#define MODELPART_MAIANUFO_0064          0x0064 // geo
+#define MODELPART_MAIANUFO_0064          0x0064 // type19
 #define MODELPART_MAULER_0050            0x0050 // position
 #define MODELPART_MAULER_MAGAZINE1       0x002a // toggle
 #define MODELPART_MAULER_MAGAZINE2       0x002b // toggle
@@ -2588,24 +2574,12 @@
 #define MODELPART_0010 0x0010
 #define MODELPART_0011 0x0011
 #define MODELPART_0042 0x0042
+#define MODELPART_0065 0x0065
+#define MODELPART_0066 0x0066
 #define MODELPART_0067 0x0067
 
 #define MODELRENDERFLAG_OPA 1
 #define MODELRENDERFLAG_XLU 2
-#define MODELRENDERFLAG_DEFAULT (MODELRENDERFLAG_OPA | MODELRENDERFLAG_XLU)
-
-#define MODELRENDERCONTEXT_MENUMODEL_OPA   1
-#define MODELRENDERCONTEXT_BONDGUN_OPA     4
-#define MODELRENDERCONTEXT_BONDGUN_OBJ_XLU 5
-#define MODELRENDERCONTEXT_CHR_OPA         7
-#define MODELRENDERCONTEXT_CHR_XLU         8
-#define MODELRENDERCONTEXT_OBJ_OPA         9
-
-#define MODELRENDERMODE_0              0 // Not referenced in code, but is referenced in model files
-#define MODELRENDERMODE_SIMPLE         1 // Texture * shade
-#define MODELRENDERMODE_TRILERP        2 // Use LOD level to modulate texels from two bilerp tiles
-#define MODELRENDERMODE_CTXAWARE_1PASS 3 // Different settings based on model type, xlu rendered on same pass as opa
-#define MODELRENDERMODE_CTXAWARE_2PASS 4 // Different settings based on model type, opa/xlu rendered on different passes
 
 #define MODFILE_GAME    1
 #define MODFILE_MPSETUP 2
@@ -2620,13 +2594,6 @@
 #define MP3RESPONSETYPE_ACKNOWLEDGE 1
 #define MP3RESPONSETYPE_WHISPER     2
 #define MP3RESPONSETYPE_GREETING    3
-
-#define MP3STATE_IDLE      0
-#define MP3STATE_PLAYING   1
-#define MP3STATE_PAUSED    2
-#define MP3STATE_STOPPED   3
-#define MP3STATE_LOADING   4
-#define MP3STATE_UNPAUSING 5
 
 #define MPBODY_DARK_COMBAT      0x00
 #define MPBODY_DARK_TRENCH      0x01
@@ -2925,6 +2892,13 @@
 #define MPOPTION_HTM_SHOWONRADAR        0x00040000
 #define MPOPTION_PAC_HIGHLIGHTTARGET    0x00080000
 #define MPOPTION_PAC_SHOWONRADAR        0x00100000
+#define MPOPTION_SPAWNWITHWEAPON        0x00200000
+#define MPOPTION_NODRUGBLUR             0x00400000
+#define MPOPTION_AUTORANDOMWEAPON_START 0x00800000
+#define MPOPTION_AUTORANDOMWEAPON_END   0x01000000
+#define MPOPTION_FRIENDLYFIRE           0x02000000
+#define MPOPTION_NOPLAYERONRADAR        0x04000000
+#define MPOPTION_NODOORS                0x08000000
 
 #define MPPAUSEMODE_UNPAUSED 0
 #define MPPAUSEMODE_PAUSED   1
@@ -3004,6 +2978,7 @@
 #define MPWEAPON_DEVASTATOR       0x16
 #define MPWEAPON_ROCKETLAUNCHER   0x17
 #define MPWEAPON_SLAYER           0x18
+#ifdef PLATFORM_N64
 #define MPWEAPON_COMBATKNIFE      (VERSION == VERSION_JPN_FINAL ?    0 : 0x19)
 #define MPWEAPON_CROSSBOW         (VERSION == VERSION_JPN_FINAL ? 0x19 : 0x1a)
 #define MPWEAPON_TRANQUILIZER     (VERSION == VERSION_JPN_FINAL ? 0x1a : 0x1b)
@@ -3019,6 +2994,33 @@
 #define MPWEAPON_SHIELD           (VERSION == VERSION_JPN_FINAL ? 0x24 : 0x25)
 #define MPWEAPON_DISABLED         (VERSION == VERSION_JPN_FINAL ? 0x25 : 0x26)
 #define NUM_MPWEAPONS             (VERSION == VERSION_JPN_FINAL ? 0x26 : 0x27)
+#else // add all classic weapons to multiplayer and allow combat knife in JPN and add IR Scanner and Night Vision
+#define MPWEAPON_COMBATKNIFE      0x19
+#define MPWEAPON_CROSSBOW         0x1a
+#define MPWEAPON_TRANQUILIZER     0x1b
+#define MPWEAPON_GRENADE          0x1c
+#define MPWEAPON_NBOMB            0x1d
+#define MPWEAPON_TIMEDMINE        0x1e
+#define MPWEAPON_PROXIMITYMINE    0x1f
+#define MPWEAPON_REMOTEMINE       0x20
+#define MPWEAPON_LASER            0x21
+#define MPWEAPON_XRAYSCANNER      0x22
+#define MPWEAPON_NIGHTVISION      0x23
+#define MPWEAPON_IRSCANNER        0x24
+#define MPWEAPON_CLOAKINGDEVICE   0x25
+#define MPWEAPON_COMBATBOOST      0x26
+#define MPWEAPON_PP9I             0x27
+#define MPWEAPON_CC13             0x28
+#define MPWEAPON_KL01313          0x29
+#define MPWEAPON_KF7SPECIAL       0x2a
+#define MPWEAPON_ZZT              0x2b
+#define MPWEAPON_DMC              0x2c
+#define MPWEAPON_AR53             0x2d
+#define MPWEAPON_RCP45            0x2e
+#define MPWEAPON_SHIELD           0x2f
+#define MPWEAPON_DISABLED         0x30
+#define NUM_MPWEAPONS             0x31
+#endif
 
 #define MUSICEVENTTYPE_PLAY        1
 #define MUSICEVENTTYPE_STOP        2
@@ -3041,7 +3043,7 @@
 #define OBJFLAG_XTOPADBOUNDS               0x00000020
 #define OBJFLAG_YTOPADBOUNDS               0x00000040
 #define OBJFLAG_ZTOPADBOUNDS               0x00000080
-#define OBJFLAG_CORE_GEO_INUSE             0x00000100 // G5 mines, Air Base brown door, AF1 grate and escape door, Defense shuttle, Ruins mines, MBR lift door. Editor suggests "Force Collisions" but this seems wrong
+#define OBJFLAG_00000100                   0x00000100 // G5 mines, Air Base brown door, AF1 grate and escape door, Defense shuttle, Ruins mines, MBR lift door. Editor suggests "Force Collisions" but this seems wrong
 #define OBJFLAG_ORTHOGONAL                 0x00000200
 #define OBJFLAG_IGNOREFLOORCOLOUR          0x00000400
 #define OBJFLAG_PATHBLOCKER                0x00000800 // Glass and explodable scenery which may be blocking a path segment
@@ -3072,7 +3074,7 @@
 #define OBJFLAG_CHOPPER_INIT               0x20000000
 #define OBJFLAG_DOOR_OPENTOFRONT           0x20000000
 #define OBJFLAG_HOVERCAR_INIT              0x20000000
-#define OBJFLAG_HOVERPROP_ISCRATE          0x20000000
+#define OBJFLAG_HOVERPROP_20000000         0x20000000
 #define OBJFLAG_LIFT_LATERALMOVEMENT       0x20000000
 #define OBJFLAG_MONITOR_20000000           0x20000000
 #define OBJFLAG_WEAPON_AICANNOTUSE         0x20000000
@@ -3092,80 +3094,80 @@
 #define OBJFLAG_WEAPON_CANMIXDUAL          0x80000000
 
 // obj->flags2
-#define OBJFLAG2_IMMUNETOANTI           0x00000001 // Counter-op cannot damage this object
-#define OBJFLAG2_BOUNCEIFSHOTWHENDEAD   0x00000002 // Ruins spikes
-#define OBJFLAG2_SKIPDOORLOCKEDMSG      0x00000004
-#define OBJFLAG2_DOOR_PENDINGACTIVATION 0x00000008 // Editor: "Don't load in Multiplayer"
-#define OBJFLAG2_EXCLUDE_A              0x00000010
-#define OBJFLAG2_EXCLUDE_SA             0x00000020
-#define OBJFLAG2_EXCLUDE_PA             0x00000040
-#define OBJFLAG2_EXCLUDE_PD             0x00000080
-#define OBJFLAG2_NOFALL                 0x00000100
-#define OBJFLAG2_FALLWITHOUTROTATION    0x00000200
-#define OBJFLAG2_LINKEDTOSAFE           0x00000400 // Applied to safe door and item
-#define OBJFLAG2_INTERACTCHECKLOS       0x00000800 // Check line of sight when attempting to interact with object
-#define OBJFLAG2_PICKUPWITHOUTLOS       0x00001000 // Object can be picked up without having line of sight
-#define OBJFLAG2_REMOVEWHENDESTROYED    0x00002000
-#define OBJFLAG2_IMMUNETOGUNFIRE        0x00004000
-#define OBJFLAG2_SHOOTTHROUGH           0x00008000
-#define OBJFLAG2_DRAWONTOP              0x00010000
-#define OBJFLAG2_DONTPAUSE              0x00020000 // Don't allow prop to pause
-#define OBJFLAG2_INVHIDDEN              0x00040000 // Don't show in inventory menu
-#define OBJFLAG2_INVISIBLE              0x00080000
-#define OBJFLAG2_BULLETPROOF            0x00100000 // Only magnum and FarSight can shoot through it
-#define OBJFLAG2_IMMUNETOEXPLOSIONS     0x00200000
-#define OBJFLAG2_EXCLUDE_2P             0x00400000
-#define OBJFLAG2_EXCLUDE_3P             0x00800000
-#define OBJFLAG2_EXCLUDE_4P             0x01000000
-#define OBJFLAG2_THROWTHROUGH           0x02000000 // Rockets/mines/grenades etc pass through object
-#define OBJFLAG2_CANFILLVIEWPORT        0x04000000
-#define OBJFLAG2_LOCKEDFRONT            0x08000000 // One-way door lock
-#define OBJFLAG2_LOCKEDBACK             0x10000000 // One-way door lock
-#define OBJFLAG2_AICANNOTUSE            0x20000000 // AI can't equip weapon
-#define OBJFLAG2_AUTOGUN_WINDMILL       0x20000000
-#define OBJFLAG2_AIRLOCKDOOR            0x40000000 // Door waits for sibling to close before it can open
-#define OBJFLAG2_AUTOGUN_ZEROTOROT      0x40000000 // set xzero/yzero to xrot/yrot when malfunctioning
-#define OBJFLAG2_AUTOGUN_MALFUNCTIONING 0x80000000
-#define OBJFLAG2_DEBRIS_80000000        0x80000000
-#define OBJFLAG2_DEFAULT_80000000       0x80000000
-#define OBJFLAG2_DOOR_ALTCOORDSYSTEM    0x80000000 // Floor grates, but also Temple doors
-#define OBJFLAG2_GLASS_80000000         0x80000000
-#define OBJFLAG2_HOVERPROP_80000000     0x80000000
-#define OBJFLAG2_WEAPON_HUGEEXP         0x80000000
+#define OBJFLAG2_IMMUNETOANTI            0x00000001 // Counter-op cannot damage this object
+#define OBJFLAG2_BOUNCEIFSHOTWHENDEAD    0x00000002 // Ruins spikes
+#define OBJFLAG2_SKIPDOORLOCKEDMSG       0x00000004
+#define OBJFLAG2_DOOR_PENDINGACTIVATION  0x00000008 // Editor: "Don't load in Multiplayer"
+#define OBJFLAG2_EXCLUDE_A               0x00000010
+#define OBJFLAG2_EXCLUDE_SA              0x00000020
+#define OBJFLAG2_EXCLUDE_PA              0x00000040
+#define OBJFLAG2_EXCLUDE_PD              0x00000080
+#define OBJFLAG2_NOFALL                  0x00000100
+#define OBJFLAG2_FALLWITHOUTROTATION     0x00000200
+#define OBJFLAG2_LINKEDTOSAFE            0x00000400 // Applied to safe door and item
+#define OBJFLAG2_INTERACTCHECKLOS        0x00000800 // Check line of sight when attempting to interact with object
+#define OBJFLAG2_PICKUPWITHOUTLOS        0x00001000 // Object can be picked up without having line of sight
+#define OBJFLAG2_REMOVEWHENDESTROYED     0x00002000
+#define OBJFLAG2_IMMUNETOGUNFIRE         0x00004000
+#define OBJFLAG2_SHOOTTHROUGH            0x00008000
+#define OBJFLAG2_DRAWONTOP               0x00010000
+#define OBJFLAG2_DONTPAUSE               0x00020000 // Don't allow prop to pause
+#define OBJFLAG2_INVHIDDEN               0x00040000 // Don't show in inventory menu
+#define OBJFLAG2_INVISIBLE               0x00080000
+#define OBJFLAG2_BULLETPROOF             0x00100000 // Only magnum and FarSight can shoot through it
+#define OBJFLAG2_IMMUNETOEXPLOSIONS      0x00200000
+#define OBJFLAG2_EXCLUDE_2P              0x00400000
+#define OBJFLAG2_EXCLUDE_3P              0x00800000
+#define OBJFLAG2_EXCLUDE_4P              0x01000000
+#define OBJFLAG2_THROWTHROUGH            0x02000000 // Rockets/mines/grenades etc pass through object
+#define OBJFLAG2_CANFILLVIEWPORT         0x04000000
+#define OBJFLAG2_LOCKEDFRONT             0x08000000 // One-way door lock
+#define OBJFLAG2_LOCKEDBACK              0x10000000 // One-way door lock
+#define OBJFLAG2_AICANNOTUSE             0x20000000 // AI can't equip weapon
+#define OBJFLAG2_AUTOGUN_MALFUNCTIONING2 0x20000000
+#define OBJFLAG2_AIRLOCKDOOR             0x40000000 // Door waits for sibling to close before it can open
+#define OBJFLAG2_AUTOGUN_ZEROTOROT       0x40000000 // set xzero/yzero to xrot/yrot when malfunctioning
+#define OBJFLAG2_AUTOGUN_MALFUNCTIONING1 0x80000000
+#define OBJFLAG2_DEBRIS_80000000         0x80000000
+#define OBJFLAG2_DEFAULT_80000000        0x80000000
+#define OBJFLAG2_DOOR_ALTCOORDSYSTEM     0x80000000 // Floor grates, but also Temple doors
+#define OBJFLAG2_GLASS_80000000          0x80000000
+#define OBJFLAG2_HOVERPROP_80000000      0x80000000
+#define OBJFLAG2_WEAPON_HUGEEXP          0x80000000
 
 // obj->flags3
-#define OBJFLAG3_PUSHABLE               0x00000001
-#define OBJFLAG3_GRABBABLE              0x00000002
-#define OBJFLAG3_DOOR_STICKY            0x00000004 // eg. Skedar Ruins
-#define OBJFLAG3_SETTLEROT_BYACTUALSIZE 0x00000008
-#define OBJFLAG3_FINDROOMSFAST          0x00000010 // Can use if obj never goes out of bounds or in overlapping rooms
-#define OBJFLAG3_AUTOCUTSCENESOUNDS     0x00000020 // For doors and objs - play default open/close noises
-#define OBJFLAG3_RTRACKED_YELLOW        0x00000040
-#define OBJFLAG3_CANHARDFREE            0x00000080 // Can free prop while on screen (MP weapons only)
-#define OBJFLAG3_HARDFREEING            0x00000100
-#define OBJFLAG3_SETTLEROT_UPRIGHT      0x00000200
-#define OBJFLAG3_WALKTHROUGH            0x00000400
-#define OBJFLAG3_RTRACKED_BLUE          0x00000800
-#define OBJFLAG3_SHOWSHIELD             0x00001000 // Show shield effect around object (always)
-#define OBJFLAG3_HTMTERMINAL            0x00002000 // Terminal for Hacker Central scenario (HTM = Hack That Mac)
-#define OBJFLAG3_ISFETCHTARGET          0x00004000 // AI bot is fetching this obj
-#define OBJFLAG3_REACTTOSIGHT           0x00008000 // Turn sight blue or red when targeted with R
-#define OBJFLAG3_INTERACTABLE           0x00010000
-#define OBJFLAG3_SHIELDHIT              0x00020000 // Turns off when shield no longer visible
-#define OBJFLAG3_RENDERPOSTBG           0x00040000
-#define OBJFLAG3_DRAWONTOP              0x00080000
-#define OBJFLAG3_HOVERBEDSHIELD         0x00100000
-#define OBJFLAG3_INTERACTSHORTRANGE     0x00200000
-#define OBJFLAG3_PLAYERUNDROPPABLE      0x00400000 // Player does not drop item when dead
-#define OBJFLAG3_LONGPUSHRANGE          0x00800000 // Not used in scripts
-#define OBJFLAG3_PUSHFREELY             0x01000000 // Not used in scripts
-#define OBJFLAG3_GEOCYL                 0x02000000 // Use cylinder geometry rather than block
-#define OBJFLAG3_04000000               0x04000000 // Not used in scripts
-#define OBJFLAG3_SETTLEROT_LAPTOP       0x08000000
-#define OBJFLAG3_KEEPGEOWHENDESTROYED   0x10000000
-#define OBJFLAG3_ONSHELF                0x20000000 // Obj is on a shelf - use bigger pickup range for Small Jo and Play as Elvis cheats and skip line of sight checks
-#define OBJFLAG3_INFRARED               0x40000000 // Obj is highlighted on IR scanner
-#define OBJFLAG3_80000000               0x80000000 // Not used in scripts
+#define OBJFLAG3_PUSHABLE           0x00000001
+#define OBJFLAG3_GRABBABLE          0x00000002
+#define OBJFLAG3_DOOR_STICKY        0x00000004 // eg. Skedar Ruins
+#define OBJFLAG3_00000008           0x00000008 // Not used in scripts
+#define OBJFLAG3_00000010           0x00000010 // Used heaps
+#define OBJFLAG3_AUTOCUTSCENESOUNDS 0x00000020 // For doors and objs - play default open/close noises
+#define OBJFLAG3_RTRACKED_YELLOW    0x00000040
+#define OBJFLAG3_CANHARDFREE        0x00000080 // Can free prop while on screen (MP weapons only)
+#define OBJFLAG3_HARDFREEING        0x00000100
+#define OBJFLAG3_00000200           0x00000200 // Not used in scripts
+#define OBJFLAG3_WALKTHROUGH        0x00000400
+#define OBJFLAG3_RTRACKED_BLUE      0x00000800
+#define OBJFLAG3_SHOWSHIELD         0x00001000 // Show shield effect around object (always)
+#define OBJFLAG3_HTMTERMINAL        0x00002000 // Terminal for Hacker Central scenario (HTM = Hack That Mac)
+#define OBJFLAG3_ISFETCHTARGET      0x00004000 // AI bot is fetching this obj
+#define OBJFLAG3_REACTTOSIGHT       0x00008000 // Turn sight blue or red when targeted with R
+#define OBJFLAG3_INTERACTABLE       0x00010000
+#define OBJFLAG3_SHIELDHIT          0x00020000 // Turns off when shield no longer visible
+#define OBJFLAG3_RENDERPOSTBG       0x00040000
+#define OBJFLAG3_DRAWONTOP          0x00080000
+#define OBJFLAG3_HOVERBEDSHIELD     0x00100000
+#define OBJFLAG3_INTERACTSHORTRANGE 0x00200000
+#define OBJFLAG3_PLAYERUNDROPPABLE  0x00400000 // Player does not drop item when dead
+#define OBJFLAG3_LONGPUSHRANGE      0x00800000 // Not used in scripts
+#define OBJFLAG3_PUSHFREELY         0x01000000 // Not used in scripts
+#define OBJFLAG3_GEOCYL             0x02000000 // Use cylinder geometry rather than block
+#define OBJFLAG3_04000000           0x04000000 // Not used in scripts
+#define OBJFLAG3_08000000           0x08000000 // Not used in scripts
+#define OBJFLAG3_10000000           0x10000000 // Editor: "Keep Collisions After Fully Destroyed"
+#define OBJFLAG3_ONSHELF            0x20000000 // Obj is on a shelf - use bigger pickup range for Small Jo and Play as Elvis cheats and skip line of sight checks
+#define OBJFLAG3_INFRARED           0x40000000 // Obj is highlighted on IR scanner
+#define OBJFLAG3_80000000           0x80000000 // Not used in scripts
 
 // obj->hidden
 #define OBJHFLAG_LIFTDOOR           0x00000001
@@ -3183,9 +3185,9 @@
 #define OBJHFLAG_00001000           0x00001000
 #define OBJHFLAG_PADLOCKEDDOOR      0x00002000
 #define OBJHFLAG_ACTIVATED_BY_BOND  0x00004000
-#define OBJHFLAG_ONANOTHEROBJ       0x00008000
-#define OBJHFLAG_IMMUNETOBOUNCES    0x00010000
-#define OBJHFLAG_ATTACHED           0x00020000
+#define OBJHFLAG_00008000           0x00008000
+#define OBJHFLAG_00010000           0x00010000
+#define OBJHFLAG_00020000           0x00020000
 #define OBJHFLAG_ACTIVATED_BY_COOP  0x00040000
 #define OBJHFLAG_HASOWNER           0x00080000
 #define OBJHFLAG_SUSPICIOUS         0x00100000
@@ -3198,73 +3200,73 @@
 #define OBJHFLAG_GRABBED            0x08000000
 
 // obj->hidden2
-#define OBJH2FLAG_HASOPA          0x01 // obj has opaque polygons (ie. most objects)
-#define OBJH2FLAG_HASXLU          0x02 // obj has translucent polygons
-#define OBJH2FLAG_CANREGEN        0x04
-#define OBJH2FLAG_CORE_GEO_EXISTS 0x08
-#define OBJH2FLAG_10              0x10
-#define OBJH2FLAG_DESTROYED       0x40
-#define OBJH2FLAG_DEFORMED        0x80
+#define OBJH2FLAG_HASOPA       0x01 // obj has opaque polygons (ie. most objects)
+#define OBJH2FLAG_HASXLU       0x02 // obj has translucent polygons
+#define OBJH2FLAG_CANREGEN     0x04
+#define OBJH2FLAG_08           0x08
+#define OBJH2FLAG_10           0x10
+#define OBJH2FLAG_DESTROYED    0x40
+#define OBJH2FLAG_80           0x80
 
-#define OBJTYPE_DOOR                0x01
-#define OBJTYPE_DOORSCALE           0x02
-#define OBJTYPE_BASIC               0x03
-#define OBJTYPE_KEY                 0x04
-#define OBJTYPE_ALARM               0x05
-#define OBJTYPE_CCTV                0x06
-#define OBJTYPE_AMMOCRATE           0x07
-#define OBJTYPE_WEAPON              0x08
-#define OBJTYPE_CHR                 0x09
-#define OBJTYPE_SINGLEMONITOR       0x0a
-#define OBJTYPE_MULTIMONITOR        0x0b
-#define OBJTYPE_HANGINGMONITORS     0x0c
-#define OBJTYPE_AUTOGUN             0x0d
-#define OBJTYPE_LINKGUNS            0x0e
-#define OBJTYPE_DEBRIS              0x0f
-#define OBJTYPE_10                  0x10
-#define OBJTYPE_HAT                 0x11
-#define OBJTYPE_GRENADEPROB         0x12
-#define OBJTYPE_LINKLIFTDOOR        0x13
-#define OBJTYPE_MULTIAMMOCRATE      0x14
-#define OBJTYPE_SHIELD              0x15
-#define OBJTYPE_TAG                 0x16
-#define OBJTYPE_BEGINOBJECTIVE      0x17
-#define OBJTYPE_ENDOBJECTIVE        0x18
-#define OBJECTIVETYPE_DESTROYOBJ    0x19
-#define OBJECTIVETYPE_COMPFLAGS     0x1a
-#define OBJECTIVETYPE_FAILFLAGS     0x1b
-#define OBJECTIVETYPE_COLLECTOBJ    0x1c
-#define OBJECTIVETYPE_THROWOBJ      0x1d
-#define OBJECTIVETYPE_HOLOGRAPH     0x1e
-#define OBJECTIVETYPE_1F            0x1f
-#define OBJECTIVETYPE_ENTERROOM     0x20
-#define OBJECTIVETYPE_THROWINROOM   0x21
-#define OBJECTIVETYPE_COPYGOLDENEYE 0x22
-#define OBJTYPE_BRIEFING            0x23
-#define OBJTYPE_GASBOTTLE           0x24
-#define OBJTYPE_RENAMEOBJ           0x25
-#define OBJTYPE_PADLOCKEDDOOR       0x26
-#define OBJTYPE_TRUCK               0x27
-#define OBJTYPE_HELI                0x28
-#define OBJTYPE_29                  0x29
-#define OBJTYPE_GLASS               0x2a
-#define OBJTYPE_SAFE                0x2b
-#define OBJTYPE_SAFEITEM            0x2c
-#define OBJTYPE_TANK                0x2d
-#define OBJTYPE_CAMERAPRESET        0x2e
-#define OBJTYPE_TINTEDGLASS         0x2f
-#define OBJTYPE_LIFT                0x30
-#define OBJTYPE_CONDITIONALSCENERY  0x31
-#define OBJTYPE_BLOCKEDPATH         0x32
-#define OBJTYPE_HOVERBIKE           0x33
-#define OBJTYPE_END                 0x34
-#define OBJTYPE_HOVERPROP           0x35 // Hovercrates and hoverbeds
-#define OBJTYPE_FAN                 0x36
-#define OBJTYPE_HOVERCAR            0x37 // Datadyne cars, Chicago taxi and limo, and hoverbots
-#define OBJTYPE_PADEFFECT           0x38
-#define OBJTYPE_CHOPPER             0x39 // Extraction hovercopter and A51 interceptors
-#define OBJTYPE_MINE                0x3a
-#define OBJTYPE_ESCASTEP            0x3b
+#define OBJTYPE_DOOR               0x01
+#define OBJTYPE_DOORSCALE          0x02
+#define OBJTYPE_BASIC              0x03
+#define OBJTYPE_KEY                0x04
+#define OBJTYPE_ALARM              0x05
+#define OBJTYPE_CCTV               0x06
+#define OBJTYPE_AMMOCRATE          0x07
+#define OBJTYPE_WEAPON             0x08
+#define OBJTYPE_CHR                0x09
+#define OBJTYPE_SINGLEMONITOR      0x0a
+#define OBJTYPE_MULTIMONITOR       0x0b
+#define OBJTYPE_HANGINGMONITORS    0x0c
+#define OBJTYPE_AUTOGUN            0x0d
+#define OBJTYPE_LINKGUNS           0x0e
+#define OBJTYPE_DEBRIS             0x0f
+#define OBJTYPE_10                 0x10
+#define OBJTYPE_HAT                0x11
+#define OBJTYPE_GRENADEPROB        0x12
+#define OBJTYPE_LINKLIFTDOOR       0x13
+#define OBJTYPE_MULTIAMMOCRATE     0x14
+#define OBJTYPE_SHIELD             0x15
+#define OBJTYPE_TAG                0x16
+#define OBJTYPE_BEGINOBJECTIVE     0x17
+#define OBJTYPE_ENDOBJECTIVE       0x18
+#define OBJECTIVETYPE_DESTROYOBJ   0x19
+#define OBJECTIVETYPE_COMPFLAGS    0x1a
+#define OBJECTIVETYPE_FAILFLAGS    0x1b
+#define OBJECTIVETYPE_COLLECTOBJ   0x1c
+#define OBJECTIVETYPE_THROWOBJ     0x1d
+#define OBJECTIVETYPE_HOLOGRAPH    0x1e
+#define OBJECTIVETYPE_1F           0x1f
+#define OBJECTIVETYPE_ENTERROOM    0x20
+#define OBJECTIVETYPE_THROWINROOM  0x21
+#define OBJTYPE_22                 0x22
+#define OBJTYPE_BRIEFING           0x23
+#define OBJTYPE_GASBOTTLE          0x24
+#define OBJTYPE_RENAMEOBJ          0x25
+#define OBJTYPE_PADLOCKEDDOOR      0x26
+#define OBJTYPE_TRUCK              0x27
+#define OBJTYPE_HELI               0x28
+#define OBJTYPE_29                 0x29
+#define OBJTYPE_GLASS              0x2a
+#define OBJTYPE_SAFE               0x2b
+#define OBJTYPE_SAFEITEM           0x2c
+#define OBJTYPE_TANK               0x2d
+#define OBJTYPE_CAMERAPOS          0x2e
+#define OBJTYPE_TINTEDGLASS        0x2f
+#define OBJTYPE_LIFT               0x30
+#define OBJTYPE_CONDITIONALSCENERY 0x31
+#define OBJTYPE_BLOCKEDPATH        0x32
+#define OBJTYPE_HOVERBIKE          0x33
+#define OBJTYPE_END                0x34
+#define OBJTYPE_HOVERPROP          0x35 // Hovercrates and hoverbeds
+#define OBJTYPE_FAN                0x36
+#define OBJTYPE_HOVERCAR           0x37 // Datadyne cars, Chicago taxi and limo, and hoverbots
+#define OBJTYPE_PADEFFECT          0x38
+#define OBJTYPE_CHOPPER            0x39 // Extraction hovercopter and A51 interceptors
+#define OBJTYPE_MINE               0x3a
+#define OBJTYPE_ESCASTEP           0x3b
 
 #define OPERATOR_LESS_THAN    0
 #define OPERATOR_GREATER_THAN 1
@@ -3447,10 +3449,10 @@
 #define PDMODEPROP_DAMAGE   2
 #define PDMODEPROP_ACCURACY 3
 
-#define PORTALFLAG_CLOSED     0x01 // Due to door being closed, or player is too far from glass
-#define PORTALFLAG_USEROOMBOX 0x02 // Use room's screenbox instead of calculating portal's screenbox
-#define PORTALFLAG_FORCEOPEN  0x04 // Glass is destroyed, or door is freed
-#define PORTALFLAG_SKIP       0x08 // DD tower exterior - don't bother processing these
+#define PORTALFLAG_CLOSED    0x01 // Due to door being closed, or player is too far from glass
+#define PORTALFLAG_02        0x02
+#define PORTALFLAG_FORCEOPEN 0x04 // Glass is destroyed, or door is freed
+#define PORTALFLAG_SKIP      0x08 // DD tower exterior - don't bother processing these
 
 #define PRESETANIM_TALK0      0
 #define PRESETANIM_TALK1      1
@@ -3473,22 +3475,22 @@
 #define PROFILE_RDP_START1       0x40001
 #define PROFILE_AUDIOFRAME_END   0x60000
 
-#define PROJECTILEFLAG_AIRBORNE         0x00000001
-#define PROJECTILEFLAG_FORCEGOODBOUNCE  0x00000002 // Projectile's first bounce will have a forced minimum upward velocity
-#define PROJECTILEFLAG_STICKY           0x00000004
-#define PROJECTILEFLAG_POWERED          0x00000010 // No gravity
-#define PROJECTILEFLAG_MISSILE          0x00000020 // Implemented but unused
-#define PROJECTILEFLAG_LAUNCHING        0x00000080
-#define PROJECTILEFLAG_BOUNCEKEEPROT    0x00000100
-#define PROJECTILEFLAG_SETTLING         0x00000400 // Projectile is finding its final rotation for resting
-#define PROJECTILEFLAG_SLIDING          0x00000800
-#define PROJECTILEFLAG_TICKEDEARLY      0x00001000
-#define PROJECTILEFLAG_TICKEDEARLYMOVED 0x00002000
-#define PROJECTILEFLAG_NOTIMELIMIT      0x00004000
-#define PROJECTILEFLAG_INROOM           0x00008000
-#define PROJECTILEFLAG_DONEOOBSEARCH    0x00010000
-#define PROJECTILEFLAG_LIGHTWEIGHT      0x40000000
-#define PROJECTILEFLAG_FREE             0x80000000
+#define PROJECTILEFLAG_AIRBORNE    0x00000001
+#define PROJECTILEFLAG_00000002    0x00000002
+#define PROJECTILEFLAG_STICKY      0x00000004
+#define PROJECTILEFLAG_POWERED     0x00000010 // No gravity
+#define PROJECTILEFLAG_00000020    0x00000020
+#define PROJECTILEFLAG_LAUNCHING   0x00000080
+#define PROJECTILEFLAG_00000100    0x00000100
+#define PROJECTILEFLAG_FALLING     0x00000400
+#define PROJECTILEFLAG_SLIDING     0x00000800
+#define PROJECTILEFLAG_00001000    0x00001000
+#define PROJECTILEFLAG_00002000    0x00002000
+#define PROJECTILEFLAG_NOTIMELIMIT 0x00004000
+#define PROJECTILEFLAG_INROOM      0x00008000
+#define PROJECTILEFLAG_00010000    0x00010000
+#define PROJECTILEFLAG_LIGHTWEIGHT 0x40000000
+#define PROJECTILEFLAG_FREE        0x80000000
 
 #define PROPFLAG_RENDERPOSTBG         0x01
 #define PROPFLAG_ONTHISSCREENTHISTICK 0x02
@@ -3516,8 +3518,8 @@
 #define PSFLAG_HASCONFIG    0x0040
 #define PSFLAG_CUTSCENE     0x0080
 #define PSFLAG_FORHUDMSG    0x0200
-#define PSFLAG_AMBIENT      0x0400
-#define PSFLAG_SPECIALPAN   0x0800
+#define PSFLAG_0400         0x0400
+#define PSFLAG_0800         0x0800
 #define PSFLAG_FIRSTTICK    0x1000
 #define PSFLAG_OUTOFRANGE   0x2000
 #define PSFLAG_CHANGINGPAN  0x4000
@@ -3526,7 +3528,7 @@
 #define PSFLAG2_RESPONDHELLO 0x0001
 #define PSFLAG2_MPPAUSABLE   0x0002
 #define PSFLAG2_PRINTABLE    0x0004
-#define PSFLAG2_AMBIENT      0x0010
+#define PSFLAG2_0010         0x0010
 #define PSFLAG2_OFFENSIVE    0x0020
 #define PSFLAG2_0040         0x0040
 #define PSFLAG2_STOPPED      0x0080
@@ -3571,13 +3573,13 @@
 #define QUIP_17                 17
 #define QUIP_SURPRISED          18
 #define QUIP_INSPECTBODY        19
-#define QUIP_UNDERFIRE          20
+#define QUIP_20                 20
 #define QUIP_HITPLAYER          21
 #define QUIP_MISSEDPLAYER1      22
 #define QUIP_MISSEDPLAYER2      23
 #define QUIP_GOTOCOVER2         24
 #define QUIP_DIE                25
-#define QUIP_KILLEDPLAYER3      26
+#define QUIP_26                 26
 #define QUIP_SEARCHSUCCESS      27
 #define QUIP_SEEEYESPY          28
 #define QUIP_GREETING           29
@@ -3625,6 +3627,9 @@
 #define ROOMFLAG_LIGHTSOFF             0x2000
 #define ROOMFLAG_PLAYAMBIENTTRACK      0x4000
 #define ROOMFLAG_OUTDOORS              0x8000
+
+// flags for the extra_flags field
+#define ROOMFLAG_EX_WEATHERPROOF       0x0001
 
 #define RUMBLESTATE_1                 1
 #define RUMBLESTATE_ENABLED_STOPPED   2
@@ -3675,6 +3680,8 @@
 #define SCREEN_WIDTH_HI  640
 #define SCREEN_HEIGHT_HI 220
 #endif
+
+#define SCREEN_ASPECT ((f32)SCREEN_WIDTH_LO / (f32)SCREEN_HEIGHT_LO)
 
 #define SCREENRATIO_NORMAL 0
 #define SCREENRATIO_16_9   1
@@ -3806,6 +3813,10 @@
 #define SLOWMOTION_ON    1
 #define SLOWMOTION_SMART 2
 
+#define AUTORANDOMWEAPON_OFF   0
+#define AUTORANDOMWEAPON_START 1
+#define AUTORANDOMWEAPON_END   2
+
 #define SMOKETYPE_NONE             0
 #define SMOKETYPE_ELECTRICAL       1 // Dr Caroll, mainframes in Infiltration bunker
 #define SMOKETYPE_MINI             2 // Phoenix, Laptop sentry
@@ -3828,12 +3839,11 @@
 #define SMOKETYPE_DEBRIS           21 // Crash site cockpit, Skedar Ruins outro
 #define SMOKETYPE_UFO              22 // AF1 outro
 
-#define SNDSTATEFLAG_LEAF             0x01
-#define SNDSTATEFLAG_NO_DECAY         0x02
-#define SNDSTATEFLAG_HAS_VOICE        0x04
-#define SNDSTATEFLAG_RELATIVE_DELAY   0x10
-#define SNDSTATEFLAG_PARENT_OF_LEAF   0x10
-#define SNDSTATEFLAG_HAS_DETUNE_PITCH 0x20
+#define SNDSTATEFLAG_01 0x01
+#define SNDSTATEFLAG_02 0x02
+#define SNDSTATEFLAG_04 0x04
+#define SNDSTATEFLAG_10 0x10
+#define SNDSTATEFLAG_20 0x20
 
 #define SOLOSTAGEINDEX_DEFECTION     0x00
 #define SOLOSTAGEINDEX_INVESTIGATION 0x01
@@ -4133,6 +4143,8 @@
 #define TEAM_04        0x04
 #define TEAM_ALLY      0x10
 #define TEAM_20        0x20
+#define TEAM_22        0x22
+#define TEAM_32        0x32
 #define TEAM_NONCOMBAT 0x80
 
 #define TELEPORTSTATE_INACTIVE 0
@@ -4140,200 +4152,6 @@
 #define TELEPORTSTATE_ENTERING 2
 #define TELEPORTSTATE_WHITE    3
 #define TELEPORTSTATE_EXITING  4
-
-#define TEX_BEAM_ORANGE 0
-#define TEX_BEAM_BLUE   1
-#define TEX_BEAM_RED    2
-#define TEX_BEAM_YELLOW 3
-#define TEX_BEAM_GREEN  4
-
-#define TEX_ENV_00 0
-#define TEX_ENV_01 1
-#define TEX_ENV_02 2
-
-#define TEX_GECROSSHAIR_00 0
-
-#define TEX_GENERAL_SNOW            0
-#define TEX_GENERAL_1PXWHITE        1
-#define TEX_GENERAL_02              2
-#define TEX_GENERAL_LASERBEAM       3
-#define TEX_GENERAL_LASERDOT        4
-#define TEX_GENERAL_05              5
-#define TEX_GENERAL_MENURAY0        6
-#define TEX_GENERAL_07              7
-#define TEX_GENERAL_08              8
-#define TEX_GENERAL_09              9
-#define TEX_GENERAL_NBOMBDOME       10
-#define TEX_GENERAL_MENURAY1        11
-#define TEX_GENERAL_NEWAGENT        12
-#define TEX_GENERAL_DEFECTION       13
-#define TEX_GENERAL_INVESTIGATION   14
-#define TEX_GENERAL_EXTRACTION      15
-#define TEX_GENERAL_VILLA           16
-#define TEX_GENERAL_CHICAGO         17
-#define TEX_GENERAL_G5BUILDING      18
-#define TEX_GENERAL_INFILTRATION    19
-#define TEX_GENERAL_RESCUE          20
-#define TEX_GENERAL_ESCAPE          21
-#define TEX_GENERAL_AIRBASE         22
-#define TEX_GENERAL_AIRFORCEONE     23
-#define TEX_GENERAL_CRASHSITE       24
-#define TEX_GENERAL_PELAGIC         25
-#define TEX_GENERAL_DEEPSEA         26
-#define TEX_GENERAL_DEFENSE         27
-#define TEX_GENERAL_ATTACKSHIP      28
-#define TEX_GENERAL_SKEDARRUINS     29
-#define TEX_GENERAL_MBR             30
-#define TEX_GENERAL_MAIANSOS        31
-#define TEX_GENERAL_WAR             32
-#define TEX_GENERAL_DUEL            33
-#define TEX_GENERAL_GOLDSTAR        34
-#define TEX_GENERAL_ENVSTAR         35
-#define TEX_GENERAL_SILVERSTAR      36
-#define TEX_GENERAL_37              37
-#define TEX_GENERAL_38              38
-#define TEX_GENERAL_39              39
-#define TEX_GENERAL_40              40
-#define TEX_GENERAL_41              41
-#define TEX_GENERAL_42              42
-#define TEX_GENERAL_43              43
-#define TEX_GENERAL_44              44
-#define TEX_GENERAL_45              45
-#define TEX_GENERAL_46              46
-#define TEX_GENERAL_DOLBYLOGO       47
-#define TEX_GENERAL_48              48
-#define TEX_GENERAL_RARELOGO        49
-#define TEX_GENERAL_FRTARGET        50
-#define TEX_GENERAL_CONTROLLER_TL   51
-#define TEX_GENERAL_CONTROLLER_TR   52
-#define TEX_GENERAL_CONTROLLER_BL   53
-#define TEX_GENERAL_CONTROLLER_BR   54
-#define TEX_GENERAL_CONTROLLER_LINE 55
-
-#define TEX_MUZZLE_LASER 0
-
-#define TEX_LASER_00 0
-
-#define TEX_LIGHT_00 0
-#define TEX_LIGHT_01 1
-#define TEX_LIGHT_02 2
-#define TEX_LIGHT_03 3
-#define TEX_LIGHT_04 4
-#define TEX_LIGHT_05 5
-#define TEX_LIGHT_06 6
-#define TEX_LIGHT_07 7
-#define TEX_LIGHT_08 8
-#define TEX_LIGHT_09 9
-
-#define TEX_RADAR_BG 0
-
-#define TEX_REDLINE_00 0
-
-#define TEX_SCREEN_BOND                0
-#define TEX_SCREEN_NOKAYOH             1
-#define TEX_SCREEN_BENOH_APMEA         2
-#define TEX_SCREEN_TAPLET              3
-#define TEX_SCREEN_CEBEPHAEA           4
-#define TEX_SCREEN_NOPATYTAPLET        5
-#define TEX_SCREEN_BLACKBAR            6
-#define TEX_SCREEN_SPACEDEBRIS         7
-#define TEX_SCREEN_TEXTURETOOL         8
-#define TEX_SCREEN_WORLDMAP1           9
-#define TEX_SCREEN_3DSHAPE             10
-#define TEX_SCREEN_WINDOWS1            11
-#define TEX_SCREEN_COLOURPICKERS       12
-#define TEX_SCREEN_EGG                 13
-#define TEX_SCREEN_WINDOWS2            14
-#define TEX_SCREEN_WINDOWS3            15
-#define TEX_SCREEN_WIREFRAME           16
-#define TEX_SCREEN_ROCKET1             17
-#define TEX_SCREEN_ROCKET2             18
-#define TEX_SCREEN_EARTH2              19
-#define TEX_SCREEN_EARTH3              20
-#define TEX_SCREEN_GALAXY3             21
-#define TEX_SCREEN_GALAXY4             22
-#define TEX_SCREEN_GALAXY5             23
-#define TEX_SCREEN_GALAXY6             24
-#define TEX_SCREEN_GALAXY7             25
-#define TEX_SCREEN_GALAXY8             26
-#define TEX_SCREEN_STATIC              27
-#define TEX_SCREEN_SINEWAVE            28
-#define TEX_SCREEN_TEXT                29
-#define TEX_SCREEN_BARS                30
-#define TEX_SCREEN_SQUARES             31
-#define TEX_SCREEN_COP_FRAME1          32
-#define TEX_SCREEN_COP_FRAME2          33
-#define TEX_SCREEN_COP_FRAME3          34
-#define TEX_SCREEN_COP_FRAME4          35
-#define TEX_SCREEN_SKATE_FRAME1        36
-#define TEX_SCREEN_SKATE_FRAME2        37
-#define TEX_SCREEN_SKATE_FRAME3        38
-#define TEX_SCREEN_SKATE_FRAME4        39
-#define TEX_SCREEN_KARL_FRAME1         40
-#define TEX_SCREEN_KARL_FRAME2         41
-#define TEX_SCREEN_KARL_FRAME3         42
-#define TEX_SCREEN_KARL_FRAME4         43
-#define TEX_SCREEN_WORLDMAP2           44
-#define TEX_SCREEN_CUBE_FRAME1         45
-#define TEX_SCREEN_CUBE_FRAME2         46
-#define TEX_SCREEN_CUBE_FRAME3         47
-#define TEX_SCREEN_CUBE_FRAME4         48
-#define TEX_SCREEN_FILL                49
-#define TEX_SCREEN_TRANSPARENT         50
-#define TEX_SCREEN_MAIAN               51
-#define TEX_SCREEN_WHITECOAT_FRAME1    52
-#define TEX_SCREEN_WHITECOAT_FRAME2    53
-#define TEX_SCREEN_WHITECOAT_FRAME3    54
-#define TEX_SCREEN_WHITECOAT_FRAME4    55
-#define TEX_SCREEN_FINGER_FRAME1       56
-#define TEX_SCREEN_FINGER_FRAME2       57
-#define TEX_SCREEN_FINGER_FRAME3       58
-#define TEX_SCREEN_FINGER_FRAME4       59
-#define TEX_SCREEN_FIST_FRAME1         60
-#define TEX_SCREEN_FIST_FRAME2         61
-#define TEX_SCREEN_PATROL1_FRAME1      62
-#define TEX_SCREEN_PATROL1_FRAME2      63
-#define TEX_SCREEN_PATROL1_FRAME3      64
-#define TEX_SCREEN_PATROL1_FRAME4      65
-#define TEX_SCREEN_PATROL1_FRAME5      66
-#define TEX_SCREEN_PATROL2_FRAME1      67
-#define TEX_SCREEN_PATROL2_FRAME2      68
-#define TEX_SCREEN_PATROL2_FRAME3      69
-#define TEX_SCREEN_PATROL2_FRAME4      70
-#define TEX_SCREEN_PATROL2_FRAME5      71
-#define TEX_SCREEN_BIO                 72
-#define TEX_SCREEN_JOHEAD              73
-#define TEX_SCREEN_JOFROCK             74
-#define TEX_SCREEN_PLANET1             75
-#define TEX_SCREEN_PLANET2             76
-#define TEX_SCREEN_PLANET3             77
-#define TEX_SCREEN_SKEDAR              78
-#define TEX_SCREEN_STRIPEDSHIRT_FRAME1 79
-#define TEX_SCREEN_STRIPEDSHIRT_FRAME2 80
-#define TEX_SCREEN_STRIPEDSHIRT_FRAME3 81
-#define TEX_SCREEN_STRIPEDSHIRT_FRAME4 82
-#define TEX_SCREEN_CASSHEAD            83
-#define TEX_SCREEN_DIAGRAM             84
-#define TEX_SCREEN_GALAXY1             85
-#define TEX_SCREEN_STAR                86
-#define TEX_SCREEN_GALAXY2             87
-#define TEX_SCREEN_NEBULA              88
-#define TEX_SCREEN_SYMBOLS             89
-#define TEX_SCREEN_GREENOBJECT1        90
-#define TEX_SCREEN_GREENOBJECT2        91
-#define TEX_SCREEN_GREENOBJECT3        92
-#define TEX_SCREEN_PCSTAND             93
-#define TEX_SCREEN_EARTH               94
-#define TEX_SCREEN_SHRINE              95
-
-#define TEX_SHADOW_00 0
-
-#define TEX_SHARD_00 0
-#define TEX_SHARD_01 1
-
-#define TEX_SHIELD_00 0
-
-#define TEX_SPARK_00 0
 
 #define TEXCOMPMETHOD_UNCOMPRESSED0      0
 #define TEXCOMPMETHOD_UNCOMPRESSED1      1
@@ -4440,66 +4258,66 @@
 #define TVCMD_SETCMDLIST     0x09
 #define TVCMD_RANDSETCMDLIST 0x0a
 #define TVCMD_RESTART        0x0b
-#define TVCMD_STOP           0x0c
+#define TVCMD_YIELD          0x0c
 #define TVCMD_SETCOLOUR      0x0d
 #define TVCMD_ROTATEABS      0x0e
 #define TVCMD_ROTATEREL      0x0f
 
-#define TVPROGRAM_DEFAULT                 0x00 // scrolling green text
-#define TVPROGRAM_SINEWAVE1               0x01
-#define TVPROGRAM_SINEWAVE2               0x02 // not used
-#define TVPROGRAM_SCROLL_TEXT_GREEN       0x03
-#define TVPROGRAM_SCROLLUP_TEXT_RED       0x04
-#define TVPROGRAM_SCROLLUP_TEXT_GREEN     0x05
-#define TVPROGRAM_BARS_YELLOW             0x06
-#define TVPROGRAM_BARS_TEAL               0x07 // not used
-#define TVPROGRAM_BARS_GREEN              0x08
-#define TVPROGRAM_SCROLL_TEXT_GREEN_09    0x09 // not used
-#define TVPROGRAM_SCROLL_TEXT_GREEN_0A    0x0a // not used
-#define TVPROGRAM_SCROLL_TEXT_GREEN_0B    0x0b // not used
-#define TVPROGRAM_SCROLL_TEXT_GREEN_0C    0x0c // not used
-#define TVPROGRAM_SCROLL_TEXT_GREEN_0D    0x0d // not used
-#define TVPROGRAM_SCROLL_TEXT_GREEN_0E    0x0e // not used
-#define TVPROGRAM_PULSE_RED               0x0f
-#define TVPROGRAM_PULSE_GREEN             0x10 // not used
-#define TVPROGRAM_SOLID_GRAY              0x11
-#define TVPROGRAM_SOLID_RED               0x12
-#define TVPROGRAM_SOLID_GREEN             0x13
-#define TVPROGRAM_SOLID_BLACK             0x14
-#define TVPROGRAM_TRANSPARENT             0x15
-#define TVPROGRAM_MAIAN                   0x16 // not used
-#define TVPROGRAM_BIO                     0x17 // not used
-#define TVPROGRAM_JOHEAD                  0x18 // not used
-#define TVPROGRAM_JOFROCK                 0x19 // not used
-#define TVPROGRAM_PLANET1                 0x1a // not used
-#define TVPROGRAM_PLANET2                 0x1b // not used
-#define TVPROGRAM_PLANET3                 0x1c // not used
-#define TVPROGRAM_SKEDAR                  0x1d // not used
-#define TVPROGRAM_BARS_GREEN_1E           0x1e // not used
-#define TVPROGRAM_BARS_GREEN_1F           0x1f // not used
-#define TVPROGRAM_BARS_GREEN_20           0x20
-#define TVPROGRAM_BARS_GREEN_21           0x21
-#define TVPROGRAM_BARS_GREEN_22           0x22
-#define TVPROGRAM_BARS_GREEN_23           0x23
-#define TVPROGRAM_CYCLE_PLANETS           0x24 // not used
-#define TVPROGRAM_CASSHEAD                0x25 // not used
-#define TVPROGRAM_DIAGRAM                 0x26 // not used
-#define TVPROGRAM_SCROLL_GALAXY1_GREEN    0x27 // not used
-#define TVPROGRAM_SCROLLUP_GALAXY1_BLUE   0x28 // not used
-#define TVPROGRAM_STAR                    0x29 // not used
-#define TVPROGRAM_SCROLL_STAR             0x2a // not used
-#define TVPROGRAM_SCROLL_GALAXY2_GREEN    0x2b // not used
-#define TVPROGRAM_SCROLLUP_GALAXY2_BLUE   0x2c // not used
-#define TVPROGRAM_NEBULA                  0x2d // not used
-#define TVPROGRAM_SCROLL_SYMBOLS_GREEN    0x2e // not used
-#define TVPROGRAM_SCROLLUP_SYMBOLS_ORANGE 0x2f // not used
-#define TVPROGRAM_GREENOBJECT1            0x30 // not used
-#define TVPROGRAM_GREENOBJECT2            0x31 // not used
-#define TVPROGRAM_GREENOBJECT3            0x32 // not used
-#define TVPROGRAM_CYCLE_GREENOBJECTS      0x33 // not used
-#define TVPROGRAM_PCSTAND                 0x34 // not used
-#define TVPROGRAM_EARTH                   0x35 // not used
-#define TVPROGRAM_SHRINE                  0x36 // not used
+#define TVCMDLIST_00 0x00
+#define TVCMDLIST_01 0x01
+#define TVCMDLIST_02 0x02
+#define TVCMDLIST_03 0x03
+#define TVCMDLIST_04 0x04
+#define TVCMDLIST_05 0x05
+#define TVCMDLIST_06 0x06
+#define TVCMDLIST_07 0x07
+#define TVCMDLIST_08 0x08
+#define TVCMDLIST_09 0x09
+#define TVCMDLIST_0A 0x0a
+#define TVCMDLIST_0B 0x0b
+#define TVCMDLIST_0C 0x0c
+#define TVCMDLIST_0D 0x0d
+#define TVCMDLIST_0E 0x0e
+#define TVCMDLIST_0F 0x0f
+#define TVCMDLIST_10 0x10
+#define TVCMDLIST_11 0x11
+#define TVCMDLIST_12 0x12
+#define TVCMDLIST_13 0x13
+#define TVCMDLIST_14 0x14
+#define TVCMDLIST_15 0x15
+#define TVCMDLIST_16 0x16
+#define TVCMDLIST_17 0x17
+#define TVCMDLIST_18 0x18
+#define TVCMDLIST_19 0x19
+#define TVCMDLIST_1A 0x1a
+#define TVCMDLIST_1B 0x1b
+#define TVCMDLIST_1C 0x1c
+#define TVCMDLIST_1D 0x1d
+#define TVCMDLIST_1E 0x1e
+#define TVCMDLIST_1F 0x1f
+#define TVCMDLIST_20 0x20
+#define TVCMDLIST_21 0x21
+#define TVCMDLIST_22 0x22
+#define TVCMDLIST_23 0x23
+#define TVCMDLIST_24 0x24
+#define TVCMDLIST_25 0x25
+#define TVCMDLIST_26 0x26
+#define TVCMDLIST_27 0x27
+#define TVCMDLIST_28 0x28
+#define TVCMDLIST_29 0x29
+#define TVCMDLIST_2A 0x2a
+#define TVCMDLIST_2B 0x2b
+#define TVCMDLIST_2C 0x2c
+#define TVCMDLIST_2D 0x2d
+#define TVCMDLIST_2E 0x2e
+#define TVCMDLIST_2F 0x2f
+#define TVCMDLIST_30 0x30
+#define TVCMDLIST_31 0x31
+#define TVCMDLIST_32 0x32
+#define TVCMDLIST_33 0x33
+#define TVCMDLIST_34 0x34
+#define TVCMDLIST_35 0x35
+#define TVCMDLIST_36 0x36
 
 #define USETIMER_CONTINUE 0
 #define USETIMER_STOP     1
@@ -4611,7 +4429,7 @@ enum weaponnum {
 	/*0x31*/ WEAPON_CLOAKINGDEVICE,
 	/*0x32*/ WEAPON_HORIZONSCANNER,
 	/*0x33*/ WEAPON_TESTER,
-	/*0x34*/ WEAPON_KINGSCEPTRE,
+	/*0x34*/ WEAPON_ROCKETLAUNCHER_34,
 	/*0x35*/ WEAPON_ECMMINE,
 	/*0x36*/ WEAPON_DATAUPLINK,
 	/*0x37*/ WEAPON_RTRACKER,
@@ -4674,11 +4492,11 @@ enum weaponnum {
 #define WEAPON_MPLOCATION14 254
 #define WEAPON_MPLOCATION15 255
 
-#define INVAIMFLAG_MANUALZOOM         0x00000001
-#define INVAIMFLAG_AUTOAIM            0x00000002
-#define INVAIMFLAG_ACCURATESINGLESHOT 0x00000004
+#define INVAIMFLAG_MANUALZOOM 0x00000001
+#define INVAIMFLAG_AUTOAIM    0x00000002
+#define INVAIMFLAG_ACCURATESINGLESHOT   0x00000004
 
-#define WEAPONFLAG_THROWABLE         0x00000001 // Entire weapon is throwable (eg. grenades, mines, knives)
+#define WEAPONFLAG_THROWABLE         0x00000001 // Entire weapon is throwable (eg. grendes, mines, knives)
 #define WEAPONFLAG_00000004          0x00000004
 #define WEAPONFLAG_ONEHANDED         0x00000008 // Makes guards carry the gun with one hand
 #define WEAPONFLAG_AICANUSE          0x00000010
@@ -4689,9 +4507,9 @@ enum weaponnum {
 #define WEAPONFLAG_00000400          0x00000400
 #define WEAPONFLAG_00000800          0x00000800 // MP briefcase
 #define WEAPONFLAG_DUALWIELD         0x00001000 // Allow dual wielding
-#define WEAPONFLAG_HASGUNSCRIPT      0x00002000
+#define WEAPONFLAG_00002000          0x00002000
 #define WEAPONFLAG_00004000          0x00004000
-#define WEAPONFLAG_BRIGHTER          0x00008000 // Use extra light to illuminate weapon
+#define WEAPONFLAG_00008000          0x00008000 // Editor: "Special environment mapping"
 #define WEAPONFLAG_HASHANDS          0x00020000
 #define WEAPONFLAG_HIDEMENUMODEL     0x00040000 // Don't display the rotating model in the inventory menu
 #define WEAPONFLAG_GANGSTA           0x00080000 // Allow turning the gun sideways at close range
@@ -4700,8 +4518,8 @@ enum weaponnum {
 #define WEAPONFLAG_DETERMINER_F_AN   0x00400000 // "Picked up an ..." (full version)
 #define WEAPONFLAG_DETERMINER_S_THE  0x00800000 // "The ..." (short version - when vertically split)
 #define WEAPONFLAG_DETERMINER_F_THE  0x01000000 // "Picked up the ..." (full version)
-#define WEAPONFLAG_RESETMATRICES     0x02000000 // Slayer
-#define WEAPONFLAG_KEEPFUNCWHENEMPTY 0x04000000 // Don't change to secondary function when primary is out of ammo
+#define WEAPONFLAG_02000000          0x02000000 // Slayer
+#define WEAPONFLAG_04000000          0x04000000
 #define WEAPONFLAG_UNDROPPABLE       0x08000000 // Do not drop when disarmed or killed
 #define WEAPONFLAG_DETERMINER_S_SOME 0x10000000 // "Some ..." (short version - when vertically split)
 #define WEAPONFLAG_DETERMINER_F_SOME 0x20000000 // "Picked up some ..." (full version)
@@ -4714,6 +4532,13 @@ enum weaponnum {
 
 #define WEATHERTYPE_RAIN 0
 #define WEATHERTYPE_SNOW 1
+
+#define WEATHERCFG_MAX_SKIPROOMS 128
+#define WEATHERCFG_MAX_STAGES 16
+
+#define WEATHERFLAG_INCLUDE       0x0001 // rooms listed in skiprooms are the only ones that have weather
+#define WEATHERFLAG_CUTSCENE_ONLY 0x0002 // weather only in cutscenes
+#define WEATHERFLAG_FORCE_WINDDIR 0x0004 // force constant wind direction
 
 // Reasons for playing X music
 #define XREASON_0       0
@@ -4874,5 +4699,68 @@ enum weaponnum {
 #define BODY_ELVISWAISTCOAT   0x94
 #define BODY_DARK_LEATHER     0x95
 #define BODY_DARK_NEGOTIATOR  0x96
+
+#define JO_ACTION_ACTIVATE           0x0001
+#define JO_ACTION_RELOAD             0x0002
+
+#ifdef PLATFORM_N64
+
+#define BUTTON_ACCEPT_WPNFORWARD CONT_A
+#define BUTTON_CANCEL_USE CONT_B
+
+#define BUTTON_USE BUTTON_CANCEL_USE
+#define BUTTON_CANCEL BUTTON_CANCEL_USE
+#define BUTTON_RELOAD BUTTON_USE
+#define BUTTON_ACCEPT BUTTON_ACCEPT_WPNFORWARD
+#define BUTTON_WPNFORWARD BUTTON_ACCEPT_WPNFORWARD
+
+#define BUTTON_UI_ACCEPT BUTTON_ACCEPT_WPNFORWARD
+#define BUTTON_UI_CANCEL BUTTON_CANCEL_USE
+
+#else
+
+// xbla behavior
+#define BUTTON_ACCEPT_USE     A_BUTTON
+// 1964 behavior
+#define BUTTON_CANCEL_USE     B_BUTTON
+
+#define BUTTON_RELOAD         X_BUTTON
+// dedicated button for mousewheel / xbla parity
+#define BUTTON_WPNBACK        L_JPAD
+// dedicated button for mousewheel / xbla parity
+#define BUTTON_WPNFORWARD     Y_BUTTON
+#define BUTTON_RADIAL         D_JPAD
+#define BUTTON_ALTMODE        L_TRIG
+
+#define BUTTON_CROUCH_CYCLE   CONT_8000
+#define BUTTON_HALF_CROUCH    CONT_4000
+#define BUTTON_FULL_CROUCH    CONT_2000
+
+#define BUTTON_UI_ACCEPT      CONT_0010
+#define BUTTON_UI_CANCEL      CONT_0020
+
+#define MOUSEAIM_CLASSIC 0 // crosshair moves around the screen in aim mode
+#define MOUSEAIM_LOCKED 1  // crosshair locked to the center of the screen in aim mode
+
+#define HUDCENTER_NONE 0   // don't center HUD
+#define HUDCENTER_NORMAL 1 // center HUD in 4:3 window
+#define HUDCENTER_WIDE 2   // center HUD in 16:9 window
+
+#define CROUCHMODE_HOLD 0   // hold the crouch buttons to keep crouching
+#define CROUCHMODE_ANALOG 1 // analog crouch like on n64
+#define CROUCHMODE_TOGGLE 2 // press the crouch buttons to toggle stance
+#define CROUCHMODE_TOGGLE_ANALOG (CROUCHMODE_ANALOG | CROUCHMODE_TOGGLE)
+
+#define CROSSHAIR_HEALTH_OFF 0
+#define CROSSHAIR_HEALTH_ON_GREEN 1
+#define CROSSHAIR_HEALTH_ON_WHITE 2
+
+#define EXTRA_SLEEP_TIME 1000LL // 100us
+
+#define MPSETUP_MAXSETUPS 128
+#define MPSETUP_MAXNAME 17
+#define MPSETUP_BLOCKSIZE 80
+
+#endif
 
 #endif

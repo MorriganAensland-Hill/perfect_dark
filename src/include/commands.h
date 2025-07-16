@@ -865,10 +865,7 @@
 	chr, \
 	label,
 
-/**
- * Not implemented in PD.
- */
-#define set_chrpreset_to_any_chr_in_range(distance, label) \
+#define cmd0058(distance, label) \
 	mkshort(0x0058), \
 	mkshort(distance / 10), \
 	label,
@@ -1004,10 +1001,7 @@
 	mkshort(0x0066), \
 	object,
 
-/**
- * Not implemented in PD.
- */
-#define drop_object(object) \
+#define cmd0067(object) \
 	mkshort(0x0067), \
 	object,
 
@@ -1073,7 +1067,7 @@
  *
  * Most likely a debug command, as you'd know what IDs your doors use.
  */
-#define if_door_ever_opened(object, label) \
+#define if_object_is_door(object, label) \
 	mkshort(0x006f), \
 	object, \
 	label,
@@ -1133,21 +1127,14 @@
 	label,
 
 /**
- * Attempts to find a waypoint within the given quadrant of the current chr
- * then sets the chr's padpreset to the given waypoint's pad number.
- *
- * If no waypoint is found, the padpreset is left unchanged and the label is not
- * followed.
- *
- * The exact formula for finding the waypoint is:
- * 1. Find the closest waypoint to the target regardless of direction
- * 2. Check if that waypoint or any of its direct neighbours are in the quadrant
- *
- * No further checks are done.
+ * This is only ever called in a sequence of 4, with u1 values 8, 2, 4, 8 in
+ * that order. Believed to be a pad within specific distance of target chr,
+ * where the higher the number the further the distance.
+ * If u1 were 0x10 or 0x20, some other logic would be used.
  */
-#define try_set_padpreset_to_quadrant(quadrant, label) \
+#define try_set_target_pad_to_something(u1, label) \
 	mkshort(0x0075), \
-	quadrant, \
+	u1, \
 	label,
 
 /**
@@ -1257,18 +1244,18 @@
 	label,
 
 /**
- * Checks if the chr's health is less than the given value.
+ * Checks if the chr's health is greater than the given value.
  */
-#define if_chr_health_lt(chr, health, label) \
+#define if_chr_health_gt(chr, health, label) \
 	mkshort(0x0081), \
 	chr, \
 	health, \
 	label,
 
 /**
- * Checks if the chr's health is greater than the given value.
+ * Checks if the chr's health is less than the given value.
  */
-#define if_chr_health_gt(chr, health, label) \
+#define if_chr_health_lt(chr, health, label) \
 	mkshort(0x0082), \
 	chr, \
 	health, \
@@ -1743,7 +1730,7 @@
  *
  * padpreset can be referenced via PAD_PRESET.
  */
-#define chr_set_padpreset(chr, pad) \
+#define chr_set_target_pad(chr, pad) \
 	mkshort(0x00b3), \
 	chr, \
 	mkshort(pad),
@@ -1751,7 +1738,7 @@
 /**
  * Copies the padpreset from the source chr to the destination chr.
  */
-#define chr_copy_padpreset(srcchr, dstchr) \
+#define chr_copy_target_pad(srcchr, dstchr) \
 	mkshort(0x00b4), \
 	srcchr, \
 	dstchr,
@@ -1806,19 +1793,19 @@
 	label,
 
 /**
- * Checks if the current chr's timer value is less than the given value.
+ * Checks if the current chr's timer value is greater than the given value.
  */
-#define if_timer_lt(value, label) \
-	mkshort(0x00bc), \
+#define if_timer_gt(value, label) \
+	mkshort(0x00bd), \
 	0x00, \
 	mkshort(value), \
 	label,
 
 /**
- * Checks if the current chr's timer value is greater than the given value.
+ * Checks if the current chr's timer value is less than the given value.
  */
-#define if_timer_gt(value, label) \
-	mkshort(0x00bd), \
+#define if_timer_lt(value, label) \
+	mkshort(0x00bc), \
 	0x00, \
 	mkshort(value), \
 	label,
@@ -1979,57 +1966,34 @@
 	channel,
 
 /**
- * This command makes the sound originate from the given object's position.
+ * Plays or stops a sound coming from the given object.
  *
- * If the channel was marked using assign_sound, the volchangetimer60 argument
- * is ignored and the sound will be started immediately at the appropriate
- * volume based on the player's distance from the object.
- *
- * If the channel is already playing, the volchangetimer60 argument will be used
- * to determine how long the transition takes to the new object's position.
+ * The channel argument should be a CHANNEL constant.
+ * The bool argument should be TRUE to play or FALSE to stop.
  */
-#define bind_channel_to_object(channel, object, volchangetimer60) \
+#define set_object_sound_playing(channel, object, bool) \
 	mkshort(0x00cf), \
 	channel, \
 	object, \
-	mkshort(volchangetimer60),
+	0x00, \
+	bool,
 
 /**
- * This command makes the sound originate from the given pad's position,
- * and makes the sound repeat indefinitely.
- *
- * If the channel was marked using assign_sound, the sound will be started
- * immediately at the appropriate volume based on the player's distance from
- * the pad.
+ * Plays a sound coming from the given pad.
  */
-#define bind_channel_to_pad_repeating(pad, sound) \
+#define play_repeating_sound_from_pad(pad, sound) \
 	mkshort(0x00d0), \
-	0, \
+	0x00, \
 	mkshort(pad), \
 	mkshort(sound),
 
-/**
- * Sets the target volume of a channel which is already playing.
- *
- * The volume will be changed gradually over a period of time,
- * specified by volchangetimer60.
- */
-#define set_channel_volume(channel, volume, volchangetimer60) \
+#define set_object_sound_volume(channel, volume, volchangetimer60) \
 	mkshort(0x00d1), \
 	channel, \
 	mkshort(volume), \
 	mkshort(volchangetimer60),
 
-/**
- * Sets the target volume of a channel which is already playing.
- *
- * The target volume is automatically calculated based on the given distance,
- * as if the player is that distance from the source.
- *
- * The volume will be changed gradually over a period of time,
- * specified by volchangetimer60.
- */
-#define set_channel_volume_by_distance(channel, distance, volchangetimer60) \
+#define set_object_sound_volume_by_distance(channel, distance, volchangetimer60) \
 	mkshort(0x00d2), \
 	channel, \
 	mkshort(distance), \
@@ -2076,27 +2040,21 @@
 /**
  * Sets the speed of a component of the given vehicle, such as a rotor or wheel.
  *
- * Speed is the target speed in revolutions per minute.
- * Time is the amount of time to reach that speed.
+ * Speed is the target speed. Time is the amount of time to reach that speed.
+ * The units for this aren't known.
  */
 #define set_rotor_speed(speed, time) \
 	mkshort(0x00d7), \
 	mkshort(speed), \
 	mkshort(time),
 
-/**
- * Removed in PD: Check if the camera is in the stage intro's first shot.
- */
-#define if_camera_in_ge_intro(label) \
+#define noop00d8(u1) \
 	mkshort(0x00d8), \
-	label,
+	u1,
 
-/**
- * Removed in PD: Check if the camera is in the stage intro's swirl shot.
- */
-#define if_camera_in_ge_swirl(label) \
+#define noop00d9(u1) \
 	mkshort(0x00d9), \
-	label,
+	u1,
 
 /**
  * Sets the image for a monitor object.
@@ -2110,10 +2068,7 @@
 	slot, \
 	image,
 
-/**
- * Removed in PD.
- */
-#define if_bond_in_tank(label) \
+#define noop00db(u1) \
 	mkshort(0x00db), \
 	u1,
 
@@ -2128,11 +2083,11 @@
 #define enter_firstperson \
 	mkshort(0x00dd),
 
-#define move_camera_to_pad(pad) \
+#define enter_camera_and_move_to_pad(pad) \
 	mkshort(0x00de), \
 	mkshort(pad),
 
-#define move_camera_to_preset(object, u1, u2) \
+#define cmd00df(object, u1, u2) \
 	mkshort(0x00df), \
 	object, \
 	mkshort(u1), \
@@ -2176,11 +2131,11 @@
 	force, \
 	label,
 
-#define screen_fade_out(chr) \
+#define cmd00e3(chr) \
 	mkshort(0x00e3), \
 	chr,
 
-#define screen_fade_in(u1) \
+#define cmd00e4(u1) \
 	mkshort(0x00e4), \
 	u1,
 
@@ -2197,10 +2152,10 @@
 	mkshort(0x00e8), \
 	door,
 
-#define delete_chr_weapon(chr, handnum) \
+#define cmd00e9(chr, u1) \
 	mkshort(0x00e9), \
 	chr, \
-	handnum,
+	u1,
 
 /**
  * Checks if the number of players is less than the given value.
@@ -2238,11 +2193,7 @@
 	chr, \
 	weapon,
 
-/**
- * Set a forced move speed when control is revoked from the player.
- * Used only in GE, on the Dam stage after bungee jumping off the platform.
- */
-#define set_bondforcespeed(chr, x, z) \
+#define cmd00ee(chr, x, z) \
 	mkshort(0x00ee), \
 	x, \
 	z,
@@ -2256,7 +2207,7 @@
 	mkshort(room), \
 	label,
 
-#define if_attacking_with_fixed_aim(label) \
+#define cmd00f0(label) \
 	mkshort(0x00f0), \
 	label,
 
@@ -2283,25 +2234,19 @@
 	mkshort(0x00f3), \
 	chr,
 
-#define move_camera_to_pos(range, height1, rotangle, padnum, height2, posangle) \
+#define cmd00f4(u1, u2, u3, u4, u5, u6) \
 	mkshort(0x00f4), \
-	mkshort(range), \
-	mkshort(height1), \
-	mkshort(rotangle), \
-	mkshort(padnum), \
-	mkshort(height2), \
-	mkshort(posangle),
+	mkshort(u1), \
+	mkshort(u2), \
+	mkshort(u3), \
+	mkshort(u4), \
+	mkshort(u5), \
+	mkshort(u6),
 
-/**
- * GE only.
- */
-#define start_credits \
+#define cmd00f5 \
 	mkshort(0x00f5),
 
-/**
- * GE only.
- */
-#define if_credits_complete(label) \
+#define cmd00f6(label) \
 	mkshort(0x00f6), \
 	label,
 
@@ -2374,7 +2319,7 @@
 	value, \
 	label,
 
-#define if_chr_shot(chr, label) \
+#define cmd00fd(chr, label) \
 	mkshort(0x00fd), \
 	chr, \
 	label,
@@ -2397,17 +2342,11 @@
 #define be_surprised_surrender \
 	mkshort(0x00ff),
 
-/**
- * GE only.
- */
-#define release_gas(u1) \
+#define cmd0100_noop(u1) \
 	mkshort(0x0100), \
 	u1,
 
-/**
- * GE only.
- */
-#define launch_rocket(u1) \
+#define cmd0101_noop(u1) \
 	mkshort(0x0101), \
 	u1,
 
@@ -3063,22 +3002,18 @@
 	channel, \
 	label,
 
-/**
- * Make the guard flank their target.
- *
- * The angle argument is in degrees (0-360). It determines the position that
- * they will run to, relative to the target's point of view. If the position is
- * out of bounds or there's no direct line to it then the position is shortened
- * to what is achievable.
- *
- * If use_closest_side is TRUE, the other side will also be tested.
- * The position closest to the chr's current position is used.
- */
-#define flank(angle, goposflags, use_closest_side) \
+// value is either 25, 70 or 335.
+// u1 is either 1 or 2.
+// It seems related to the chr's prop properties
+// Used by G5 cloaked guards, Deep Sea cloaked purple guards and globals.c
+// I think this is related to flanking, where the value arg is the angle
+// relative to the player's direction. 335 is the same as 25 degress to the
+// right (360 - 25).
+#define cmd0139(angle, u1, bool) \
 	mkshort(0x0139), \
 	mkword(angle), \
-	goposflags, \
-	use_closest_side,
+	u1, \
+	bool,
 
 /**
  * Set the current chr's chrpreset to an unalerted teammate. The teammate must
@@ -3359,25 +3294,11 @@
 	label,
 
 /**
- * This command makes the sound originate from the given object's position,
- * and makes the sound repeat indefinitely. It's typically used to make
- * terminals hum.
+ * Play a sound from the given object repeatedly.
  *
- * The dist2 parameter determines the distance at which the curved volume scale
- * transitions to a linear scale. This is typically when you're almost out of
- * earshot.
- *
- * The dist3 parameter determines the max distance that you can hear the object.
- * This should be bigger than dist2.
- *
- * If the channel was marked using assign_sound, the volchangetimer60 argument
- * is ignored and the sound will be started immediately at the appropriate
- * volume based on the player's distance from the object.
- *
- * If the channel is already playing, the volchangetimer60 argument will be used
- * to determine how long the transition takes to the new object's position.
+ * Typically used to make terminals hum.
  */
-#define bind_channel_to_object_repeating(channel, object, volchangetimer60, dist2, dist3) \
+#define play_repeating_sound_from_object(channel, object, volchangetimer60, dist2, dist3) \
 	mkshort(0x016b), \
 	channel, \
 	object, \
@@ -3514,35 +3435,15 @@
 	chr, \
 	label,
 
-/**
- * This command makes the sound originate from the given entity's position,
- * where the entity can be an object or a chr.
- *
- * The dist2 parameter determines the distance at which the curved volume scale
- * transitions to a linear scale. This is typically when you're almost out of
- * earshot.
- *
- * The dist3 parameter determines the max distance that you can hear the object.
- * This should be bigger than dist2.
- *
- * The command supports a volchangetimer60 parameter, but as this command is
- * always called with value 1, we omit it as a macro parameter for brevity.
- *
- * If the channel was marked using assign_sound, the volchangetimer60 argument
- * is ignored and the sound will be started immediately at the appropriate
- * volume based on the player's distance from the entity.
- *
- * If the channel is already playing, the volchangetimer60 argument will be used
- * to determine how long the transition takes to the new object's position.
- */
-#define bind_channel_to_entity(channel, entity_id, dist2, dist3, is_chr) \
+#define play_sound_from_entity(channel, entity_id, u1, u2, attackflags) \
 	mkshort(0x0179), \
 	channel, \
 	entity_id, \
-	mkshort(1), \
-	mkshort(dist2), \
-	mkshort(dist3), \
-	is_chr,
+	0x00, \
+	0x01, \
+	mkshort(u1), \
+	mkshort(u2), \
+	attackflags,
 
 /**
  * Checks if the chr can see their attack target, which should have been
@@ -3565,9 +3466,6 @@
 
 /**
  * Assigns a sound to the given channel. Does not play the sound.
- *
- * Doing this sets a marker on the channel, which affects the behaviour
- * of further audio commands.
  */
 #define assign_sound(sound, channel) \
 	mkshort(0x017c), \
@@ -3842,7 +3740,7 @@
  * Each quip type + morale combination has up to three quips that may be said.
  * The quip used is random.
  */
-#define say_ciquip(ciquip, channel) \
+#define play_cistaff_quip(ciquip, channel) \
 	mkshort(0x01a2), \
 	ciquip, \
 	channel,
@@ -3899,11 +3797,7 @@
 	chr, \
 	label,
 
-/**
- * Checks if the current chr is within 30 metres of the player,
- * routing through portals rather than straight through walls.
- */
-#define if_dist_to_player_through_portals_lt_30m(label) \
+#define cmd01aa(label) \
 	mkshort(0x01aa), \
 	label,
 
@@ -3986,10 +3880,7 @@
 	mkshort(0x01b3), \
 	chr,
 
-/**
- * Follow the label if nothing is colliding with the current chr's geometry.
- */
-#define if_nothing_in_my_space(label) \
+#define cmd01b4_if_something(label) \
 	mkshort(0x01b4), \
 	label,
 
@@ -4050,12 +3941,9 @@
 	mkshort(0x01bb), \
 	mkshort(0),
 
-/**
- * Pouncebits are unused, and this command is not called.
- */
-#define if_pouncebits_eq(pouncebits, label) \
+#define cmd01bc(u1, label) \
 	mkshort(0x01bc), \
-	pouncebits, \
+	u1, \
 	label,
 
 /**
@@ -4395,20 +4283,13 @@
 	mkshort(distance / 10), \
 	label,
 
-/**
- * This command assigns and plays a sound, originating from the given object's
- * position.
- *
- * The type parameter should be a PSTYPE constant.
- *
- * The flags parameter should be a PSFLAG constant.
- */
-#define play_sound_from_object(channel, object, sound, type, flags) \
+#define play_sound_from_object2(channel, object, sound, type, flags) \
 	mkshort(0x01d9), \
 	channel, \
 	object, \
 	mkshort(sound), \
-	mkshort(0xffff), /*volume*/ \
+	0xff, \
+	0xff, \
 	type, \
 	mkshort(flags),
 

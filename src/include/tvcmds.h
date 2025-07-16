@@ -73,10 +73,11 @@
 	TVCMD_RESTART
 
 /**
- * Stop executing the list. Once stopped, it cannot be resumed.
+ * Stop executing the list and yield control back to the engine.
+ * A frame will pass before the script is resumed.
  */
-#define tvcmd_stop() \
-	TVCMD_STOP
+#define tvcmd_yield() \
+	TVCMD_YIELD
 
 /**
  * Fade to the given RBGA colour, takeing time240 to get there.

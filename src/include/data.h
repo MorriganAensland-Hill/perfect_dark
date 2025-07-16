@@ -4,6 +4,14 @@
 #include "constants.h"
 #include "types.h"
 
+#ifdef PLATFORM_N64
+#define EXT_SEG
+#define REF_SEG &
+#else
+#define EXT_SEG *
+#define REF_SEG
+#endif
+
 #define bool s32
 #define ubool u32
 
@@ -44,7 +52,7 @@ extern s32 g_NumGlobalAilists;
 extern s32 g_NumLvAilists;
 extern bool g_ModelDistanceDisabled;
 extern f32 g_ModelDistanceScale;
-extern bool g_ChrsAnimDebugForceLoop;
+extern bool var8005efbc;
 extern f32 var8005efc0;
 extern u8 var8005efb0_2;
 extern u32 var8005efd0;
@@ -57,17 +65,18 @@ extern u32 g_NextAnimFrameIndex;
 extern s16 g_NumAnimations;
 extern struct animtableentry *g_Anims;
 extern u8 *g_AnimToHeaderSlot;
-extern s16 *g_AnimAverageMoveDist;
+extern s16 *var8005f014;
 extern s32 g_AnimMaxBytesPerFrame;
 extern s32 g_AnimMaxHeaderLength;
 extern bool g_AnimHostEnabled;
 extern s32 var8005f030;
-extern s32 g_CdHasBlock;
-extern s32 g_CdHasGeo;
+extern s32 g_CdHasSavedBlock;
+extern s32 var8005f038;
 extern u16 *g_RdpOutBufferEnd;
 extern u16 *g_RdpOutBufferStart;
 extern struct rdptask *g_RdpCurTask;
 extern N_ALSndPlayer *g_SndPlayer;
+extern u32 var8005f4dc;
 extern u32 var8005f548;
 extern s16 n_eqpower[];
 extern u32 var8005f66c;
@@ -127,31 +136,31 @@ extern u8 var80062948;
 extern u8 var8006294c;
 extern u32 var80062950;
 extern bool g_WeatherTickEnabled;
-extern struct onscreendoor *g_ChrsOnscreenDoors;
-extern f32 g_ChrsAnimSpeed;
-extern bool g_ChrsAnimDebugSetAll;
-extern s32 g_ChrsAnimDebugAnimNum;
-extern u32 g_ChrsAnimDebugPaused;
-extern u32 g_ChrsAnimDebugSlow;
-extern bool g_ChrsDebugPatrols;
+extern struct var80062960 *var80062960;
+extern f32 var80062968;
+extern bool var8006296c;
+extern s32 g_SelectedAnimNum;
+extern u32 var80062974;
+extern u32 var80062978;
+extern u32 var8006297c;
 extern s32 g_NextChrnum;
 extern struct chrdata *g_ChrSlots;
 extern s32 g_NumChrSlots;
 extern struct shieldhit *g_ShieldHits;
 extern bool g_ShieldHitActive;
-extern s32 g_NumTuxedos;
+extern s32 g_NumBondBodies;
 extern s32 g_NumMaleGuardHeads;
 extern s32 g_NumFemaleGuardHeads;
 extern s32 g_NumMaleGuardTeamHeads;
 extern s32 g_NumFemaleGuardTeamHeads;
 extern s32 var80062b14;
 extern s32 var80062b18;
-extern s32 g_TuxedoBodynums[];
+extern s32 g_BondBodies[];
 extern s32 g_MaleGuardHeads[];
 extern s32 g_MaleGuardTeamHeads[];
 extern s32 g_FemaleGuardHeads[];
 extern s32 g_FemaleGuardTeamHeads[];
-extern s32 g_TuxedoIndex;
+extern s32 var80062c80;
 extern s32 g_ActiveMaleHeadsIndex;
 extern s32 g_ActiveFemaleHeadsIndex;
 extern f32 g_EnemyAccuracyScale;
@@ -179,7 +188,7 @@ extern s16 *g_BgChrnums;
 extern s32 g_NumBgChrs;
 extern s16 *g_TeamList;
 extern s16 *g_SquadronList;
-extern struct animdist *g_ChrAvgAnimMoveDists[];
+extern struct var80067e6c *var80067fdc[];
 extern s16 var80067ff0[];
 extern f32 g_AutoAimScale;
 extern u32 g_TintedGlassEnabled;
@@ -217,9 +226,9 @@ extern struct autogunobj *g_ThrownLaptops;
 extern struct beam *g_ThrownLaptopBeams;
 extern s32 g_MaxThrownLaptops;
 extern struct prop *g_Lifts[10];
-extern u32 g_TvCmdlistDefault[];
-extern u32 g_TvCmdlistBondZoom[];
-extern u32 g_TvCmdlistBondPan[];
+extern u32 g_TvCmdlist00[];
+extern u32 var8006aaa0[];
+extern u32 var8006aae4[];
 extern struct pschannel *g_PsChannels;
 extern s8 var8006ae18;
 extern s8 var8006ae1c;
@@ -231,7 +240,7 @@ extern bool g_ObjectiveChecksDisabled;
 extern u16 var8006ae90[];
 extern u16 var8006af0c[];
 extern u16 var8006af8c[];
-extern struct weapondef *g_Weapons[];
+extern struct weapon *g_Weapons[];
 extern u32 g_BgunGunMemBaseSize4Mb2P;
 extern bool g_CasingsActive;
 extern s32 g_MaxModels;
@@ -246,7 +255,7 @@ extern s32 g_ViRes;
 extern bool g_HiResEnabled;
 extern s32 var8007072c;
 extern u32 var80070738;
-extern u32 g_GeCreditsState;
+extern u32 var8007073c;
 extern struct gecreditsdata *g_CurrentGeCreditsData;
 extern bool g_PlayerTriggerGeFadeIn;
 extern u32 var80070748;
@@ -409,9 +418,9 @@ extern struct weatherdata *g_WeatherData;
 extern s32 g_NextShardNum;
 extern bool g_ShardsActive;
 extern s32 var800800f0jf;
-extern s32 g_UiScaleX;
+extern s32 g_ScaleX;
 extern s32 var80080108jf;
-extern s32 g_TextScaleX;
+extern s32 var8007fad0;
 extern struct font *g_FontNumeric;
 extern struct fontchar *g_CharsNumeric;
 extern struct font *g_FontHandelGothicXs;
@@ -422,7 +431,7 @@ extern struct font *g_FontHandelGothicMd;
 extern struct fontchar *g_CharsHandelGothicMd;
 extern struct font *g_FontHandelGothicLg;
 extern struct fontchar *g_CharsHandelGothicLg;
-extern bool g_TextHoloRayEnabled;
+extern bool var8007fb9c;
 extern s32 g_StageIndex;
 extern s16 var8007fc0c;
 extern struct drawslot *g_BgSpecialDrawSlot;
@@ -447,7 +456,7 @@ extern s32 g_LanguageId;
 #endif
 extern struct surfacetype *g_SurfaceTypes[15];
 extern u16 *g_ZbufPtr1;
-extern f32 g_UtilsMinSaneFloat;
+extern f32 var800845d4;
 extern struct coord var800845dc;
 extern struct menudialogdef g_2PMissionInventoryHMenuDialog;
 extern struct menudialogdef g_2PMissionInventoryVMenuDialog;
@@ -484,7 +493,7 @@ extern struct menudialogdef g_HtmOptionsMenuDialog;
 extern struct menudialogdef g_PacOptionsMenuDialog;
 extern struct menudialogdef g_MpScenarioMenuDialog;
 extern struct menudialogdef g_MpQuickTeamScenarioMenuDialog;
-extern s32 g_MpReturningFromMatch;
+extern s32 var80087260;
 extern bool g_MpEnableMusicSwitching;
 extern struct mpweapon g_MpWeapons[NUM_MPWEAPONS];
 extern struct mphead g_MpHeads[VERSION == VERSION_JPN_FINAL ? 74 : 75];
@@ -494,7 +503,7 @@ extern struct mppreset g_MpPresets[];
 extern u32 g_TeamColours[];
 extern u32 var80087ce4[];
 extern u8 g_BotCount;
-extern struct botweaponconfig g_BotWeaponConfigs[];
+extern struct aibotweaponpreference g_AibotWeaponPreferences[];
 extern u32 var80087eb4;
 extern struct challenge g_MpChallenges[30];
 extern u8 g_FrIsValidWeapon;
@@ -502,7 +511,7 @@ extern s32 g_FrWeaponNum;
 extern u8 g_ChrBioSlot;
 extern u8 g_HangarBioSlot;
 extern u8 g_DtSlot;
-extern u8 g_HtSlot;
+extern u8 var80088bb4;
 extern struct vtxstoretype g_VtxstoreTypes[4];
 extern struct menudialogdef g_FrWeaponListMenuDialog;
 extern struct menudialogdef g_FrTrainingInfoInGameMenuDialog;
@@ -519,5 +528,55 @@ extern struct menudialogdef g_HtDetailsMenuDialog;
 extern struct menudialogdef g_HtFailedMenuDialog;
 extern struct menudialogdef g_HtCompletedMenuDialog;
 extern struct menudialogdef g_HangarListMenuDialog;
+
+#ifndef PLATFORM_N64
+
+extern struct extplayerconfig g_PlayerExtCfg[MAX_PLAYERS];
+
+extern struct weathercfg g_WeatherConfig[WEATHERCFG_MAX_STAGES];
+extern const struct weathercfg g_DefaultWeatherConfig;
+extern const struct weathercfg *g_CurWeatherConfig;
+
+extern s32 g_MenuUsingMouse;
+extern s32 g_MenuKeyboardPlayer;
+extern s32 g_AllowMouseHeld;
+extern s32 g_MouseDimmedMode;
+extern s32 g_MouseEndDeferredSlider;
+
+extern f32 g_ViShakeIntensityMult;
+extern u32 g_TexFilter2D;
+extern s32 g_HudCenter;
+extern s32 g_MenuMouseControl;
+extern u32 g_HudAlignModeL;
+extern u32 g_HudAlignModeR;
+extern s32 g_PrevFrameFb;
+extern s32 g_BlurFb;
+extern s32 g_BlurFbCapTimer;
+extern bool g_BlurFbDirty;
+extern s32 g_TickRateDiv;
+extern s32 g_TickExtraSleep;
+extern s32 g_MusicDisableMpDeath;
+extern s32 g_BgunGeMuzzleFlashes;
+extern s32 g_FileAutoSelect;
+
+extern u8 g_MpWeaponSetRandomFilters[NUM_MPWEAPONS];
+extern s32 g_MpWeaponRandomFilterNum;
+
+extern struct mpsetupfile g_MpSetupFile;
+extern s16 g_MpCurrentSetup;
+
+#define PLAYER_EXTCFG() g_PlayerExtCfg[g_Vars.currentplayerstats->mpindex & 3]
+#define PLAYER_DEFAULT_FOV (PLAYER_EXTCFG().fovy)
+
+#define TEX_FILTER_2D g_TexFilter2D
+#define ADJUST_ZOOM_FOV(x) ((x) * PLAYER_EXTCFG().fovzoommult)
+
+#else // PLATFORM_N64
+
+#define TEX_FILTER_2D G_TF_BILERP
+#define ADJUST_ZOOM_FOV(x) (x)
+#define PLAYER_DEFAULT_FOV 60.f
+
+#endif // PLATFORM_N64
 
 #endif
