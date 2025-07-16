@@ -10,7 +10,7 @@
 #include "data.h"
 #include "types.h"
 
-void casing_tick(struct casing *casing)
+void casingTick(struct casing *casing)
 {
 	f32 tmp;
 	f32 tmp2;
@@ -45,10 +45,10 @@ void casing_tick(struct casing *casing)
 			sp58 = RANDOMFRAC() * 0.25f + 0.98f;
 
 			var8009d0d8 = TICKS(20);
-			snd_start(var80095200, SFXMAP_8051, &g_CasingAudioHandles[i], -1, -1, -1.0f, -1, -1);
+			sndStart(var80095200, SFX_8051, &g_CasingAudioHandles[i], -1, -1, -1.0f, -1, -1);
 
 			if (g_CasingAudioHandles[i]) {
-				sndp_post_event(g_CasingAudioHandles[i], AL_SNDP_PITCH_EVT, *(s32 *)&sp58);
+				audioPostEvent(g_CasingAudioHandles[i], AL_SNDP_PITCH_EVT, *(s32 *)&sp58);
 			}
 		}
 
@@ -78,7 +78,7 @@ void casing_tick(struct casing *casing)
 	}
 }
 
-void casings_tick(void)
+void casingsTick(void)
 {
 	s32 i;
 	struct casing *end;
@@ -100,7 +100,7 @@ void casings_tick(void)
 
 		while (casing < end) {
 			if (casing->modeldef) {
-				casing_tick(casing);
+				casingTick(casing);
 
 				if (!g_CasingsActive) {
 					g_CasingsActive = true;

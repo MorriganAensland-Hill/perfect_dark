@@ -25,14 +25,14 @@ void dmenu0f118c80nb(void)
 }
 #endif
 
-void dmenu_set_scale_index(s32 index)
+void dmenuSetScaleIndex(s32 index)
 {
 #ifdef DEBUG
 	g_DMenuScaleIndex = index;
 #endif
 }
 
-void dmenu_set_menu(char **labels, s32 (*positions)[2], s32 *offsets)
+void dmenuSetMenu(char **labels, s32 (*positions)[2], s32 *offsets)
 {
 #ifdef DEBUG
 	s32 numgroups;
@@ -48,7 +48,7 @@ void dmenu_set_menu(char **labels, s32 (*positions)[2], s32 *offsets)
 #endif
 }
 
-Gfx *dmenu_render(Gfx *gdl)
+Gfx *dmenuRender(Gfx *gdl)
 {
 #ifdef DEBUG
 	s32 xscale = g_DMenuXScales[g_DMenuScaleIndex];
@@ -62,9 +62,9 @@ Gfx *dmenu_render(Gfx *gdl)
 		dmenu0f118c80nb();
 
 		if (i != g_DMenuSelectedOption) {
-			dhud_set_fg_colour(0xc0, 0xc0, 0xc0, 0xc0);
-			dhud_set_pos((g_DMenuCurPositions[i][0] * xscale - 20) / 4, (g_DMenuCurPositions[i][1] * yscale - 8) / 7);
-			dhud_print_string(g_DMenuCurLabels[i]);
+			dhudSetFgColour(0xc0, 0xc0, 0xc0, 0xc0);
+			dhudSetPos((g_DMenuCurPositions[i][0] * xscale - 20) / 4, (g_DMenuCurPositions[i][1] * yscale - 8) / 7);
+			dhudPrintString(g_DMenuCurLabels[i]);
 		}
 	}
 
@@ -73,9 +73,9 @@ Gfx *dmenu_render(Gfx *gdl)
 		dmenu0f118c80nb();
 
 		if (i == g_DMenuSelectedOption) {
-			dhud_set_fg_colour(0xc0, 0, 0, 0xc0);
-			dhud_set_pos((g_DMenuCurPositions[i][0] * xscale - 20) / 4, (g_DMenuCurPositions[i][1] * yscale - 8) / 7);
-			dhud_print_string(g_DMenuCurLabels[i]);
+			dhudSetFgColour(0xc0, 0, 0, 0xc0);
+			dhudSetPos((g_DMenuCurPositions[i][0] * xscale - 20) / 4, (g_DMenuCurPositions[i][1] * yscale - 8) / 7);
+			dhudPrintString(g_DMenuCurLabels[i]);
 		}
 	}
 #endif
@@ -90,7 +90,7 @@ void debug0f11ed10(s32 arg0, s32 arg1, s32 arg2)
 }
 #endif
 
-s32 dmenu_get_selected_option(void)
+s32 dmenuGetSelectedOption(void)
 {
 #ifdef DEBUG
 	return g_DMenuSelectedOption;
@@ -99,14 +99,14 @@ s32 dmenu_get_selected_option(void)
 #endif
 }
 
-void dmenu_set_selected_option(s32 option)
+void dmenuSetSelectedOption(s32 option)
 {
 #ifdef DEBUG
 	g_DMenuSelectedOption = option;
 #endif
 }
 
-void dmenu_navigate_up(void)
+void dmenuNavigateUp(void)
 {
 #ifdef DEBUG
 	s32 i;
@@ -131,7 +131,7 @@ void dmenu_navigate_up(void)
 #endif
 }
 
-void dmenu_navigate_down(void)
+void dmenuNavigateDown(void)
 {
 #ifdef DEBUG
 	s32 i;
@@ -156,7 +156,7 @@ void dmenu_navigate_down(void)
 #endif
 }
 
-void dmenu_navigate_right(void)
+void dmenuNavigateRight(void)
 {
 #ifdef DEBUG
 	s32 i;
@@ -193,7 +193,7 @@ void dmenu_navigate_right(void)
 #endif
 }
 
-void dmenu_navigate_left(void)
+void dmenuNavigateLeft(void)
 {
 #ifdef DEBUG
 	s32 i;
