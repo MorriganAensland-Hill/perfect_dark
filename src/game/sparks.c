@@ -28,43 +28,72 @@ u32 var800a4148;
 u32 var800a414c;
 
 struct sparktype g_SparkTypes[] = {
-	//                                                   weight
-	//                                                   |              max age
-	//                                                   |              |                       num sparks
-	//                                                   |              |                       |                              decel
-	//                                                   |              |                       |                              |
-	/*0x00*/ { 100, 28,  100,  1,   PALUP(0),  PALUP(0), PALUPF(2.0f),  TICKS(60),  TICKS(60),  15, 1, 0xffff80ff, 0xffffffff, PALUPF(0.02) },
-	/*0x01*/ { 100, 28,  100,  1,   PALUP(0),  PALUP(0), PALUPF(2.0f),  TICKS(60),  TICKS(60),  15, 1, 0x80ffffff, 0xffffffff, PALUPF(0.02) },
-	/*0x02*/ { 40,  -1,  30,   30,  PALUP(0),  PALUP(0), PALUPF(2.0f),  TICKS(35),  TICKS(35),  5,  1, 0x301010ff, 0x401010ff, PALUPF(0.02) },
-	/*0x03*/ { 40,  -1,  300,  200, PALUP(0),  PALUP(0), PALUPF(0.15f), 5,          5,          4,  1, 0xffffff40, 0x560011a0, PALUPF(0.02) },
-	/*0x04*/ { 10,  1,   1200, 400, PALUP(0),  PALUP(0), PALUPF(0.15f), 5,          5,          5,  1, 0xa0a0e000, 0xffffffff, PALUPF(0.02) },
-	/*0x05*/ { 40,  10,  10,   10,  PALUP(0),  PALUP(0), PALUPF(3.0f),  TICKS(180), TICKS(90),  5,  1, 0x00ff6aff, 0xffffffff, PALUPF(0.02) },
-	/*0x06*/ { 15,  10,  20,   20,  PALUP(0),  PALUP(0), PALUPF(0.65f), TICKS(180), TICKS(90),  5,  1, 0xa0a0e0ff, 0xffffffff, PALUPF(0.02) },
-	/*0x07*/ { 1,   1,   120,  2,   PALUP(0),  PALUP(0), PALUPF(0.0f),  TICKS(60),  TICKS(60),  5,  1, 0xffff80ff, 0xffffffff, PALUPF(0.02) },
-	/*0x08*/ { 1,   1,   300,  50,  PALUP(0),  PALUP(0), PALUPF(0.0f),  5,          5,          5,  1, 0xffff8000, 0xffffffff, PALUPF(0.02) },
-	/*0x09*/ { 1,   1,   400,  100, PALUP(0),  PALUP(0), PALUPF(0.0f),  TICKS(10),  TICKS(10),  5,  1, 0xffff8000, 0xffffffff, PALUPF(0.02) },
-	/*0x0a*/ { 75,  100, 100,  1,   PALUP(0),  PALUP(0), PALUPF(2.0f),  TICKS(60),  TICKS(60),  15, 1, 0xffff80ff, 0xffffffff, PALUPF(0.02) },
-	/*0x0b*/ { 75,  100, 20,   5,   PALUP(0),  PALUP(0), PALUPF(1.5f),  TICKS(60),  TICKS(60),  20, 1, 0xa0a0e0ff, 0xffffffff, PALUPF(0.02) },
-	/*0x0c*/ { 20,  10,  100,  1,   PALUP(0),  PALUP(0), PALUPF(2.0f),  TICKS(60),  TICKS(60),  15, 1, 0xffff80ff, 0xffffffff, PALUPF(0.02) },
-	/*0x0d*/ { 20,  10,  20,   5,   PALUP(0),  PALUP(0), PALUPF(1.5f),  TICKS(60),  TICKS(60),  20, 1, 0xa0a0e0ff, 0xffffffff, PALUPF(0.02) },
-	/*0x0e*/ { 1,   0,   80,   1,   PALUP(30), PALUP(5), PALUPF(0.0f),  TICKS(120), TICKS(90),  15, 0, 0x0808f000, 0xffffffff, PALUPF(0.02) },
-	/*0x0f*/ { 70,  0,   150,  15,  PALUP(0),  PALUP(0), PALUPF(6.0f),  TICKS(40),  TICKS(10),  3,  0, 0x11112880, 0xaaaaaa40, PALUPF(0.02) },
-	/*0x10*/ { 50,  28,  100,  1,   PALUP(0),  PALUP(0), PALUPF(1.0f),  TICKS(60),  TICKS(30),  10, 1, 0xffff80ff, 0xffffffff, PALUPF(0.02) },
-	/*0x11*/ { 300, 100, 100,  2,   PALUP(0),  PALUP(0), PALUPF(0.3f),  TICKS(30),  1,          40, 2, 0xffff80ff, 0xffffffff, PAL ? 0.119 : 0.1 },
-	/*0x12*/ { 170, 80,  60,   5,   PALUP(0),  PALUP(0), PALUPF(0.4f),  TICKS(30),  5,          10, 3, 0xa0a0e0ff, 0xffffffff, PAL ? 0.119 : 0.1 },
-	/*0x13*/ { 120, 40,  30,   7,   PALUP(0),  PALUP(0), PALUPF(0.2f),  TICKS(60),  5,          15, 3, 0xffff80ff, 0xffffffff, PAL ? 0.119 : 0.1 },
-	/*0x14*/ { 80,  10,  10,   9,   PALUP(0),  PALUP(0), PALUPF(0.1f),  TICKS(30),  5,          20, 3, 0xa0a0e0ff, 0xffffffff, PAL ? 0.119 : 0.1 },
-	/*0x15*/ { 100, 1,   100,  50,  PALUP(0),  PALUP(0), PALUPF(2.0f),  TICKS(30),  TICKS(20),  15, 1, 0xffff80ff, 0xffffffff, PALUPF(0.02) },
-	/*0x16*/ { 100, 28,  100,  1,   PALUP(0),  PALUP(0), PALUPF(2.0f),  TICKS(120), TICKS(120), 30, 1, 0xff8080ff, 0xffff80ff, PALUPF(0.02) },
-	/*0x17*/ { 100, 28,  100,  1,   PALUP(0),  PALUP(0), PALUPF(2.0f),  TICKS(60),  TICKS(60),  15, 1, 0x4fff4fff, 0xffffffff, PALUPF(0.02) },
-	/*0x18*/ { 100, 28,  100,  1,   PALUP(0),  PALUP(0), PALUPF(2.0f),  TICKS(60),  TICKS(60),  15, 1, 0xffff7f7f, 0xffffffff, PALUPF(0.02) },
-	/*0x19*/ { 40,  -1,  30,   10,  PALUP(0),  PALUP(0), PALUPF(2.0f),  TICKS(50),  TICKS(35),  10, 1, 0x301010ff, 0x401010ff, PALUPF(0.02) },
-	/*0x1a*/ { 70,  0,   150,  15,  PALUP(0),  PALUP(0), PALUPF(6.0f),  TICKS(40),  TICKS(10),  3,  0, 0x1111a880, 0xaaaaff40, PALUPF(0.02) },
+	//                                     weight
+	//                                     |     max age
+	//                                     |     |                                        decel
+	//                                     |     |                                        |
+#if PAL
+	/*0x00*/ { 100, 28,  100,  1,   0,  0, 2.4,              50,  50,  15, 1, 0xffff80ff, 0xffffffff, 0.024 },
+	/*0x00*/ { 100, 28,  100,  1,   0,  0, 2.4,              50,  50,  15, 1, 0x80ffffff, 0xffffffff, 0.024 },
+	/*0x00*/ { 40,  -1,  30,   30,  0,  0, 2.4,              29,  29,  5,  1, 0x301010ff, 0x401010ff, 0.024 },
+	/*0x00*/ { 40,  -1,  300,  200, 0,  0, 0.18,             5,   5,   4,  1, 0xffffff40, 0x560011a0, 0.024 },
+	/*0x00*/ { 10,  1,   1200, 400, 0,  0, 0.18,             5,   5,   5,  1, 0xa0a0e000, 0xffffffff, 0.024 },
+	/*0x00*/ { 40,  10,  10,   10,  0,  0, 3.6000001430511,  150, 75,  5,  1, 0x00ff6aff, 0xffffffff, 0.024 },
+	/*0x00*/ { 15,  10,  20,   20,  0,  0, 0.78000003099442, 150, 75,  5,  1, 0xa0a0e0ff, 0xffffffff, 0.024 },
+	/*0x00*/ { 1,   1,   120,  2,   0,  0, 0,                50,  50,  5,  1, 0xffff80ff, 0xffffffff, 0.024 },
+	/*0x00*/ { 1,   1,   300,  50,  0,  0, 0,                5,   5,   5,  1, 0xffff8000, 0xffffffff, 0.024 },
+	/*0x00*/ { 1,   1,   400,  100, 0,  0, 0,                8,   8,   5,  1, 0xffff8000, 0xffffffff, 0.024 },
+	/*0x00*/ { 75,  100, 100,  1,   0,  0, 2.4,              50,  50,  15, 1, 0xffff80ff, 0xffffffff, 0.024 },
+	/*0x00*/ { 75,  100, 20,   5,   0,  0, 1.8000000715256,  50,  50,  20, 1, 0xa0a0e0ff, 0xffffffff, 0.024 },
+	/*0x00*/ { 20,  10,  100,  1,   0,  0, 2.4,              50,  50,  15, 1, 0xffff80ff, 0xffffffff, 0.024 },
+	/*0x00*/ { 20,  10,  20,   5,   0,  0, 1.8000000715256,  50,  50,  20, 1, 0xa0a0e0ff, 0xffffffff, 0.024 },
+	/*0x00*/ { 1,   0,   80,   1,   36, 6, 0,                100, 75,  15, 0, 0x0808f000, 0xffffffff, 0.024 },
+	/*0x00*/ { 70,  0,   150,  15,  0,  0, 7.2000002861023,  33,  8,   3,  0, 0x11112880, 0xaaaaaa40, 0.024 },
+	/*0x00*/ { 50,  28,  100,  1,   0,  0, 1.2,              50,  25,  10, 1, 0xffff80ff, 0xffffffff, 0.024 },
+	/*0x00*/ { 300, 100, 100,  2,   0,  0, 0.36,             25,  1,   40, 2, 0xffff80ff, 0xffffffff, 0.119 },
+	/*0x00*/ { 170, 80,  60,   5,   0,  0, 0.48000001907349, 25,  5,   10, 3, 0xa0a0e0ff, 0xffffffff, 0.119 },
+	/*0x00*/ { 120, 40,  30,   7,   0,  0, 0.24000000953674, 50,  5,   15, 3, 0xffff80ff, 0xffffffff, 0.119 },
+	/*0x00*/ { 80,  10,  10,   9,   0,  0, 0.12000000476837, 25,  5,   20, 3, 0xa0a0e0ff, 0xffffffff, 0.119 },
+	/*0x00*/ { 100, 1,   100,  50,  0,  0, 2.4,              25,  16,  15, 1, 0xffff80ff, 0xffffffff, 0.024 },
+	/*0x00*/ { 100, 28,  100,  1,   0,  0, 2.4,              100, 100, 30, 1, 0xff8080ff, 0xffff80ff, 0.024 },
+	/*0x00*/ { 100, 28,  100,  1,   0,  0, 2.4,              50,  50,  15, 1, 0x4fff4fff, 0xffffffff, 0.024 },
+	/*0x00*/ { 100, 28,  100,  1,   0,  0, 2.4,              50,  50,  15, 1, 0xffff7f7f, 0xffffffff, 0.024 },
+	/*0x00*/ { 40,  -1,  30,   10,  0,  0, 2.4,              41,  29,  10, 1, 0x301010ff, 0x401010ff, 0.024 },
+	/*0x00*/ { 70,  0,   150,  15,  0,  0, 7.2000002861023,  33,  8,   3,  0, 0x1111a880, 0xaaaaff40, 0.024 },
+#else
+	/*0x00*/ { 100, 28,  100,  1,   0,  0, 2,                60,  60,  15, 1, 0xffff80ff, 0xffffffff, 0.02 },
+	/*0x01*/ { 100, 28,  100,  1,   0,  0, 2,                60,  60,  15, 1, 0x80ffffff, 0xffffffff, 0.02 },
+	/*0x02*/ { 40,  -1,  30,   30,  0,  0, 2,                35,  35,  5,  1, 0x301010ff, 0x401010ff, 0.02 },
+	/*0x03*/ { 40,  -1,  300,  200, 0,  0, 0.15,             5,   5,   4,  1, 0xffffff40, 0x560011a0, 0.02 },
+	/*0x04*/ { 10,  1,   1200, 400, 0,  0, 0.15,             5,   5,   5,  1, 0xa0a0e000, 0xffffffff, 0.02 },
+	/*0x05*/ { 40,  10,  10,   10,  0,  0, 3,                180, 90,  5,  1, 0x00ff6aff, 0xffffffff, 0.02 },
+	/*0x06*/ { 15,  10,  20,   20,  0,  0, 0.65,             180, 90,  5,  1, 0xa0a0e0ff, 0xffffffff, 0.02 },
+	/*0x07*/ { 1,   1,   120,  2,   0,  0, 0,                60,  60,  5,  1, 0xffff80ff, 0xffffffff, 0.02 },
+	/*0x08*/ { 1,   1,   300,  50,  0,  0, 0,                5,   5,   5,  1, 0xffff8000, 0xffffffff, 0.02 },
+	/*0x09*/ { 1,   1,   400,  100, 0,  0, 0,                10,  10,  5,  1, 0xffff8000, 0xffffffff, 0.02 },
+	/*0x0a*/ { 75,  100, 100,  1,   0,  0, 2,                60,  60,  15, 1, 0xffff80ff, 0xffffffff, 0.02 },
+	/*0x0b*/ { 75,  100, 20,   5,   0,  0, 1.5,              60,  60,  20, 1, 0xa0a0e0ff, 0xffffffff, 0.02 },
+	/*0x0c*/ { 20,  10,  100,  1,   0,  0, 2,                60,  60,  15, 1, 0xffff80ff, 0xffffffff, 0.02 },
+	/*0x0d*/ { 20,  10,  20,   5,   0,  0, 1.5,              60,  60,  20, 1, 0xa0a0e0ff, 0xffffffff, 0.02 },
+	/*0x0e*/ { 1,   0,   80,   1,   30, 5, 0,                120, 90,  15, 0, 0x0808f000, 0xffffffff, 0.02 },
+	/*0x0f*/ { 70,  0,   150,  15,  0,  0, 6,                40,  10,  3,  0, 0x11112880, 0xaaaaaa40, 0.02 },
+	/*0x10*/ { 50,  28,  100,  1,   0,  0, 1,                60,  30,  10, 1, 0xffff80ff, 0xffffffff, 0.02 },
+	/*0x11*/ { 300, 100, 100,  2,   0,  0, 0.3,              30,  1,   40, 2, 0xffff80ff, 0xffffffff, 0.1  },
+	/*0x12*/ { 170, 80,  60,   5,   0,  0, 0.4,              30,  5,   10, 3, 0xa0a0e0ff, 0xffffffff, 0.1  },
+	/*0x13*/ { 120, 40,  30,   7,   0,  0, 0.2,              60,  5,   15, 3, 0xffff80ff, 0xffffffff, 0.1  },
+	/*0x14*/ { 80,  10,  10,   9,   0,  0, 0.1,              30,  5,   20, 3, 0xa0a0e0ff, 0xffffffff, 0.1  },
+	/*0x15*/ { 100, 1,   100,  50,  0,  0, 2,                30,  20,  15, 1, 0xffff80ff, 0xffffffff, 0.02 },
+	/*0x16*/ { 100, 28,  100,  1,   0,  0, 2,                120, 120, 30, 1, 0xff8080ff, 0xffff80ff, 0.02 },
+	/*0x17*/ { 100, 28,  100,  1,   0,  0, 2,                60,  60,  15, 1, 0x4fff4fff, 0xffffffff, 0.02 },
+	/*0x18*/ { 100, 28,  100,  1,   0,  0, 2,                60,  60,  15, 1, 0xffff7f7f, 0xffffffff, 0.02 },
+	/*0x19*/ { 40,  -1,  30,   10,  0,  0, 2,                50,  35,  10, 1, 0x301010ff, 0x401010ff, 0.02 },
+	/*0x1a*/ { 70,  0,   150,  15,  0,  0, 6,                40,  10,  3,  0, 0x1111a880, 0xaaaaff40, 0.02 },
+#endif
 };
 
 bool g_SparksAreActive = false;
 
-void spark_create(struct coord *pos, struct sparktype *type)
+void sparkCreate(struct coord *pos, struct sparktype *type)
 {
 	f32 tmp;
 	f32 maxspeed = 0.0f;
@@ -78,9 +107,9 @@ void spark_create(struct coord *pos, struct sparktype *type)
 	spark->pos.y = 0.0f;
 	spark->pos.z = 0.0f;
 
-	spark->speed.x = (s32)(random() % (type->unk00 * 2 + 1)) - type->unk00;
-	spark->speed.y = (s32)(random() % (type->unk00 * 2 + 1)) - type->unk00;
-	spark->speed.z = (s32)(random() % (type->unk00 * 2 + 1)) - type->unk00;
+	spark->speed.x = (s32)(rngRandom() % (type->unk00 * 2 + 1)) - type->unk00;
+	spark->speed.y = (s32)(rngRandom() % (type->unk00 * 2 + 1)) - type->unk00;
+	spark->speed.z = (s32)(rngRandom() % (type->unk00 * 2 + 1)) - type->unk00;
 
 	if (spark->speed.y == 0.0f) {
 		spark->speed.y = -0.0001f;
@@ -119,7 +148,7 @@ void spark_create(struct coord *pos, struct sparktype *type)
 	}
 
 	if (type->unk18 % 2) {
-		spark->ttl = random() % type->maxage;
+		spark->ttl = rngRandom() % type->maxage;
 	} else {
 		spark->ttl = type->maxage;
 	}
@@ -129,7 +158,7 @@ void spark_create(struct coord *pos, struct sparktype *type)
  * This function handles an out-of-memory situation when creating a spark, by
  * shrinking whichever spark group was about to be overwritten.
  */
-void sparkgroup_ensure_free_spark_slot(struct sparkgroup *group)
+void sparkgroupEnsureFreeSparkSlot(struct sparkgroup *group)
 {
 	s32 i;
 
@@ -145,7 +174,7 @@ void sparkgroup_ensure_free_spark_slot(struct sparkgroup *group)
 	}
 }
 
-void sparks_create(s32 room, struct prop *prop, struct coord *pos, struct coord *arg3, struct coord *arg4, s32 typenum)
+void sparksCreate(s32 room, struct prop *prop, struct coord *pos, struct coord *arg3, struct coord *arg4, s32 typenum)
 {
 	struct sparkgroup *group = &g_SparkGroups[g_NextSparkGroupIndex];
 	struct sparktype *type = &g_SparkTypes[typenum];
@@ -157,7 +186,7 @@ void sparks_create(s32 room, struct prop *prop, struct coord *pos, struct coord 
 		u32 colours[3];
 		u32 stack;
 
-		chr_get_blood_colour(chr->bodynum, NULL, colours);
+		chrGetBloodColour(chr->bodynum, NULL, colours);
 
 		if (typenum == SPARKTYPE_BLOOD) {
 			type->unk1c = colours[0];
@@ -166,16 +195,16 @@ void sparks_create(s32 room, struct prop *prop, struct coord *pos, struct coord 
 			type->unk20 = colours[2];
 		}
 	} else if (typenum == SPARKTYPE_PAINT) {
-		type->unk1c = (random() % 2 ? 0xff000000 : 0) | (random() % 2 ? 0x00ff0000 : 0) | (random() % 2 ? 0x0000ff00 : 0) | 0xff;
+		type->unk1c = (rngRandom() % 2 ? 0xff000000 : 0) | (rngRandom() % 2 ? 0x00ff0000 : 0) | (rngRandom() % 2 ? 0x0000ff00 : 0) | 0xff;
 
 		if (type->unk1c == 0x000000ff) {
-			type->unk1c |= 0x0000ff00 << ((random() % 3) * 8);
+			type->unk1c |= 0x0000ff00 << ((rngRandom() % 3) * 8);
 		}
 
-		type->unk20 = (random() % 2 ? 0xff000000 : 0) | (random() % 2 ? 0x00ff0000 : 0) | (random() % 2 ? 0x0000ff00 : 0) | 0xff;
+		type->unk20 = (rngRandom() % 2 ? 0xff000000 : 0) | (rngRandom() % 2 ? 0x00ff0000 : 0) | (rngRandom() % 2 ? 0x0000ff00 : 0) | 0xff;
 
 		if (type->unk20 == 0xff) {
-			type->unk20 |= 0x0000ff00 << ((random() % 3) * 8);
+			type->unk20 |= 0x0000ff00 << ((rngRandom() % 3) * 8);
 		}
 	}
 
@@ -242,27 +271,27 @@ void sparks_create(s32 room, struct prop *prop, struct coord *pos, struct coord 
 	group->prop = prop;
 
 	for (i = 0; i < type->numsparks; i++) {
-		sparkgroup_ensure_free_spark_slot(group);
-		spark_create(&grouppos, type);
+		sparkgroupEnsureFreeSparkSlot(group);
+		sparkCreate(&grouppos, type);
 	}
 
 	switch (typenum) {
 	case SPARKTYPE_DEFAULT:
-		room_flash_lighting(group->room, 24, 32);
+		roomFlashLighting(group->room, 24, 32);
 		break;
 	case SPARKTYPE_ENVIRONMENTAL1:
 		if (g_Vars.stagenum != STAGE_CRASHSITE) {
-			room_flash_lighting(group->room, 32, 128);
+			roomFlashLighting(group->room, 32, 128);
 		}
 		break;
 	case SPARKTYPE_ENVIRONMENTAL2:
 		if (g_Vars.stagenum != STAGE_CRASHSITE) {
-			room_flash_lighting(group->room, 64, 128);
+			roomFlashLighting(group->room, 64, 128);
 		}
 		break;
 	case SPARKTYPE_ENVIRONMENTAL3:
 		if (g_Vars.stagenum != STAGE_CRASHSITE) {
-			room_flash_lighting(group->room, 200, 255);
+			roomFlashLighting(group->room, 200, 255);
 		}
 		break;
 	}
@@ -270,7 +299,7 @@ void sparks_create(s32 room, struct prop *prop, struct coord *pos, struct coord 
 	g_SparksAreActive = true;
 }
 
-Gfx *sparks_render(Gfx *gdl)
+Gfx *sparksRender(Gfx *gdl)
 {
 	struct sparkgroup *group;
 	s32 axis;
@@ -302,11 +331,11 @@ Gfx *sparks_render(Gfx *gdl)
 			axis = ABS(g_Vars.currentplayer->cam_look.z) > ABS(g_Vars.currentplayer->cam_look.x) ? 2 : 0;
 		}
 
-		tex_select(&gdl, &g_TexSparkConfigs[TEX_SPARK_00], 4, 0, 2, 1, NULL);
+		texSelect(&gdl, &g_TexSparkConfigs[0], 4, 0, 2, 1, NULL);
 
 		gDPSetCycleType(gdl++, G_CYC_1CYCLE);
 		gDPSetColorDither(gdl++, G_CD_DISABLE);
-		gDPSetRenderMode(gdl++, G_RM_AA_ZB_XLU_SURF, G_RM_NOOP2);
+		gDPSetRenderMode(gdl++, G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2);
 		gDPSetAlphaCompare(gdl++, G_AC_NONE);
 		gDPSetTextureLOD(gdl++, G_TL_TILE);
 		gDPSetTextureConvert(gdl++, G_TC_FILT);
@@ -367,20 +396,20 @@ Gfx *sparks_render(Gfx *gdl)
 
 				if (render) {
 					type = &g_SparkTypes[group->type];
-					colours = gfx_allocate_colours(2);
+					colours = gfxAllocateColours(2);
 
 					if (USINGDEVICE(DEVICE_NIGHTVISION) || USINGDEVICE(DEVICE_IRSCANNER)) {
-						colours[0].word = type->unk1c;
-						colours[1].word = type->unk20;
+						colours[0].word = PD_BE32(type->unk1c);
+						colours[1].word = PD_BE32(type->unk20);
 					} else if (g_Vars.currentplayer->visionmode == VISIONMODE_XRAY) {
 						v1 = ((u32) (sp13c * 255.0f) << 24) | ((u32) ((1.0f - sp13c) * 255.0f) << 16);
 
 						// @bug? Second part also reads from type->unk1c
-						colours[0].word = v1 | (u32) (sp138 * (f32) (type->unk1c & 0xff)) | 0x3f00;
-						colours[1].word = v1 | (u32) (sp138 * (f32) (type->unk1c & 0xff)) | 0x3f00;
+						colours[0].word = PD_BE32(v1 | (u32) (sp138 * (f32) (type->unk1c & 0xff)) | 0x3f00);
+						colours[1].word = PD_BE32(v1 | (u32) (sp138 * (f32) (type->unk1c & 0xff)) | 0x3f00);
 					} else {
-						colours[0].word = type->unk1c;
-						colours[1].word = type->unk20;
+						colours[0].word = PD_BE32(type->unk1c);
+						colours[1].word = PD_BE32(type->unk20);
 					}
 
 					if (type->unk12 < type->maxage && type->unk12 < group->age) {
@@ -395,20 +424,23 @@ Gfx *sparks_render(Gfx *gdl)
 					gSPColor(gdl++, osVirtualToPhysical(colours), 2);
 
 					sp120 *= 0.2f;
-					sp120 *= vi_get_fov_y() / 60.0f;
+					sp120 *= viGetFovY() / 60.0f;
+#ifndef PLATFORM_N64 // adjust scale for port
+					sp120 *= (float)(SCREEN_WIDTH_LO * SCREEN_HEIGHT_LO) / (float)(SCREEN_WIDTH_HI * SCREEN_HEIGHT_HI);
+#endif
 
-					mtx4_load_identity(&spd4);
+					mtx4LoadIdentity(&spd4);
 
 					spd4.m[0][0] = 0.05f;
 					spd4.m[1][1] = 0.05f;
 					spd4.m[2][2] = 0.05f;
 					spd4.m[3][3] = 0.05f;
 
-					mtx4_set_translation(&group->pos, &spd4);
-					mtx00015be0(cam_get_world_to_screen_mtxf(), &spd4);
+					mtx4SetTranslation(&group->pos, &spd4);
+					mtx00015be0(camGetWorldToScreenMtxf(), &spd4);
 
-					mtx = gfx_allocate_matrix();
-					mtx_f2l(&spd4, mtx);
+					mtx = gfxAllocateMatrix();
+					mtxF2L(&spd4, mtx);
 
 					gSPMatrix(gdl++, osVirtualToPhysical(mtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
@@ -418,7 +450,7 @@ Gfx *sparks_render(Gfx *gdl)
 						struct spark *spark = &g_Sparks[index];
 
 						if (spark->ttl != 0) {
-							Vtx *vertices = gfx_allocate_vertices(3);
+							Vtx *vertices = gfxAllocateVertices(3);
 							f32 f2;
 
 							for (k = 0; k < 3; k++) {

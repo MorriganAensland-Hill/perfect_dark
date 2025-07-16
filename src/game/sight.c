@@ -2,12 +2,12 @@
 #include "constants.h"
 #include "game/chraction.h"
 #include "game/bondgun.h"
-#include "game/gset.h"
+#include "game/game_0b0fd0.h"
 #include "game/game_0b2150.h"
 #include "game/tex.h"
 #include "game/savebuffer.h"
 #include "game/sight.h"
-#include "game/text.h"
+#include "game/game_1531a0.h"
 #include "game/file.h"
 #include "game/gfxmemory.h"
 #include "game/lang.h"
@@ -19,11 +19,83 @@
 #include "lib/snd.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include <math.h>
+#include "video.h"
+
+#define SIGHT_COLOUR ((PLAYER_EXTCFG().crosshairhealth >= CROSSHAIR_HEALTH_ON_GREEN) ? sightGetCrosshairHealthColor(g_Vars.currentplayer->bondhealth, g_Vars.currentplayer->prop->chr->cshield * 0.125f) : PLAYER_EXTCFG().crosshaircolour)
+#define SIGHT_SCALE PLAYER_EXTCFG().crosshairsize
+
+static u32 sightGetCrosshairHealthColor(float health, float shield)
+{
+	const float ratio = MAX(0.0f, MIN(health + shield, 2.0f));
+
+	int red = 0;
+	int green = 0;
+	int blue = 0;
+	if (ratio < 0.2f) {
+		// Red (critical health level)
+		red = 255;
+		green = 0;
+		blue = 0;
+	} else if (ratio < 0.6f) {
+		// Red-yellow
+		red = 255;
+		green = 255 * ((ratio - 0.2f) / 0.4f);
+		blue = 0;
+	} else if (ratio < 1.0f) {
+		if (PLAYER_EXTCFG().crosshairhealth == CROSSHAIR_HEALTH_ON_GREEN) {
+			// Yellow-green
+			red = 255 * ((ratio - 0.6f) / 0.4f);
+			green = 255;
+			blue = 0;
+		} else {
+			// Yellow-white
+			red = 255;
+			green = 255;
+			blue = 255 * ((ratio - 0.6f) / 0.4f);
+		}
+	} else {
+		if (PLAYER_EXTCFG().crosshairhealth == CROSSHAIR_HEALTH_ON_GREEN) {
+			// Green-cyan (overheal via shield)
+			red = 0;
+			green = 255;
+			blue = 255 * (ratio - 1.0f);
+		} else {
+			// White-green (overheal via shield)
+			red = 255 * (2.0f - ratio);
+			green = 255;
+			blue = 255 * (2.0f - ratio);
+		}
+	}
+
+	return (red << 24) + (green << 16) + (blue << 8) + (PLAYER_EXTCFG().crosshaircolour & 0xff);
+}
+
+static inline f32 sightGetScaleX(void)
+{
+	return (videoGetAspect() / SCREEN_ASPECT);
+}
+
+static inline s32 sightGetAdjustedX(const f32 x)
+{
+	const f32 cx = (x - (f32)(SCREEN_WIDTH_LO / 2)) * sightGetScaleX();
+	return roundf((f32)(SCREEN_WIDTH_LO / 2) + cx);
+}
+
+#else
+
+#define SIGHT_COLOUR 0x00ff0028
+#define SIGHT_SCALE 2
+#define sightGetScaleX() 1.f
+#define sightGetAdjustedX(x) (x)
+
+#endif
 
 /**
  * Return true if the prop is considered friendly (blue sight).
  */
-bool sight_is_prop_friendly(struct prop *prop)
+bool sightIsPropFriendly(struct prop *prop)
 {
 	if (prop == NULL) {
 		prop = g_Vars.currentplayer->lookingatprop.prop;
@@ -51,7 +123,7 @@ bool sight_is_prop_friendly(struct prop *prop)
 		return true;
 	}
 
-	return chr_compare_teams(g_Vars.currentplayer->prop->chr, prop->chr, COMPARE_FRIENDS);
+	return chrCompareTeams(g_Vars.currentplayer->prop->chr, prop->chr, COMPARE_FRIENDS);
 }
 
 void sight0f0d715c(void)
@@ -67,7 +139,7 @@ Gfx *sight0f0d7164(Gfx *gdl)
 /**
  * Return true if the given prop can be added to the target list.
  */
-bool sight_can_target_prop(struct prop *prop, s32 max)
+bool sightCanTargetProp(struct prop *prop, s32 max)
 {
 	s32 i;
 
@@ -90,7 +162,7 @@ bool sight_can_target_prop(struct prop *prop, s32 max)
 		return true;
 	}
 
-	if (bgun_get_weapon_num(HAND_RIGHT) == WEAPON_ROCKETLAUNCHER) {
+	if (bgunGetWeaponNum(HAND_RIGHT) == WEAPON_ROCKETLAUNCHER) {
 		return true;
 	}
 
@@ -100,7 +172,7 @@ bool sight_can_target_prop(struct prop *prop, s32 max)
 /**
  * Return true if the sight should change colour when aiming at the given prop.
  */
-bool sight_is_reactive_to_prop(struct prop *prop)
+bool sightIsReactiveToProp(struct prop *prop)
 {
 	if (prop->obj == NULL) {
 		return false;
@@ -114,14 +186,14 @@ bool sight_is_reactive_to_prop(struct prop *prop)
 			return true;
 		}
 
-		if (obj_get_destroyed_level(obj) > 0) {
+		if (objGetDestroyedLevel(obj) > 0) {
 			return false;
 		}
 	} else if (prop->type == PROPTYPE_CHR) {
 		struct chrdata *chr = prop->chr;
 
 		if (chr && chr->race == RACE_EYESPY) {
-			struct eyespy *eyespy = chr_to_eyespy(chr);
+			struct eyespy *eyespy = chrToEyespy(chr);
 
 			if (!eyespy || !eyespy->deployed) {
 				return false;
@@ -132,7 +204,7 @@ bool sight_is_reactive_to_prop(struct prop *prop)
 	return true;
 }
 
-s32 sight_find_free_target_index(s32 max)
+s32 sightFindFreeTargetIndex(s32 max)
 {
 	s32 i;
 
@@ -154,14 +226,14 @@ void func0f0d7364(void)
 	}
 }
 
-void sight_tick(bool sighton)
+void sightTick(bool sighton)
 {
 	struct trackedprop *trackedprop;
 	u8 newtracktype;
 	s32 i;
 	s32 index;
-	struct invaimsettings *gunsettings = gset_get_aim_settings(&g_Vars.currentplayer->hands[0].gset);
-	struct funcdef *func = gset_get_funcdef_by_weaponnum_funcnum(g_Vars.currentplayer->hands[0].gset.weaponnum,
+	struct invaimsettings *gunsettings = gsetGetAimSettings(&g_Vars.currentplayer->hands[0].gset);
+	struct weaponfunc *func = weaponGetFunctionById(g_Vars.currentplayer->hands[0].gset.weaponnum,
 			g_Vars.currentplayer->hands[0].gset.weaponfunc);
 
 	g_Vars.currentplayer->sighttimer240 += g_Vars.lvupdate240;
@@ -184,7 +256,7 @@ void sight_tick(bool sighton)
 
 	newtracktype = gunsettings->tracktype;
 
-	if (gset_has_function_flags(&g_Vars.currentplayer->hands[0].gset, FUNCFLAG_THREATDETECTOR)) {
+	if (gsetHasFunctionFlags(&g_Vars.currentplayer->hands[0].gset, FUNCFLAG_THREATDETECTOR)) {
 		newtracktype = SIGHTTRACKTYPE_THREATDETECTOR;
 	}
 
@@ -220,14 +292,14 @@ void sight_tick(bool sighton)
 	for (i = 0; i < ARRAYCOUNT(g_Vars.currentplayer->trackedprops); i++) {
 		trackedprop = &g_Vars.currentplayer->trackedprops[i];
 
-		if (trackedprop->prop && !sight_is_reactive_to_prop(trackedprop->prop)) {
+		if (trackedprop->prop && !sightIsReactiveToProp(trackedprop->prop)) {
 			trackedprop->prop = NULL;
 		}
 	}
 
 	trackedprop = &g_Vars.currentplayer->lookingatprop;
 
-	if (trackedprop->prop && !sight_is_reactive_to_prop(trackedprop->prop)) {
+	if (trackedprop->prop && !sightIsReactiveToProp(trackedprop->prop)) {
 		trackedprop->prop = NULL;
 	}
 
@@ -240,7 +312,7 @@ void sight_tick(bool sighton)
 				if (g_Vars.currentplayer->lookingatprop.prop != g_Vars.currentplayer->trackedprops[0].prop) {
 					struct sndstate *handle;
 
-					handle = snd_start_extra(&handle, false, AL_VOL_FULL, AL_PAN_CENTER, SFXNUM_0007, 1, 1, -1, true);
+					handle = snd00010718(NULL, 0, AL_VOL_FULL, AL_PAN_CENTER, SFX_0007, 1, 1, -1, true);
 
 					trackedprop = &g_Vars.currentplayer->trackedprops[0];
 
@@ -260,13 +332,13 @@ void sight_tick(bool sighton)
 	case SIGHTTRACKTYPE_ROCKETLAUNCHER:
 		// Conditionally copy lookingatprop to trackedprops[0], but only if that slot is empty
 		if (sighton && g_Vars.currentplayer->lookingatprop.prop
-				&& sight_can_target_prop(g_Vars.currentplayer->lookingatprop.prop, 1)) {
-			index = sight_find_free_target_index(1);
+				&& sightCanTargetProp(g_Vars.currentplayer->lookingatprop.prop, 1)) {
+			index = sightFindFreeTargetIndex(1);
 
 			if (index >= 0) {
 				struct sndstate *handle;
 
-				handle = snd_start_extra(&handle, false, AL_VOL_FULL, AL_PAN_CENTER, SFXNUM_0007, 1, 1, -1, true);
+				handle = snd00010718(NULL, 0, AL_VOL_FULL, AL_PAN_CENTER, SFX_0007, 1, 1, -1, 1);
 
 				trackedprop = &g_Vars.currentplayer->trackedprops[index];
 
@@ -283,13 +355,13 @@ void sight_tick(bool sighton)
 	case SIGHTTRACKTYPE_FOLLOWLOCKON:
 		// Conditionally copy lookingatprop to any trackedprops slot, but only if the slot is empty
 		if (sighton && g_Vars.currentplayer->lookingatprop.prop
-				&& sight_can_target_prop(g_Vars.currentplayer->lookingatprop.prop, 4)) {
-			index = sight_find_free_target_index(4);
+				&& sightCanTargetProp(g_Vars.currentplayer->lookingatprop.prop, 4)) {
+			index = sightFindFreeTargetIndex(4);
 
 			if (index >= 0) {
 				struct sndstate *handle;
 
-				handle = snd_start_extra(&handle, false, AL_VOL_FULL, AL_PAN_CENTER, SFXNUM_0007, 1, 1, -1, true);
+				handle = snd00010718(NULL, 0, AL_VOL_FULL, AL_PAN_CENTER, SFX_0007, 1, 1, -1, 1);
 
 				trackedprop = &g_Vars.currentplayer->trackedprops[index];
 
@@ -317,7 +389,7 @@ void sight_tick(bool sighton)
  * The arguments here are named for a left border,
  * but can be called for any of the four edges.
  */
-s32 sight_calculate_box_bound(s32 targetx, s32 viewleft, s32 timeelapsed, s32 timeend)
+s32 sightCalculateBoxBound(s32 targetx, s32 viewleft, s32 timeelapsed, s32 timeend)
 {
 	s32 value;
 
@@ -341,12 +413,12 @@ s32 sight_calculate_box_bound(s32 targetx, s32 viewleft, s32 timeelapsed, s32 ti
  * 6 to label it as "5"
  * 7 or above to treat textid as a proper language text ID.
  */
-Gfx *sight_draw_target_box(Gfx *gdl, struct trackedprop *trackedprop, s32 textid, s32 time)
+Gfx *sightDrawTargetBox(Gfx *gdl, struct trackedprop *trackedprop, s32 textid, s32 time)
 {
-	s32 viewleft = vi_get_view_left() / g_UiScaleX;
-	s32 viewtop = vi_get_view_top();
-	s32 viewwidth = vi_get_view_width() / g_UiScaleX;
-	s32 viewheight = vi_get_view_height();
+	s32 viewleft = viGetViewLeft() / g_ScaleX;
+	s32 viewtop = viGetViewTop();
+	s32 viewwidth = viGetViewWidth() / g_ScaleX;
+	s32 viewheight = viGetViewHeight();
 	s32 viewright = viewleft + viewwidth - 1;
 	s32 viewbottom = viewtop + viewheight - 1;
 	u32 colour;
@@ -360,15 +432,15 @@ Gfx *sight_draw_target_box(Gfx *gdl, struct trackedprop *trackedprop, s32 textid
 		time = TICKS(512);
 	}
 
-	boxleft = sight_calculate_box_bound(trackedprop->x1 / g_UiScaleX, viewleft, time, TICKS(80));
-	boxtop = sight_calculate_box_bound(trackedprop->y1, viewtop, time, TICKS(80));
-	boxright = sight_calculate_box_bound(trackedprop->x2 / g_UiScaleX, viewright, time, TICKS(80));
-	boxbottom = sight_calculate_box_bound(trackedprop->y2, viewbottom, time, TICKS(80));
+	boxleft = sightCalculateBoxBound(trackedprop->x1 / g_ScaleX, viewleft, time, TICKS(80));
+	boxtop = sightCalculateBoxBound(trackedprop->y1, viewtop, time, TICKS(80));
+	boxright = sightCalculateBoxBound(trackedprop->x2 / g_ScaleX, viewright, time, TICKS(80));
+	boxbottom = sightCalculateBoxBound(trackedprop->y2, viewbottom, time, TICKS(80));
 
 	if (trackedprop->prop) {
-		colour = sight_is_prop_friendly(trackedprop->prop) ? 0x000ff60 : 0xff000060;
+		colour = sightIsPropFriendly(trackedprop->prop) ? 0x000ff60 : 0xff000060;
 
-		gdl = text_begin_boxmode(gdl, colour);
+		gdl = textSetPrimColour(gdl, colour);
 
 		// Left
 		if (boxleft >= viewleft && boxleft <= viewright && boxtop <= viewbottom && boxbottom >= viewtop) {
@@ -402,7 +474,7 @@ Gfx *sight_draw_target_box(Gfx *gdl, struct trackedprop *trackedprop, s32 textid
 					(boxright < viewright ? boxright : viewright), boxbottom);
 		}
 
-		gdl = text_end_boxmode(gdl);
+		gdl = text0f153838(gdl);
 
 		if (textid != 0 && textonscreen) {
 			s32 x = boxright + 3;
@@ -414,10 +486,14 @@ Gfx *sight_draw_target_box(Gfx *gdl, struct trackedprop *trackedprop, s32 textid
 				// textid 1 writes '0'
 				label[0] = textid + 0x2f;
 
-				gdl = text_render_v1(gdl, &x, &y, label, g_CharsNumeric, g_FontNumeric, 0x00ff00a0, 0x000000a0, vi_get_width(), vi_get_height(), 0, 0);
+				gdl = textRender(gdl, &x, &y, label, g_CharsNumeric, g_FontNumeric, 0x00ff00a0, 0x000000a0, viGetWidth(), viGetHeight(), 0, 0);
 			} else {
-				char *text = lang_get(textid);
-				gdl = text_render_vx(gdl, &x, &y, text, g_CharsHandelGothicXs, g_FontHandelGothicXs, 0x00ff00a0, 0x000000a0, vi_get_width(), vi_get_height(), 0, 0);
+				char *text = langGet(textid);
+#if VERSION >= VERSION_JPN_FINAL
+				gdl = func0f1574d0jf(gdl, &x, &y, text, g_CharsHandelGothicXs, g_FontHandelGothicXs, 0x00ff00a0, 0x000000a0, viGetWidth(), viGetHeight(), 0, 0);
+#else
+				gdl = textRender(gdl, &x, &y, text, g_CharsHandelGothicXs, g_FontHandelGothicXs, 0x00ff00a0, 0x000000a0, viGetWidth(), viGetHeight(), 0, 0);
+#endif
 			}
 		}
 	}
@@ -425,16 +501,22 @@ Gfx *sight_draw_target_box(Gfx *gdl, struct trackedprop *trackedprop, s32 textid
 	return gdl;
 }
 
-Gfx *sight_draw_aimer(Gfx *gdl, s32 x, s32 y, s32 radius, s32 cornergap, u32 colour)
+Gfx *sightDrawAimer(Gfx *gdl, s32 x, s32 y, s32 radius, s32 cornergap, u32 colour)
 {
-	s32 viewleft = vi_get_view_left() / g_UiScaleX;
-	s32 viewtop = vi_get_view_top();
-	s32 viewwidth = vi_get_view_width() / g_UiScaleX;
-	s32 viewheight = vi_get_view_height();
+	s32 viewleft = viGetViewLeft() / g_ScaleX;
+	s32 viewtop = viGetViewTop();
+	s32 viewwidth = viGetViewWidth() / g_ScaleX;
+	s32 viewheight = viGetViewHeight();
 	s32 viewright = viewleft + viewwidth - 1;
 	s32 viewbottom = viewtop + viewheight - 1;
 
-	gdl = text_begin_boxmode(gdl, 0x00ff0028);
+	gdl = textSetPrimColour(gdl, SIGHT_COLOUR);
+
+#ifndef PLATFORM_N64
+	x = sightGetAdjustedX(x);
+	gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+	gDPSetSubpixelOffsetEXT(gdl++, -2, -2);
+#endif
 
 	// Draw the lines that span most of the viewport
 	if (PLAYERCOUNT() == 1) {
@@ -449,8 +531,8 @@ Gfx *sight_draw_aimer(Gfx *gdl, s32 x, s32 y, s32 radius, s32 cornergap, u32 col
 		gDPHudRectangle(gdl++, x, y + radius - 2, x, viewbottom);
 	}
 
-	gdl = text_end_boxmode(gdl);
-	gdl = text_begin_boxmode(gdl, colour);
+	gdl = text0f153838(gdl);
+	gdl = textSetPrimColour(gdl, colour);
 
 	// Draw the box
 	gDPHudRectangle(gdl++, x - radius, y - radius, x - radius, y + radius);
@@ -468,7 +550,12 @@ Gfx *sight_draw_aimer(Gfx *gdl, s32 x, s32 y, s32 radius, s32 cornergap, u32 col
 	gDPHudRectangle(gdl++, x - radius, y + radius, x - cornergap, y + radius);
 	gDPHudRectangle(gdl++, x + cornergap, y + radius, x + radius, y + radius);
 
-	gdl = text_end_boxmode(gdl);
+#ifndef PLATFORM_N64
+	gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+	gDPSetSubpixelOffsetEXT(gdl++, 0, 0);
+#endif
+
+	gdl = text0f153838(gdl);
 
 	return gdl;
 }
@@ -488,7 +575,7 @@ Gfx *sight_draw_aimer(Gfx *gdl, s32 x, s32 y, s32 radius, s32 cornergap, u32 col
  * checks. It's likely that this feature was just a concept and was dropped
  * pretty early.
  */
-Gfx *sight_draw_delayed_aimer(Gfx *gdl, s32 x, s32 y, s32 radius, s32 cornergap, u32 colour)
+Gfx *sightDrawDelayedAimer(Gfx *gdl, s32 x, s32 y, s32 radius, s32 cornergap, u32 colour)
 {
 	s32 boxx;
 	s32 boxy;
@@ -501,6 +588,11 @@ Gfx *sight_draw_delayed_aimer(Gfx *gdl, s32 x, s32 y, s32 radius, s32 cornergap,
 	static f32 ypos = 120;
 	static f32 xspeed = 0;
 	static f32 yspeed = 0;
+
+#ifndef PLATFORM_N64
+	x = sightGetAdjustedX(x);
+	gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+#endif
 
 	for (i = 0; i < g_Vars.lvupdate60; i++) {
 		dist = x - xpos;
@@ -580,16 +672,16 @@ Gfx *sight_draw_delayed_aimer(Gfx *gdl, s32 x, s32 y, s32 radius, s32 cornergap,
 	boxx = xpos;
 	boxy = ypos;
 
-	gdl = text_begin_boxmode(gdl, 0x00ff0028);
+	gdl = textSetPrimColour(gdl, SIGHT_COLOUR);
 
 	// Fill a 3x3 box at the live crosshair
 	gDPHudRectangle(gdl++, x - 1, y - 1, x + 1, y - 1);
 	gDPHudRectangle(gdl++, x - 1, y + 0, x + 1, y + 0);
 	gDPHudRectangle(gdl++, x - 1, y + 1, x + 1, y + 1);
 
-	gdl = text_end_boxmode(gdl);
+	gdl = text0f153838(gdl);
 
-	gdl = text_begin_boxmode(gdl, colour);
+	gdl = textSetPrimColour(gdl, colour);
 
 	// Draw the box
 	gDPHudRectangle(gdl++, boxx - radius, boxy - radius, boxx - radius, boxy + radius);
@@ -607,25 +699,29 @@ Gfx *sight_draw_delayed_aimer(Gfx *gdl, s32 x, s32 y, s32 radius, s32 cornergap,
 	gDPHudRectangle(gdl++, boxx - radius, boxy + radius, boxx - cornergap, boxy + radius);
 	gDPHudRectangle(gdl++, boxx + cornergap, boxy + radius, boxx + radius, boxy + radius);
 
-	gdl = text_end_boxmode(gdl);
+	gdl = text0f153838(gdl);
+
+#ifndef PLATFORM_N64
+	gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+#endif
 
 	return gdl;
 }
 
-Gfx *sight_draw_default(Gfx *gdl, bool sighton)
+Gfx *sightDrawDefault(Gfx *gdl, bool sighton, f32 crossx, f32 crossy)
 {
 	s32 radius;
 	s32 cornergap;
 	u32 colour;
-	s32 x = (s32) g_Vars.currentplayer->crosspos[0] / g_UiScaleX;
-	s32 y = g_Vars.currentplayer->crosspos[1];
+	s32 x = (s32) crossx / g_ScaleX;
+	s32 y = crossy;
 	struct trackedprop *trackedprop;
 	s32 i;
 
 	static s32 sight = 0;
 	static s32 identifytimer = 0;
 
-	gdl = text_begin(gdl);
+	gdl = text0f153628(gdl);
 
 	if (1);
 
@@ -634,33 +730,33 @@ Gfx *sight_draw_default(Gfx *gdl, bool sighton)
 		// SIGHTTRACKTYPE_NONE is used for unarmed, but this appears to be
 		// unreachable. The aimer is never drawn when unarmed.
 		if (sighton) {
-			colour = 0x00ff0028;
+			colour = SIGHT_COLOUR;
 			radius = 8;
 			cornergap = 5;
-			gdl = sight_draw_aimer(gdl, x, y, radius, cornergap, colour);
+			gdl = sightDrawAimer(gdl, x, y, radius, cornergap, colour);
 		}
 		break;
 	case SIGHTTRACKTYPE_DEFAULT:
 		// For most guns, render the aimer if holding R
 		if (sighton) {
 			if (g_Vars.currentplayer->lookingatprop.prop == NULL) {
-				colour = 0x00ff0028;
+				colour = SIGHT_COLOUR;
 				radius = 8;
 				cornergap = 5;
 			} else {
-				colour = sight_is_prop_friendly(NULL) ? 0x0000ff60 : 0xff000060;
+				colour = sightIsPropFriendly(NULL) ? 0x0000ff60 : 0xff000060;
 				radius = 6;
 				cornergap = 3;
 			}
 
-			main_override_variable("sight", &sight);
+			mainOverrideVariable("sight", &sight);
 
 			switch (sight) {
 			case 0:
-				gdl = sight_draw_aimer(gdl, x, y, radius, cornergap, colour);
+				gdl = sightDrawAimer(gdl, x, y, radius, cornergap, colour);
 				break;
 			case 1:
-				gdl = sight_draw_delayed_aimer(gdl, x, y, radius * 2, cornergap * 2, colour);
+				gdl = sightDrawDelayedAimer(gdl, x, y, radius * 2, cornergap * 2, colour);
 				break;
 			}
 		}
@@ -673,11 +769,11 @@ Gfx *sight_draw_default(Gfx *gdl, bool sighton)
 			s32 texty;
 
 			if (g_Vars.currentplayer->lookingatprop.prop == NULL) {
-				colour = 0x00ff0028;
+				colour = SIGHT_COLOUR;
 				radius = 8;
 				cornergap = 5;
 			} else {
-				colour = sight_is_prop_friendly(NULL) ? 0x0000ff60 : 0xff000060;
+				colour = sightIsPropFriendly(NULL) ? 0x0000ff60 : 0xff000060;
 				radius = 6;
 				cornergap = 3;
 			}
@@ -689,15 +785,21 @@ Gfx *sight_draw_default(Gfx *gdl, bool sighton)
 
 			if (identifytimer & 0x80) {
 				// "Identify"
-				gdl = text_render_vx(gdl, &textx, &texty, lang_get(L_MISC_439),
+#if VERSION == VERSION_JPN_FINAL
+				gdl = func0f1574d0jf(gdl, &textx, &texty, langGet(L_MISC_439),
 						g_CharsHandelGothicXs, g_FontHandelGothicXs, 0x00ff00a0, 0x000000a0,
-						vi_get_width(), vi_get_height(), 0, 0);
+						viGetWidth(), viGetHeight(), 0, 0);
+#else
+				gdl = textRender(gdl, &textx, &texty, langGet(L_MISC_439),
+						g_CharsHandelGothicXs, g_FontHandelGothicXs, 0x00ff00a0, 0x000000a0,
+						viGetWidth(), viGetHeight(), 0, 0);
+#endif
 			}
 
-			gdl = sight_draw_aimer(gdl, x, y, radius, cornergap, colour);
+			gdl = sightDrawAimer(gdl, x, y, radius, cornergap, colour);
 
 			if (g_Vars.currentplayer->lookingatprop.prop) {
-				gdl = sight_draw_target_box(gdl, &g_Vars.currentplayer->lookingatprop, 1, g_Vars.currentplayer->targetset[0]);
+				gdl = sightDrawTargetBox(gdl, &g_Vars.currentplayer->lookingatprop, 1, g_Vars.currentplayer->targetset[0]);
 			}
 		}
 		break;
@@ -706,22 +808,22 @@ Gfx *sight_draw_default(Gfx *gdl, bool sighton)
 			trackedprop = &g_Vars.currentplayer->trackedprops[i];
 
 			if (trackedprop->prop) {
-				gdl = sight_draw_target_box(gdl, trackedprop, 0, g_Vars.currentplayer->targetset[i]);
+				gdl = sightDrawTargetBox(gdl, trackedprop, 0, g_Vars.currentplayer->targetset[i]);
 			}
 		}
 
 		if (sighton) {
 			if (g_Vars.currentplayer->lookingatprop.prop == NULL) {
-				colour = 0x00ff0028;
+				colour = SIGHT_COLOUR;
 				radius = 8;
 				cornergap = 5;
 			} else {
-				colour = sight_is_prop_friendly(NULL) ? 0x0000ff60 : 0xff000060;
+				colour = sightIsPropFriendly(NULL) ? 0x0000ff60 : 0xff000060;
 				radius = 6;
 				cornergap = 3;
 			}
 
-			gdl = sight_draw_aimer(gdl, x, y, radius, cornergap, colour);
+			gdl = sightDrawAimer(gdl, x, y, radius, cornergap, colour);
 		}
 		break;
 	case SIGHTTRACKTYPE_FOLLOWLOCKON:
@@ -740,7 +842,7 @@ Gfx *sight_draw_default(Gfx *gdl, bool sighton)
 					// in the cmdfollowprops list at this point, so it's
 					// probably OK.
 					if (obj && obj->type == OBJTYPE_AUTOGUN
-							&& (obj->flags2 & (OBJFLAG2_AUTOGUN_MALFUNCTIONING | OBJFLAG2_AUTOGUN_WINDMILL)) == 0) {
+							&& (obj->flags2 & (OBJFLAG2_AICANNOTUSE | OBJFLAG2_AUTOGUN_MALFUNCTIONING1)) == 0) {
 						textid = L_GUN_215; // "AUTOGUN"
 					}
 
@@ -773,46 +875,51 @@ Gfx *sight_draw_default(Gfx *gdl, bool sighton)
 						}
 					}
 
-					gdl = sight_draw_target_box(gdl, trackedprop, textid, g_Vars.currentplayer->targetset[i]);
+					gdl = sightDrawTargetBox(gdl, trackedprop, textid, g_Vars.currentplayer->targetset[i]);
 				} else {
 					// CMP150-tracked prop
-					gdl = sight_draw_target_box(gdl, trackedprop, i + 2, g_Vars.currentplayer->targetset[i]);
+					gdl = sightDrawTargetBox(gdl, trackedprop, i + 2, g_Vars.currentplayer->targetset[i]);
 				}
 			}
 		}
 
 		if (sighton) {
 			if (g_Vars.currentplayer->lookingatprop.prop == NULL) {
-				colour = 0x00ff0028;
+				colour = SIGHT_COLOUR;
 				radius = 8;
 				cornergap = 5;
 			} else {
-				colour = sight_is_prop_friendly(NULL) ? 0x0000ff60 : 0xff000060;
+				colour = sightIsPropFriendly(NULL) ? 0x0000ff60 : 0xff000060;
 				radius = 6;
 				cornergap = 3;
 			}
 
-			gdl = sight_draw_aimer(gdl, x, y, radius, cornergap, colour);
+			gdl = sightDrawAimer(gdl, x, y, radius, cornergap, colour);
 		}
 		break;
 	}
 
-	gdl = text_end(gdl);
+	gdl = text0f153780(gdl);
 
 	return gdl;
 }
 
-Gfx *sight_draw_classic(Gfx *gdl, bool sighton)
+Gfx *sightDrawClassic(Gfx *gdl, bool sighton, f32 crossx, f32 crossy)
 {
-	struct textureconfig *tconfig = &g_TexGeCrosshairConfigs[TEX_GECROSSHAIR_00];
+	struct textureconfig *tconfig = &g_TexGeCrosshairConfigs[0];
 	f32 spc4[2];
 	f32 spbc[2];
-	s32 x = g_Vars.currentplayer->crosspos[0];
-	s32 y = g_Vars.currentplayer->crosspos[1];
+	s32 x = crossx;
+	s32 y = crossy + 1; // Plus one, to align with the laser sight.
 	s32 x1;
 	s32 x2;
 	s32 y1;
 	s32 y2;
+#ifdef PLATFORM_N64
+	const s32 halfw = (tconfig->width >> 1);
+#else
+	const s32 halfw = roundf((f32)(tconfig->width >> 1) * (SCREEN_ASPECT / videoGetAspect()));
+#endif
 
 	if (!sighton) {
 		return gdl;
@@ -831,9 +938,9 @@ Gfx *sight_draw_classic(Gfx *gdl, bool sighton)
 	gDPSetCombineMode(gdl++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
 	gDPSetPrimColor(gdl++, 0, 0, 0x00, 0x00, 0x00, 0x00);
 
-	x1 = x - (tconfig->width >> 1);
+	x1 = x - halfw;
 	y1 = y - (tconfig->height >> 1);
-	x2 = x + (tconfig->width >> 1);
+	x2 = x + halfw;
 	y2 = y + (tconfig->height >> 1);
 
 	gDPFillRectangle(gdl++, x1, y1, x2, y2);
@@ -841,10 +948,10 @@ Gfx *sight_draw_classic(Gfx *gdl, bool sighton)
 	spc4[0] = x;
 	spc4[1] = y;
 
-	spbc[0] = (tconfig->width >> 1) * (f32)g_UiScaleX;
+	spbc[0] = halfw * (f32)g_ScaleX;
 	spbc[1] = tconfig->height >> 1;
 
-	tex_select(&gdl, tconfig, 2, 0, 0, 1, NULL);
+	texSelect(&gdl, tconfig, 2, 0, 0, 1, NULL);
 
 	func0f0b278c(&gdl, spc4, spbc, tconfig->width, tconfig->height,
 			0, 0, 1, 0xff, 0xff, 0xff, 0x7f, tconfig->level > 0, 0);
@@ -861,9 +968,9 @@ Gfx *sight_draw_classic(Gfx *gdl, bool sighton)
 	return gdl;
 }
 
-Gfx *sight_draw_type2(Gfx *gdl, bool sighton)
+Gfx *sightDrawType2(Gfx *gdl, bool sighton, f32 crossx, f32 crossy)
 {
-	return sight_draw_classic(gdl, sighton);
+	return sightDrawClassic(gdl, sighton, crossx, crossy);
 }
 
 #define COLOUR_LIGHTRED 0xff555564
@@ -876,11 +983,11 @@ Gfx *sight_draw_type2(Gfx *gdl, bool sighton)
 #define DIR_LEFT  2
 #define DIR_RIGHT 3
 
-Gfx *sight_draw_skedar_triangle(Gfx *gdl, s32 x, s32 y, s32 dir, u32 colour)
+Gfx *sightDrawSkedarTriangle(Gfx *gdl, s32 x, s32 y, s32 dir, u32 colour)
 {
 	s32 points[6];
-	Vtx *vertices = gfx_allocate_vertices(3);
-	Col *colours = gfx_allocate_colours(2);
+	Vtx *vertices = gfxAllocateVertices(3);
+	Col *colours = gfxAllocateColours(2);
 
 	switch (dir) {
 	case DIR_UP:
@@ -929,18 +1036,26 @@ Gfx *sight_draw_skedar_triangle(Gfx *gdl, s32 x, s32 y, s32 dir, u32 colour)
 	vertices[2].y = points[5] * 10;
 	vertices[2].z = -10;
 
+#ifndef PLATFORM_N64
+	// Center-align Skedar tris
+	for (int i = 0; i < 3; ++i) {
+		vertices[i].x -= 2;
+		vertices[i].y += 2;
+	}
+#endif
+
 	// @bug: This also needs to check for COLOUR_LIGHTRED because the caller can
 	// use two shades of red. The second colour is used when zeroing the sight
 	// in on a new target. Because of this bug, targeting an ally with the
 	// Mauler or Reaper will show a red crosshair while it's still zeroing.
-	if (colour == COLOUR_DARKRED && sight_is_prop_friendly(NULL)) {
+	if (colour == COLOUR_DARKRED && sightIsPropFriendly(NULL)) {
 		colour = COLOUR_DARKBLUE;
 	}
 
 #define RGBA(r, g, b, a) (((r) & 0xff) << 24 | ((g) & 0xff) << 16 | ((b) & 0xff) << 8 | ((a) & 0xff))
 
-	colours[0].word = colour;
-	colours[1].word = RGBA((colour >> 24) & 0xff, (colour >> 16) & 0xff, (colour >> 8) & 0xff, 0x08);
+	colours[0].word = PD_BE32(colour);
+	colours[1].word = PD_BE32(RGBA((colour >> 24) & 0xff, (colour >> 16) & 0xff, (colour >> 8) & 0xff, 0x08));
 
 	vertices[0].colour = 0;
 	vertices[1].colour = 4;
@@ -953,20 +1068,20 @@ Gfx *sight_draw_skedar_triangle(Gfx *gdl, s32 x, s32 y, s32 dir, u32 colour)
 	return gdl;
 }
 
-Gfx *sight_draw_skedar(Gfx *gdl, bool sighton)
+Gfx *sightDrawSkedar(Gfx *gdl, bool sighton, f32 crossx, f32 crossy)
 {
-	s32 viewleft = vi_get_view_left() / g_UiScaleX;
-	s32 viewtop = vi_get_view_top();
-	s32 viewwidth = vi_get_view_width() / g_UiScaleX;
-	s32 viewheight = vi_get_view_height();
+	s32 viewleft = viGetViewLeft() / g_ScaleX;
+	s32 viewtop = viGetViewTop();
+	s32 viewwidth = viGetViewWidth() / g_ScaleX;
+	s32 viewheight = viGetViewHeight();
 	s32 viewright = viewleft + viewwidth - 1;
 	s32 viewbottom = viewtop + viewheight - 1;
 	s32 paddingy = viewheight / 4;
 	s32 paddingx = viewwidth / 4;
-	s32 x = (s32) (g_Vars.currentplayer->crosspos[0] / g_UiScaleX);
+	s32 x = (s32) (crossx / g_ScaleX);
 	s32 trix1;
 	s32 trix2;
-	s32 y = g_Vars.currentplayer->crosspos[1];
+	s32 y = crossy;
 	s32 triy2;
 	s32 triy1;
 	u32 colour;
@@ -982,7 +1097,12 @@ Gfx *sight_draw_skedar(Gfx *gdl, bool sighton)
 		g_Vars.currentplayer->sighttimer240 = 0;
 	}
 
-	gdl = ortho_begin(gdl);
+#ifndef PLATFORM_N64
+	x = sightGetAdjustedX(x);
+	gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+#endif
+
+	gdl = func0f0d479c(gdl);
 
 	gSPClearGeometryMode(gdl++, G_CULL_BOTH);
 	gSPSetGeometryMode(gdl++, G_SHADE | G_SHADING_SMOOTH);
@@ -1033,7 +1153,7 @@ Gfx *sight_draw_skedar(Gfx *gdl, bool sighton)
 		}
 	}
 
-	gdl = sight_draw_skedar_triangle(gdl, trix1, triy1, dir, colour);
+	gdl = sightDrawSkedarTriangle(gdl, trix1, triy1, dir, colour);
 
 	// Outer bottom triangle
 	if (!hasprop) {
@@ -1059,7 +1179,7 @@ Gfx *sight_draw_skedar(Gfx *gdl, bool sighton)
 		}
 	}
 
-	gdl = sight_draw_skedar_triangle(gdl, trix1, triy1, dir, colour);
+	gdl = sightDrawSkedarTriangle(gdl, trix1, triy1, dir, colour);
 
 	// Outer right triangle
 	if (!hasprop) {
@@ -1094,7 +1214,7 @@ Gfx *sight_draw_skedar(Gfx *gdl, bool sighton)
 		}
 	}
 
-	gdl = sight_draw_skedar_triangle(gdl, trix2, triy2, dir, colour);
+	gdl = sightDrawSkedarTriangle(gdl, trix2, triy2, dir, colour);
 
 	// Outer left triangle
 	if (!hasprop) {
@@ -1120,29 +1240,33 @@ Gfx *sight_draw_skedar(Gfx *gdl, bool sighton)
 		}
 	}
 
-	gdl = sight_draw_skedar_triangle(gdl, trix2, triy2, dir, colour);
+	gdl = sightDrawSkedarTriangle(gdl, trix2, triy2, dir, colour);
 
 	// Inner triangles
 	if (!hasprop || g_Vars.currentplayer->sighttimer240 < TICKS(48)) {
 		colour = hasprop ? COLOUR_LIGHTRED : COLOUR_GREEN;
 
-		gdl = sight_draw_skedar_triangle(gdl, x + 0, y - 2, DIR_DOWN, colour);
-		gdl = sight_draw_skedar_triangle(gdl, x + 0, y + 2, DIR_UP, colour);
-		gdl = sight_draw_skedar_triangle(gdl, x - 2, y + 0, DIR_RIGHT, colour);
-		gdl = sight_draw_skedar_triangle(gdl, x + 2, y + 0, DIR_LEFT, colour);
+		gdl = sightDrawSkedarTriangle(gdl, x + 0, y - 2, DIR_DOWN, colour);
+		gdl = sightDrawSkedarTriangle(gdl, x + 0, y + 2, DIR_UP, colour);
+		gdl = sightDrawSkedarTriangle(gdl, x - 2, y + 0, DIR_RIGHT, colour);
+		gdl = sightDrawSkedarTriangle(gdl, x + 2, y + 0, DIR_LEFT, colour);
 	}
 
-	gdl = ortho_end(gdl);
+	gdl = func0f0d49c8(gdl);
+
+#ifndef PLATFORM_N64
+	gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+#endif
 
 	return gdl;
 }
 
-Gfx *sight_draw_zoom(Gfx *gdl, bool sighton)
+Gfx *sightDrawZoom(Gfx *gdl, bool sighton, f32 crossx, f32 crossy)
 {
-	s32 viewleft = vi_get_view_left() / g_UiScaleX;
-	s32 viewtop = vi_get_view_top();
-	s32 viewhalfwidth = (vi_get_view_width() / g_UiScaleX) >> 1;
-	s32 viewhalfheight = vi_get_view_height() >> 1;
+	s32 viewleft = viGetViewLeft() / g_ScaleX;
+	s32 viewtop = viGetViewTop();
+	s32 viewhalfwidth = (viGetViewWidth() / g_ScaleX) >> 1;
+	s32 viewhalfheight = viGetViewHeight() >> 1;
 	s32 viewright = viewleft + viewhalfwidth * 2 - 1;
 	s32 viewbottom = viewtop + viewhalfheight * 2 - 1;
 	f32 maxfovy;
@@ -1173,10 +1297,10 @@ Gfx *sight_draw_zoom(Gfx *gdl, bool sighton)
 	cornerwidth = (viewhalfwidth >> 1) - 60;
 	cornerheight = (viewhalfheight >> 1) - 22;
 
-	showzoomrange = options_get_show_zoom_range(g_Vars.currentplayerstats->mpindex)
-		&& options_get_sight_on_screen(g_Vars.currentplayerstats->mpindex);
+	showzoomrange = optionsGetShowZoomRange(g_Vars.currentplayerstats->mpindex)
+		&& optionsGetSightOnScreen(g_Vars.currentplayerstats->mpindex);
 
-	maxfovy = gset_get_gun_zoom_fov();
+	maxfovy = currentPlayerGetGunZoomFov();
 	zoominfovy = g_Vars.currentplayer->zoominfovy;
 
 	if (maxfovy == 0.0f || maxfovy == 60.0f) {
@@ -1188,8 +1312,8 @@ Gfx *sight_draw_zoom(Gfx *gdl, bool sighton)
 	}
 
 	if (showzoomrange) {
-		gdl = text_begin(gdl);
-		gdl = text_begin_boxmode(gdl, 0x00ff0028);
+		gdl = text0f153628(gdl);
+		gdl = textSetPrimColour(gdl, SIGHT_COLOUR);
 
 		if (frac < 0.2f) {
 			cornerwidth *= 0.2f;
@@ -1217,6 +1341,16 @@ Gfx *sight_draw_zoom(Gfx *gdl, bool sighton)
 		marginbottom = viewhalfheight - availablebelow * frac;
 		margintop = viewhalfheight - availableabove * frac;
 
+#ifndef PLATFORM_N64
+		// Center-align the zoom range
+		if (frac != 1.0f) {
+			viewleft += 1;
+			viewright += 1;
+			viewbottom += 1;
+			viewtop += 1;
+		}
+#endif
+
 #define BOXLEFT   (viewleft + marginleft)
 #define BOXRIGHT  (viewright - marginright)
 #define BOXBOTTOM (viewbottom - marginbottom)
@@ -1229,6 +1363,11 @@ Gfx *sight_draw_zoom(Gfx *gdl, bool sighton)
 		if (cornerheight > BOXBOTTOM - BOXTOP) {
 			cornerheight = BOXBOTTOM - BOXTOP;
 		}
+
+#ifndef PLATFORM_N64
+		gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+		gDPSetSubpixelOffsetEXT(gdl++, -2, -2);
+#endif
 
 		// Top left
 		gDPHudRectangle(gdl++, BOXLEFT + 1, BOXTOP, BOXLEFT + cornerwidth - 1, BOXTOP);
@@ -1266,25 +1405,31 @@ Gfx *sight_draw_zoom(Gfx *gdl, bool sighton)
 		gDPHudRectangle(gdl++, BOXRIGHT - cornerwidth, BOXBOTTOM, BOXRIGHT, BOXBOTTOM);
 		gDPHudRectangle(gdl++, BOXRIGHT, BOXBOTTOM - cornerheight, BOXRIGHT, BOXBOTTOM);
 
-		gdl = text_end_boxmode(gdl);
-		gdl = text_end(gdl);
+
+#ifndef PLATFORM_N64
+		gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+		gDPSetSubpixelOffsetEXT(gdl++, 0, 0);
+#endif
+
+		gdl = text0f153838(gdl);
+		gdl = text0f153780(gdl);
 	}
 
-	gdl = sight_draw_default(gdl, sighton);
+	gdl = sightDrawDefault(gdl, sighton, crossx, crossy);
 
 	return gdl;
 }
 
-Gfx *sight_draw_maian(Gfx *gdl, bool sighton)
+Gfx *sightDrawMaian(Gfx *gdl, bool sighton, f32 crossx, f32 crossy)
 {
-	s32 viewleft = vi_get_view_left() / g_UiScaleX;
-	s32 viewtop = vi_get_view_top();
-	s32 viewwidth = vi_get_view_width() / g_UiScaleX;
-	s32 viewheight = vi_get_view_height();
+	s32 viewleft = viGetViewLeft() / g_ScaleX;
+	s32 viewtop = viGetViewTop();
+	s32 viewwidth = viGetViewWidth() / g_ScaleX;
+	s32 viewheight = viGetViewHeight();
 	s32 viewright = viewleft + viewwidth - 1;
 	s32 viewbottom = viewtop + viewheight - 1;
-	s32 x = (s32)g_Vars.currentplayer->crosspos[0] / g_UiScaleX;
-	s32 y = g_Vars.currentplayer->crosspos[1];
+	s32 x = (s32)crossx / g_ScaleX;
+	s32 y = crossy;
 	Vtx *vertices;
 	Col *colours;
 	s32 inner[4];
@@ -1295,13 +1440,19 @@ Gfx *sight_draw_maian(Gfx *gdl, bool sighton)
 		return gdl;
 	}
 
-	if (sight_is_prop_friendly(NULL)) {
+	if (sightIsPropFriendly(NULL)) {
 		colour = 0x0000ff60;
 	}
 
-	vertices = gfx_allocate_vertices(8);
-	colours = gfx_allocate_colours(2);
-	gdl = ortho_begin(gdl);
+#ifndef PLATFORM_N64
+	x = sightGetAdjustedX(x);
+	gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+	gDPSetSubpixelOffsetEXT(gdl++, -2, -2);
+#endif
+
+	vertices = gfxAllocateVertices(8);
+	colours = gfxAllocateColours(2);
+	gdl = func0f0d479c(gdl);
 
 	gSPClearGeometryMode(gdl++, G_CULL_BOTH);
 	gSPSetGeometryMode(gdl++, G_SHADE | G_SHADING_SMOOTH);
@@ -1341,8 +1492,16 @@ Gfx *sight_draw_maian(Gfx *gdl, bool sighton)
 	vertices[7].y = inner[2] * 10;
 	vertices[7].z = -10;
 
-	colours[0].word = 0x00ff000f;
-	colours[1].word = hasprop ? colour : 0x00ff0044;
+#ifndef PLATFORM_N64
+	// Center-align Maian tris
+	for (int i = 0; i < 8; ++i) {
+		vertices[i].x -= 2;
+		vertices[i].y += 2;
+	}
+#endif
+
+	colours[0].word = PD_BE32(0x00ff000f);
+	colours[1].word = PD_BE32(hasprop ? colour : 0x00ff0044);
 
 	vertices[0].colour = 0;
 	vertices[1].colour = 0;
@@ -1358,8 +1517,8 @@ Gfx *sight_draw_maian(Gfx *gdl, bool sighton)
 	gSPVertex(gdl++, vertices, 8, 0);
 	gSPTri4(gdl++, 0, 4, 5, 5, 3, 6, 7, 6, 1, 4, 7, 2);
 
-	gdl = ortho_end(gdl);
-	gdl = text_begin_boxmode(gdl, 0x00ff0028);
+	gdl = func0f0d49c8(gdl);
+	gdl = textSetPrimColour(gdl, SIGHT_COLOUR);
 
 	// Draw border over inner points
 	gDPHudRectangle(gdl++, x - 4, y - 4, x - 4, y + 4); // left
@@ -1367,39 +1526,59 @@ Gfx *sight_draw_maian(Gfx *gdl, bool sighton)
 	gDPHudRectangle(gdl++, x - 4, y - 4, x + 4, y - 4); // top
 	gDPHudRectangle(gdl++, x - 4, y + 4, x + 4, y + 4); // bottom
 
-	gdl = text_end_boxmode(gdl);
+	gdl = text0f153838(gdl);
+
+#ifndef PLATFORM_N64
+	gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+	gDPSetSubpixelOffsetEXT(gdl++, 0, 0);
+#endif
 
 	return gdl;
 }
 
-Gfx *sight_draw_target(Gfx *gdl)
+Gfx *sightDrawTarget(Gfx *gdl, f32 crossx, f32 crossy)
 {
-	s32 x = (s32)g_Vars.currentplayer->crosspos[0] / g_UiScaleX;
-	s32 y = g_Vars.currentplayer->crosspos[1];
+	s32 x = sightGetAdjustedX((s32)crossx / g_ScaleX);
+	s32 y = crossy;
 
 	static u32 var80070f9c = 0x00ff00ff;
 	static u32 var80070fa0 = 0x00ff0011;
 
-	main_override_variable("sout", &var80070f9c);
-	main_override_variable("sin", &var80070fa0);
+	mainOverrideVariable("sout", &var80070f9c);
+	mainOverrideVariable("sin", &var80070fa0);
 
-	gdl = text_begin_boxmode(gdl, 0x00ff0028);
+	gdl = textSetPrimColour(gdl, SIGHT_COLOUR);
 
-	gDPHudRectangle(gdl++, x + 2, y + 0, x + 6, y + 0);
-	gDPHudRectangle(gdl++, x + 2, y + 0, x + 4, y + 0);
-	gDPHudRectangle(gdl++, x - 6, y + 0, x - 2, y + 0);
-	gDPHudRectangle(gdl++, x - 4, y + 0, x - 2, y + 0);
-	gDPHudRectangle(gdl++, x + 0, y + 2, x + 0, y + 6);
-	gDPHudRectangle(gdl++, x + 0, y + 2, x + 0, y + 4);
-	gDPHudRectangle(gdl++, x + 0, y - 6, x + 0, y - 2);
-	gDPHudRectangle(gdl++, x + 0, y - 4, x + 0, y - 2);
+#ifndef PLATFORM_N64
+	gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+	gDPSetSubpixelOffsetEXT(gdl++, -2, -2);
+	if (SIGHT_SCALE == 0) {
+		// Draw single rectangle to preserve intended opacity
+		gDPHudRectangle(gdl++, x, y, x, y);
+	} else
+#endif
+	{
+		gDPHudRectangle(gdl++, x + 1 * SIGHT_SCALE, y + 0 * SIGHT_SCALE, x + 3 * SIGHT_SCALE, y + 0 * SIGHT_SCALE);
+		gDPHudRectangle(gdl++, x + 1 * SIGHT_SCALE, y + 0 * SIGHT_SCALE, x + 2 * SIGHT_SCALE, y + 0 * SIGHT_SCALE);
+		gDPHudRectangle(gdl++, x - 3 * SIGHT_SCALE, y + 0 * SIGHT_SCALE, x - 1 * SIGHT_SCALE, y + 0 * SIGHT_SCALE);
+		gDPHudRectangle(gdl++, x - 2 * SIGHT_SCALE, y + 0 * SIGHT_SCALE, x - 1 * SIGHT_SCALE, y + 0 * SIGHT_SCALE);
+		gDPHudRectangle(gdl++, x + 0 * SIGHT_SCALE, y + 1 * SIGHT_SCALE, x + 0 * SIGHT_SCALE, y + 3 * SIGHT_SCALE);
+		gDPHudRectangle(gdl++, x + 0 * SIGHT_SCALE, y + 1 * SIGHT_SCALE, x + 0 * SIGHT_SCALE, y + 2 * SIGHT_SCALE);
+		gDPHudRectangle(gdl++, x + 0 * SIGHT_SCALE, y - 3 * SIGHT_SCALE, x + 0 * SIGHT_SCALE, y - 1 * SIGHT_SCALE);
+		gDPHudRectangle(gdl++, x + 0 * SIGHT_SCALE, y - 2 * SIGHT_SCALE, x + 0 * SIGHT_SCALE, y - 1 * SIGHT_SCALE);
+	}
 
-	gdl = text_end_boxmode(gdl);
+#ifndef PLATFORM_N64
+	gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+	gDPSetSubpixelOffsetEXT(gdl++, 0, 0);
+#endif
+
+	gdl = text0f153838(gdl);
 
 	return gdl;
 }
 
-bool sight_has_target_while_aiming(s32 sight)
+bool sightHasTargetWhileAiming(s32 sight)
 {
 	if (sight == SIGHT_DEFAULT || sight == SIGHT_ZOOM) {
 		return true;
@@ -1411,7 +1590,7 @@ bool sight_has_target_while_aiming(s32 sight)
 /**
  * sighton is true if the player is using the aimer (ie. holding R).
  */
-Gfx *sight_draw(Gfx *gdl, bool sighton, s32 sight)
+Gfx *sightDraw(Gfx *gdl, bool sighton, s32 sight)
 {
 	if (sight);
 
@@ -1423,13 +1602,26 @@ Gfx *sight_draw(Gfx *gdl, bool sighton, s32 sight)
 		return gdl;
 	}
 
+#ifndef PLATFORM_N64
+	// Rounding the crosshair positions allow them to more accurately follow the
+	// gun's vector. Without this, the mantissa isn't factored in at all (cast
+	// to integer), which leads to some awkward behavior, such as the crosshair
+	// taking a long time to return to the center of the screen when coming from
+	// an up and/or left direction.
+	const f32 crossx = roundf(g_Vars.currentplayer->crosspos[0]);
+	const f32 crossy = roundf(g_Vars.currentplayer->crosspos[1]);
+#else
+	const f32 crossx = g_Vars.currentplayer->crosspos[0];
+	const f32 crossy = g_Vars.currentplayer->crosspos[1];
+#endif
+
 #if PAL
-	g_UiScaleX = 1;
+	g_ScaleX = 1;
 #else
 	if (g_ViRes == VIRES_HI) {
-		g_UiScaleX = 2;
+		g_ScaleX = 2;
 	} else {
-		g_UiScaleX = 1;
+		g_ScaleX = 1;
 	}
 #endif
 
@@ -1437,45 +1629,52 @@ Gfx *sight_draw(Gfx *gdl, bool sighton, s32 sight)
 		sight = SIGHT_DEFAULT;
 	}
 
-	sight_tick(sighton);
+#ifndef PLATFORM_N64
+	if (g_Vars.currentplayer->bondhealth <= 0.0f) {
+		// Hide crosshair during death animation
+		sight = SIGHT_NONE;
+	}
+#endif
+
+	sightTick(sighton);
 
 	switch (sight) {
 	case SIGHT_DEFAULT:
-		gdl = sight_draw_default(gdl, sighton && options_get_sight_on_screen(g_Vars.currentplayerstats->mpindex));
+		gdl = sightDrawDefault(gdl, sighton && optionsGetSightOnScreen(g_Vars.currentplayerstats->mpindex), crossx, crossy);
 		break;
 	case SIGHT_CLASSIC:
-		gdl = sight_draw_classic(gdl, sighton && options_get_sight_on_screen(g_Vars.currentplayerstats->mpindex));
+		gdl = sightDrawClassic(gdl, sighton && optionsGetSightOnScreen(g_Vars.currentplayerstats->mpindex), crossx, crossy);
 		break;
 	case SIGHT_2:
-		gdl = sight_draw_type2(gdl, sighton && options_get_sight_on_screen(g_Vars.currentplayerstats->mpindex));
+		gdl = sightDrawType2(gdl, sighton && optionsGetSightOnScreen(g_Vars.currentplayerstats->mpindex), crossx, crossy);
 		break;
 	case SIGHT_3:
-		gdl = sight_draw_default(gdl, sighton && options_get_sight_on_screen(g_Vars.currentplayerstats->mpindex));
+		gdl = sightDrawDefault(gdl, sighton && optionsGetSightOnScreen(g_Vars.currentplayerstats->mpindex), crossx, crossy);
 		break;
 	case SIGHT_SKEDAR:
-		gdl = sight_draw_skedar(gdl, sighton && options_get_sight_on_screen(g_Vars.currentplayerstats->mpindex));
+		gdl = sightDrawSkedar(gdl, sighton && optionsGetSightOnScreen(g_Vars.currentplayerstats->mpindex), crossx, crossy);
 		break;
 	case SIGHT_ZOOM:
-		gdl = sight_draw_zoom(gdl, sighton && options_get_sight_on_screen(g_Vars.currentplayerstats->mpindex));
+		gdl = sightDrawZoom(gdl, sighton && optionsGetSightOnScreen(g_Vars.currentplayerstats->mpindex), crossx, crossy);
 		break;
 	case SIGHT_MAIAN:
-		gdl = sight_draw_maian(gdl, sighton && options_get_sight_on_screen(g_Vars.currentplayerstats->mpindex));
+		gdl = sightDrawMaian(gdl, sighton && optionsGetSightOnScreen(g_Vars.currentplayerstats->mpindex), crossx, crossy);
 		break;
 	default:
-		gdl = sight_draw_default(gdl, sighton && options_get_sight_on_screen(g_Vars.currentplayerstats->mpindex));
+		gdl = sightDrawDefault(gdl, sighton && optionsGetSightOnScreen(g_Vars.currentplayerstats->mpindex), crossx, crossy);
 		break;
 	case SIGHT_NONE:
 		break;
 	}
 
-	if (sight != SIGHT_NONE && options_get_sight_on_screen(g_Vars.currentplayerstats->mpindex)) {
-		if ((options_get_always_show_target(g_Vars.currentplayerstats->mpindex) && !sighton)
-				|| (sighton && sight_has_target_while_aiming(sight))) {
-			gdl = sight_draw_target(gdl);
+	if (sight != SIGHT_NONE && optionsGetSightOnScreen(g_Vars.currentplayerstats->mpindex)) {
+		if ((optionsGetAlwaysShowTarget(g_Vars.currentplayerstats->mpindex) && !sighton)
+				|| (sighton && sightHasTargetWhileAiming(sight))) {
+			gdl = sightDrawTarget(gdl, crossx, crossy);
 		}
 	}
 
-	g_UiScaleX = 1;
+	g_ScaleX = 1;
 
 	return gdl;
 }

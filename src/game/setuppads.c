@@ -11,21 +11,22 @@
 #include "lib/model.h"
 #include "data.h"
 #include "types.h"
+#include "platform.h"
 
 /**
  * The function assumes that a pad file's data has been loaded from the ROM
  * and is pointed to by g_StageSetup.padfiledata. These pads are in a packed
- * format. During gameplay, the game uses pad_unpack as needed to temporarily
+ * format. During gameplay, the game uses padUnpack as needed to temporarily
  * populate pad structs from this data.
  *
- * setup_prepare_pads prepares the packed data by doing the following:
+ * setupPreparePads prepares the packed data by doing the following:
  * - populates the room field (if -1)
  * - multiplies each pad's bounding box by 1 (this is effectively a no op)
  * - sets the g_StageSetup pad/waygroup/waypoint/cover pointers
  * - promotes file offsets to RAM pointers
- * - does similar things for cover by calling setup_prepare_cover()
+ * - does similar things for cover by calling setupPrepareCover()
  */
-void setup_prepare_pads(void)
+void setupPreparePads(void)
 {
 	struct packedpad *packedpad;
 	RoomNum *roomsptr;
@@ -40,19 +41,23 @@ void setup_prepare_pads(void)
 	s32 offset;
 
 	g_PadsFile = (struct padsfileheader *)g_StageSetup.padfiledata;
+#ifdef PLATFORM_64BIT
+	g_PadOffsets = (u16 *)(g_StageSetup.padfiledata + 0x20);
+#else
 	g_PadOffsets = (u16 *)(g_StageSetup.padfiledata + 0x14);
+#endif
 	padnum = 0;
 	numpads = g_PadsFile->numpads;
 
 	for (; padnum < numpads; padnum++) {
 		offset = g_PadOffsets[padnum];
 		packedpad = (struct packedpad *) &g_StageSetup.padfiledata[offset];
-		pad_unpack(padnum, PADFIELD_POS | PADFIELD_BBOX, &pad);
+		padUnpack(padnum, PADFIELD_POS | PADFIELD_BBOX, &pad);
 
 		// If room is negative (ie. not specified)
 		if (packedpad->room < 0) {
 			roomsptr = NULL;
-			bg_find_rooms_by_pos(&pad.pos, inrooms, aboverooms, 20, NULL);
+			bgFindRoomsByPos(&pad.pos, inrooms, aboverooms, 20, NULL);
 
 			if (inrooms[0] != -1) {
 				roomsptr = inrooms;
@@ -61,7 +66,7 @@ void setup_prepare_pads(void)
 			}
 
 			if (roomsptr != NULL) {
-				roomnum = cd_find_room_at_pos(&pad.pos, roomsptr);
+				roomnum = cdFindFloorRoomAtPos(&pad.pos, roomsptr);
 
 				if (roomnum > 0) {
 					packedpad->room = roomnum;
@@ -83,7 +88,7 @@ void setup_prepare_pads(void)
 			pad.bbox.zmin *= scale;
 			pad.bbox.zmax *= scale;
 
-			pad_copy_bbox_from_pad(padnum, &pad);
+			padCopyBboxFromPad(padnum, &pad);
 		}
 	}
 
@@ -92,7 +97,7 @@ void setup_prepare_pads(void)
 	g_StageSetup.cover = (void *) ((intptr_t)g_StageSetup.padfiledata + g_PadsFile->coversoffset);
 
 	if (g_StageSetup.cover != NULL) {
-		setup_prepare_cover();
+		setupPrepareCover();
 	}
 
 	// Promote offsets to pointers in waypoints

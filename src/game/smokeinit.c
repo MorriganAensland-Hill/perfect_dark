@@ -41,7 +41,7 @@ Gfx var800613a0[] = {
 	gsSPEndDisplayList(),
 };
 
-void smokes_init(void)
+void smokesInit(void)
 {
 	guScale(&var800a3448, 0.1, 0.1, 0.1);
 	guScale(&var800a3488, 0.2, 0.2, 0.2);

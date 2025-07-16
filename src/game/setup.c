@@ -1,7 +1,7 @@
 #include <ultra64.h>
 #include "constants.h"
 #include "game/cheats.h"
-#include "game/chraireset.h"
+#include "game/game_00b820.h"
 #include "game/setup.h"
 #include "game/objectives.h"
 #include "game/playerreset.h"
@@ -39,10 +39,139 @@
 
 s32 g_SetupCurMpLocation;
 
-void setup_reset_tvscreens(void);
-void setup_reset_proxy_mines(void);
+struct tvscreen var80061a80 = {
+	g_TvCmdlist00, // cmdlist
+	0,           // offset
+	0xffff,      // pause60
+	0,           // tconfig
+	0,           // rot
+	1,           // xscale
+	0,           // xscalefrac
+	0,           // xscaleinc
+	1,           // xscaleold
+	1,           // xscalenew
+	1,           // yscale
+	0,           // yscalefrac
+	0,           // yscaleinc
+	1,           // yscaleold
+	1,           // yscalenew
+	0.5,         // xmid
+	0,           // xmidfrac
+	0,           // xmidinc
+	0.5,         // xmidold
+	0.5,         // xmidnew
+	0.5,         // ymid
+	0,           // ymidfrac
+	0,           // ymidinc
+	0.5,         // ymidold
+	0.5,         // ymidnew
+	0xff,        // red
+	0xff,        // redold
+	0xff,        // rednew
+	0xff,        // green
+	0xff,        // greenold
+	0xff,        // greennew
+	0xff,        // blue
+	0xff,        // blueold
+	0xff,        // bluenew
+	0xff,        // alpha
+	0xff,        // alphaold
+	0xff,        // alphanew
+	1,           // colfrac
+	0,           // colinc
+};
 
-void props_reset(void)
+struct tvscreen var80061af4 = {
+	var8006aaa0, // cmdlist
+	0,           // offset
+	0xffff,      // pause60
+	0,           // tconfig
+	0,           // rot
+	1,           // xscale
+	0,           // xscalefrac
+	0,           // xscaleinc
+	1,           // xscaleold
+	1,           // xscalenew
+	1,           // yscale
+	0,           // yscalefrac
+	0,           // yscaleinc
+	1,           // yscaleold
+	1,           // yscalenew
+	0.5,         // xmid
+	0,           // xmidfrac
+	0,           // xmidinc
+	0.5,         // xmidold
+	0.5,         // xmidnew
+	0.5,         // ymid
+	0,           // ymidfrac
+	0,           // ymidinc
+	0.5,         // ymidold
+	0.5,         // ymidnew
+	0xff,        // red
+	0xff,        // redold
+	0xff,        // rednew
+	0xff,        // green
+	0xff,        // greenold
+	0xff,        // greennew
+	0xff,        // blue
+	0xff,        // blueold
+	0xff,        // bluenew
+	0xff,        // alpha
+	0xff,        // alphaold
+	0xff,        // alphanew
+	1,           // colfrac
+	0,           // colinc
+};
+
+struct tvscreen var80061b68 = {
+	var8006aae4, // cmdlist
+	0,           // offset
+	0xffff,      // pause60
+	0,           // tconfig
+	0,           // rot
+	1,           // xscale
+	0,           // xscalefrac
+	0,           // xscaleinc
+	1,           // xscaleold
+	1,           // xscalenew
+	1,           // yscale
+	0,           // yscalefrac
+	0,           // yscaleinc
+	1,           // yscaleold
+	1,           // yscalenew
+	0.5,         // xmid
+	0,           // xmidfrac
+	0,           // xmidinc
+	0.5,         // xmidold
+	0.5,         // xmidnew
+	0.5,         // ymid
+	0,           // ymidfrac
+	0,           // ymidinc
+	0.5,         // ymidold
+	0.5,         // ymidnew
+	0xff,        // red
+	0xff,        // redold
+	0xff,        // rednew
+	0xff,        // green
+	0xff,        // greenold
+	0xff,        // greennew
+	0xff,        // blue
+	0xff,        // blueold
+	0xff,        // bluenew
+	0xff,        // alpha
+	0xff,        // alphaold
+	0xff,        // alphanew
+	1,           // colfrac
+	0,           // colinc
+};
+
+u32 var80061bdc = 0x00000000;
+f32 g_DoorScale = 1;
+u32 var80061be4 = 0x00000000;
+u32 var80061be8 = 0x00000000;
+u32 var80061bec = 0x00000000;
+
+void propsReset(void)
 {
 	s32 i;
 
@@ -66,8 +195,8 @@ void props_reset(void)
 		g_MaxEmbedments = 0;
 	}
 
-	setup_reset_tvscreens();
-	setup_reset_proxy_mines();
+	setupReset0f00cc8c();
+	setupResetProxyMines();
 
 	g_AlarmTimer = 0;
 	g_AlarmAudioHandle = NULL;
@@ -92,7 +221,7 @@ void props_reset(void)
 	if (g_MaxWeaponSlots == 0) {
 		g_WeaponSlots = NULL;
 	} else {
-		g_WeaponSlots = memp_alloc(ALIGN16(g_MaxWeaponSlots * sizeof(struct weaponobj)), MEMPOOL_STAGE);
+		g_WeaponSlots = mempAlloc(ALIGN16(g_MaxWeaponSlots * sizeof(struct weaponobj)), MEMPOOL_STAGE);
 
 		for (i = 0; i < g_MaxWeaponSlots; i++) {
 			g_WeaponSlots[i].base.prop = NULL;
@@ -104,7 +233,7 @@ void props_reset(void)
 	if (g_MaxHatSlots == 0) {
 		g_HatSlots = NULL;
 	} else {
-		g_HatSlots = memp_alloc(ALIGN16(g_MaxHatSlots * sizeof(struct hatobj)), MEMPOOL_STAGE);
+		g_HatSlots = mempAlloc(ALIGN16(g_MaxHatSlots * sizeof(struct hatobj)), MEMPOOL_STAGE);
 
 		for (i = 0; i < g_MaxHatSlots; i++) {
 			g_HatSlots[i].base.prop = NULL;
@@ -116,7 +245,7 @@ void props_reset(void)
 	if (g_MaxAmmoCrates == 0) {
 		g_AmmoCrates = NULL;
 	} else {
-		g_AmmoCrates = memp_alloc(ALIGN16(g_MaxAmmoCrates * sizeof(struct ammocrateobj)), MEMPOOL_STAGE);
+		g_AmmoCrates = mempAlloc(ALIGN16(g_MaxAmmoCrates * sizeof(struct ammocrateobj)), MEMPOOL_STAGE);
 
 		for (i = 0; i < g_MaxAmmoCrates; i++) {
 			g_AmmoCrates[i].base.prop = NULL;
@@ -126,7 +255,7 @@ void props_reset(void)
 	if (g_MaxDebrisSlots == 0) {
 		g_DebrisSlots = NULL;
 	} else {
-		g_DebrisSlots = memp_alloc(ALIGN16(g_MaxDebrisSlots * sizeof(struct defaultobj)), MEMPOOL_STAGE);
+		g_DebrisSlots = mempAlloc(ALIGN16(g_MaxDebrisSlots * sizeof(struct defaultobj)), MEMPOOL_STAGE);
 
 		for (i = 0; i < g_MaxDebrisSlots; i++) {
 			g_DebrisSlots[i].prop = NULL;
@@ -136,7 +265,7 @@ void props_reset(void)
 	if (g_MaxProjectiles == 0) {
 		g_Projectiles = NULL;
 	} else {
-		g_Projectiles = memp_alloc(ALIGN16(g_MaxProjectiles * sizeof(struct projectile)), MEMPOOL_STAGE);
+		g_Projectiles = mempAlloc(ALIGN16(g_MaxProjectiles * sizeof(struct projectile)), MEMPOOL_STAGE);
 
 		for (i = 0; i < g_MaxProjectiles; i++) {
 			g_Projectiles[i].flags = PROJECTILEFLAG_FREE;
@@ -146,7 +275,7 @@ void props_reset(void)
 	if (g_MaxEmbedments == 0) {
 		g_Embedments = NULL;
 	} else {
-		g_Embedments = memp_alloc(ALIGN16(g_MaxEmbedments * sizeof(struct embedment)), MEMPOOL_STAGE);
+		g_Embedments = mempAlloc(ALIGN16(g_MaxEmbedments * sizeof(struct embedment)), MEMPOOL_STAGE);
 
 		for (i = 0; i < g_MaxEmbedments; i++) {
 			g_Embedments[i].flags = EMBEDMENTFLAG_FREE;
@@ -170,96 +299,61 @@ void props_reset(void)
 
 	g_MaxThrownLaptops = g_Vars.normmplayerisrunning ? 12 : PLAYERCOUNT();
 
-	g_ThrownLaptops = memp_alloc(ALIGN16(g_MaxThrownLaptops * sizeof(struct autogunobj)), MEMPOOL_STAGE);
-	g_ThrownLaptopBeams = memp_alloc(ALIGN16(g_MaxThrownLaptops * sizeof(struct beam)), MEMPOOL_STAGE);
+	g_ThrownLaptops = mempAlloc(ALIGN16(g_MaxThrownLaptops * sizeof(struct autogunobj)), MEMPOOL_STAGE);
+	g_ThrownLaptopBeams = mempAlloc(ALIGN16(g_MaxThrownLaptops * sizeof(struct beam)), MEMPOOL_STAGE);
 
 	for (i = 0; i < g_MaxThrownLaptops; i++) {
 		g_ThrownLaptops[i].base.prop = NULL;
 	}
 }
 
-void setup_create_lift_door(struct linkliftdoorobj *link)
+void setupCreateLiftDoor(struct linkliftdoorobj *link)
 {
 	link->next = g_LiftDoors;
 	g_LiftDoors = link;
 }
 
-void setup_create_padlocked_door(struct padlockeddoorobj *link)
+void setupCreatePadlockedDoor(struct padlockeddoorobj *link)
 {
 	link->next = g_PadlockedDoors;
 	g_PadlockedDoors = link;
 }
 
-void setup_create_safe_item(struct safeitemobj *link)
+void setupCreateSafeItem(struct safeitemobj *link)
 {
 	link->next = g_SafeItems;
 	g_SafeItems = link;
 }
 
-void setup_create_conditional_scenery(struct linksceneryobj *link)
+void setupCreateConditionalScenery(struct linksceneryobj *link)
 {
 	link->next = g_LinkedScenery;
 	g_LinkedScenery = link;
 }
 
-void setup_create_blocked_path(struct blockedpathobj *blockedpath)
+void setupCreateBlockedPath(struct blockedpathobj *blockedpath)
 {
 	blockedpath->next = g_BlockedPaths;
 	g_BlockedPaths = blockedpath;
 }
 
-#define MKTVSCREEN(cmdlist) { \
-		cmdlist, /* cmdlist    */ \
-		0,       /* offset     */ \
-		0xffff,  /* pause60    */ \
-		0,       /* tconfig    */ \
-		0,       /* rot        */ \
-		1,       /* xscale     */ \
-		0,       /* xscalefrac */ \
-		0,       /* xscaleinc  */ \
-		1,       /* xscaleold  */ \
-		1,       /* xscalenew  */ \
-		1,       /* yscale     */ \
-		0,       /* yscalefrac */ \
-		0,       /* yscaleinc  */ \
-		1,       /* yscaleold  */ \
-		1,       /* yscalenew  */ \
-		0.5,     /* xmid       */ \
-		0,       /* xmidfrac   */ \
-		0,       /* xmidinc    */ \
-		0.5,     /* xmidold    */ \
-		0.5,     /* xmidnew    */ \
-		0.5,     /* ymid       */ \
-		0,       /* ymidfrac   */ \
-		0,       /* ymidinc    */ \
-		0.5,     /* ymidold    */ \
-		0.5,     /* ymidnew    */ \
-		0xff,    /* red        */ \
-		0xff,    /* redold     */ \
-		0xff,    /* rednew     */ \
-		0xff,    /* green      */ \
-		0xff,    /* greenold   */ \
-		0xff,    /* greennew   */ \
-		0xff,    /* blue       */ \
-		0xff,    /* blueold    */ \
-		0xff,    /* bluenew    */ \
-		0xff,    /* alpha      */ \
-		0xff,    /* alphaold   */ \
-		0xff,    /* alphanew   */ \
-		1,       /* colfrac    */ \
-		0,       /* colinc     */ \
-	}
-
-void setup_reset_tvscreens(void)
+void setupReset0f00cc8c(void)
 {
-	{ struct tvscreen tmp = MKTVSCREEN(g_TvCmdlistDefault); g_TvCmdlistDefaultCopy = tmp; }
-	{ struct tvscreen tmp = MKTVSCREEN(g_TvCmdlistBondZoom); g_TvCmdlistBondZoomCopy = tmp; }
-	{ struct tvscreen tmp = MKTVSCREEN(g_TvCmdlistBondPan); g_TvCmdlistBondPanCopy = tmp; }
+	struct tvscreen tmp1;
+	struct tvscreen tmp2;
+	struct tvscreen tmp3;
+
+	tmp1 = var80061a80;
+	var8009ce98 = tmp1;
+
+	tmp2 = var80061af4;
+	var8009cf10 = tmp2;
+
+	tmp3 = var80061b68;
+	var8009cf88 = tmp3;
 }
 
-u32 var80061bdc = 0;
-
-void setup_reset_proxy_mines(void)
+void setupResetProxyMines(void)
 {
 	s32 i;
 
@@ -268,7 +362,7 @@ void setup_reset_proxy_mines(void)
 	}
 }
 
-s32 setup_count_command_type(u32 type)
+s32 setupCountCommandType(u32 type)
 {
 	struct defaultobj *obj = (struct defaultobj *)g_StageSetup.props;
 	s32 count = 0;
@@ -279,14 +373,14 @@ s32 setup_count_command_type(u32 type)
 				count++;
 			}
 
-			obj = (struct defaultobj *)((u32 *)obj + setup_get_cmd_length((u32 *)obj));
+			obj = (struct defaultobj *)((u32 *)obj + setupGetCmdLength((u32 *)obj));
 		}
 	}
 
 	return count;
 }
 
-void setup_create_object(struct defaultobj *obj, s32 cmdindex)
+void setupCreateObject(struct defaultobj *obj, s32 cmdindex)
 {
 	f32 f0;
 	s32 modelnum;
@@ -303,7 +397,7 @@ void setup_create_object(struct defaultobj *obj, s32 cmdindex)
 	struct prop *prop;
 
 	modelnum = obj->modelnum;
-	setup_load_modeldef(modelnum);
+	setupLoadModeldef(modelnum);
 	scale = obj->extrascale * (1.0f / 256.0f);
 
 	if (g_Vars.normmplayerisrunning || g_Vars.lvmpbotlevel) {
@@ -312,41 +406,41 @@ void setup_create_object(struct defaultobj *obj, s32 cmdindex)
 
 	if (obj->flags & OBJFLAG_INSIDEANOTHEROBJ) {
 		if (obj->type == OBJTYPE_WEAPON) {
-			weapon_init_with_modeldef((struct weaponobj *)obj, g_ModelStates[modelnum].modeldef);
+			func0f08ae0c((struct weaponobj *)obj, g_ModelStates[modelnum].modeldef);
 		} else {
-			obj_init_with_modeldef(obj, g_ModelStates[modelnum].modeldef);
+			objInitWithModelDef(obj, g_ModelStates[modelnum].modeldef);
 		}
 
-		model_set_scale(obj->model, obj->model->scale * scale);
+		modelSetScale(obj->model, obj->model->scale * scale);
 		return;
 	}
 
 	if (obj->flags & OBJFLAG_ASSIGNEDTOCHR) {
-		chr = chr_find_by_literal_id(obj->pad);
+		chr = chrFindByLiteralId(obj->pad);
 
 		if (chr && chr->prop && chr->model) {
 			if (obj->type == OBJTYPE_WEAPON) {
-				prop = weapon_init_with_modeldef((struct weaponobj *)obj, g_ModelStates[modelnum].modeldef);
+				prop = func0f08ae0c((struct weaponobj *)obj, g_ModelStates[modelnum].modeldef);
 			} else {
-				prop = obj_init_with_modeldef(obj, g_ModelStates[modelnum].modeldef);
+				prop = objInitWithModelDef(obj, g_ModelStates[modelnum].modeldef);
 			}
 
-			model_set_scale(obj->model, obj->model->scale * scale);
-			prop_reparent(prop, chr->prop);
+			modelSetScale(obj->model, obj->model->scale * scale);
+			propReparent(prop, chr->prop);
 		}
 	} else {
 		if (obj->pad < 0) {
 			if (obj->type == OBJTYPE_WEAPON) {
-				weapon_init_with_modeldef((struct weaponobj *)obj, g_ModelStates[modelnum].modeldef);
+				func0f08ae0c((struct weaponobj *)obj, g_ModelStates[modelnum].modeldef);
 			} else {
-				obj_init_with_modeldef(obj, g_ModelStates[modelnum].modeldef);
+				objInitWithModelDef(obj, g_ModelStates[modelnum].modeldef);
 			}
 
-			model_set_scale(obj->model, obj->model->scale * scale);
+			modelSetScale(obj->model, obj->model->scale * scale);
 			return;
 		}
 
-		pad_unpack(obj->pad, PADFIELD_POS | PADFIELD_LOOK | PADFIELD_UP | PADFIELD_BBOX | PADFIELD_ROOM, &pad);
+		padUnpack(obj->pad, PADFIELD_POS | PADFIELD_LOOK | PADFIELD_UP | PADFIELD_BBOX | PADFIELD_ROOM, &pad);
 
 		if (pad.room > 0) {
 			mtx00016d58(&mtx, 0, 0, 0, -pad.look.x, -pad.look.y, -pad.look.z, pad.up.x, pad.up.y, pad.up.z);
@@ -358,7 +452,7 @@ void setup_create_object(struct defaultobj *obj, s32 cmdindex)
 			rooms[0] = pad.room;
 			rooms[1] = -1;
 
-			if (!pad_has_bbox_data(obj->pad)) {
+			if (!padHasBboxData(obj->pad)) {
 				if (obj->flags & OBJFLAG_00000002) {
 					centre.x = pad.pos.x;
 					centre.y = pad.pos.y;
@@ -369,20 +463,20 @@ void setup_create_object(struct defaultobj *obj, s32 cmdindex)
 					centre.z = pad.pos.z;
 				}
 			} else {
-				pad_get_centre(obj->pad, &centre);
+				padGetCentre(obj->pad, &centre);
 				centre.x += (pad.bbox.ymin - pad.bbox.ymax) * 0.5f * pad.up.x;
 				centre.y += (pad.bbox.ymin - pad.bbox.ymax) * 0.5f * pad.up.y;
 				centre.z += (pad.bbox.ymin - pad.bbox.ymax) * 0.5f * pad.up.z;
 			}
 
 			if (obj->type == OBJTYPE_WEAPON) {
-				prop2 = weapon_init_with_modeldef((struct weaponobj *)obj, g_ModelStates[modelnum].modeldef);
+				prop2 = func0f08ae0c((struct weaponobj *)obj, g_ModelStates[modelnum].modeldef);
 			} else {
-				prop2 = obj_init_with_auto_model(obj);
+				prop2 = objInitWithAutoModel(obj);
 			}
 
-			if (pad_has_bbox_data(obj->pad)) {
-				struct modelrodata_bbox *bbox = obj_find_bbox_rodata(obj);
+			if (padHasBboxData(obj->pad)) {
+				struct modelrodata_bbox *bbox = objFindBboxRodata(obj);
 
 				if (bbox != NULL) {
 					f32 xscale = 1.0f;
@@ -448,10 +542,8 @@ void setup_create_object(struct defaultobj *obj, s32 cmdindex)
 							if (bbox->xmax == bbox->xmin) {
 								xscale = maxscale;
 							}
-						} else {
-							if (bbox->xmax == bbox->xmin) {
-								xscale = maxscale;
-							}
+						} else if (bbox->xmax == bbox->xmin) {
+							xscale = maxscale;
 						}
 					}
 
@@ -460,10 +552,8 @@ void setup_create_object(struct defaultobj *obj, s32 cmdindex)
 							if (bbox->ymax == bbox->ymin) {
 								zscale = maxscale;
 							}
-						} else {
-							if (bbox->ymax == bbox->ymin) {
-								yscale = maxscale;
-							}
+						} else if (bbox->ymax == bbox->ymin) {
+							yscale = maxscale;
 						}
 					}
 
@@ -472,10 +562,8 @@ void setup_create_object(struct defaultobj *obj, s32 cmdindex)
 							if (bbox->zmax == bbox->zmin) {
 								yscale = maxscale;
 							}
-						} else {
-							if (bbox->zmax == bbox->zmin) {
-								zscale = maxscale;
-							}
+						} else if (bbox->zmax == bbox->zmin) {
+							zscale = maxscale;
 						}
 					}
 
@@ -491,11 +579,11 @@ void setup_create_object(struct defaultobj *obj, s32 cmdindex)
 					mtx00015e80(yscale, &mtx);
 					mtx00015edc(zscale, &mtx);
 
-					model_set_scale(obj->model, obj->model->scale * maxscale);
+					modelSetScale(obj->model, obj->model->scale * maxscale);
 				}
 			}
 
-			model_set_scale(obj->model, obj->model->scale * scale);
+			modelSetScale(obj->model, obj->model->scale * scale);
 			mtx00015f04(obj->model->scale, &mtx);
 
 			if (obj->flags2 & OBJFLAG2_DONTPAUSE) {
@@ -503,18 +591,18 @@ void setup_create_object(struct defaultobj *obj, s32 cmdindex)
 			}
 
 			if (obj->flags & OBJFLAG_00000002) {
-				obj_place_2d(obj, &pos, &mtx, rooms, &centre);
+				func0f06ab60(obj, &pos, &mtx, rooms, &centre);
 			} else {
-				obj_place_3d(obj, &pos, &mtx, rooms, &centre);
+				func0f06a730(obj, &pos, &mtx, rooms, &centre);
 			}
 
-			if (obj->hidden & OBJHFLAG_ONANOTHEROBJ) {
-				prop_activate_this_frame(prop2);
+			if (obj->hidden & OBJHFLAG_00008000) {
+				propActivateThisFrame(prop2);
 			} else {
-				prop_activate(prop2);
+				propActivate(prop2);
 			}
 
-			prop_enable(prop2);
+			propEnable(prop2);
 		}
 	}
 }
@@ -527,37 +615,37 @@ void setup_create_object(struct defaultobj *obj, s32 cmdindex)
  * The Marquis of Queensbury Rules (everyone unarmed) and Enemy Rockets cheats
  * are implemented here.
  */
-void setup_place_weapon(struct weaponobj *weapon, s32 cmdindex)
+void setupPlaceWeapon(struct weaponobj *weapon, s32 cmdindex)
 {
 	if (weapon->base.flags & OBJFLAG_ASSIGNEDTOCHR) {
 		u32 stack[2];
-		struct chrdata *chr = chr_find_by_literal_id(weapon->base.pad);
+		struct chrdata *chr = chrFindByLiteralId(weapon->base.pad);
 
 		if (chr && chr->prop && chr->model) {
-			if (cheat_is_active(CHEAT_MARQUIS)) {
+			if (cheatIsActive(CHEAT_MARQUIS)) {
 				// NTSC 1.0 and newer simplifies the Marquis logic
 #if VERSION >= VERSION_NTSC_1_0
 				weapon->base.flags &= ~OBJFLAG_DEACTIVATED;
 				weapon->base.flags |= OBJFLAG_WEAPON_AICANNOTUSE;
-				modelmgr_load_projectile_modeldefs(weapon->weaponnum);
-				weapon_assign_to_chr(weapon, chr);
+				modelmgrLoadProjectileModeldefs(weapon->weaponnum);
+				func0f08b25c(weapon, chr);
 #else
 				if (g_Vars.stagenum == STAGE_INVESTIGATION
-						&& lv_get_difficulty() == DIFF_PA
+						&& lvGetDifficulty() == DIFF_PA
 						&& weapon->weaponnum == WEAPON_K7AVENGER) {
-					modelmgr_load_projectile_modeldefs(weapon->weaponnum);
-					weapon_assign_to_chr(weapon, chr);
+					modelmgrLoadProjectileModeldefs(weapon->weaponnum);
+					func0f08b25c(weapon, chr);
 				} else if (g_Vars.stagenum == STAGE_ATTACKSHIP) {
 					weapon->base.flags &= ~OBJFLAG_DEACTIVATED;
 					weapon->base.flags |= OBJFLAG_WEAPON_AICANNOTUSE;
-					modelmgr_load_projectile_modeldefs(weapon->weaponnum);
-					weapon_assign_to_chr(weapon, chr);
+					modelmgrLoadProjectileModeldefs(weapon->weaponnum);
+					func0f08b25c(weapon, chr);
 				} else {
 					weapon->weaponnum = WEAPON_NONE;
 				}
 #endif
 			} else {
-				if (cheat_is_active(CHEAT_ENEMYROCKETS)) {
+				if (cheatIsActive(CHEAT_ENEMYROCKETS)) {
 					switch (weapon->weaponnum) {
 					case WEAPON_FALCON2:
 					case WEAPON_FALCON2_SILENCER:
@@ -598,7 +686,7 @@ void setup_place_weapon(struct weaponobj *weapon, s32 cmdindex)
 						// Don't replace the K7 guard's weapon in Investigation
 						// because it would make an objective impossible.
 						// @bug: It's still replaced on PD mode difficulty.
-						if (g_Vars.stagenum != STAGE_INVESTIGATION || lv_get_difficulty() != DIFF_PA) {
+						if (g_Vars.stagenum != STAGE_INVESTIGATION || lvGetDifficulty() != DIFF_PA) {
 							weapon->weaponnum = WEAPON_ROCKETLAUNCHER;
 							weapon->base.modelnum = MODEL_CHRDYROCKET;
 							weapon->base.extrascale = 256;
@@ -607,8 +695,8 @@ void setup_place_weapon(struct weaponobj *weapon, s32 cmdindex)
 					}
 				}
 
-				modelmgr_load_projectile_modeldefs(weapon->weaponnum);
-				weapon_assign_to_chr(weapon, chr);
+				modelmgrLoadProjectileModeldefs(weapon->weaponnum);
+				func0f08b25c(weapon, chr);
 			}
 		}
 	} else {
@@ -638,7 +726,7 @@ void setup_place_weapon(struct weaponobj *weapon, s32 cmdindex)
 			case WEAPON_MPLOCATION14:
 			case WEAPON_MPLOCATION15:
 				locationindex = weapon->weaponnum - WEAPON_MPLOCATION00;
-				mpweapon = mp_get_mp_weapon_by_location(locationindex);
+				mpweapon = mpGetMpWeaponByLocation(locationindex);
 				g_SetupCurMpLocation = locationindex;
 				weapon->weaponnum = mpweapon->weaponnum;
 				weapon->base.modelnum = mpweapon->model;
@@ -653,7 +741,7 @@ void setup_place_weapon(struct weaponobj *weapon, s32 cmdindex)
 					shield->base.flags2 |= OBJFLAG2_IMMUNETOEXPLOSIONS | OBJFLAG2_IMMUNETOGUNFIRE;
 					shield->initialamount = 1;
 					shield->amount = 1;
-					setup_create_object(&shield->base, cmdindex);
+					setupCreateObject(&shield->base, cmdindex);
 					createweapon = false;
 				}
 				break;
@@ -661,35 +749,35 @@ void setup_place_weapon(struct weaponobj *weapon, s32 cmdindex)
 		}
 
 		if (weapon->weaponnum != WEAPON_NONE && createweapon) {
-			modelmgr_load_projectile_modeldefs(weapon->weaponnum);
-			setup_create_object(&weapon->base, cmdindex);
+			modelmgrLoadProjectileModeldefs(weapon->weaponnum);
+			setupCreateObject(&weapon->base, cmdindex);
 		}
 	}
 }
 
-void setup_create_hat(struct hatobj *hat, s32 cmdindex)
+void setupCreateHat(struct hatobj *hat, s32 cmdindex)
 {
 	if (hat->base.flags & OBJFLAG_ASSIGNEDTOCHR) {
-		struct chrdata *chr = chr_find_by_literal_id(hat->base.pad);
+		struct chrdata *chr = chrFindByLiteralId(hat->base.pad);
 
 		if (chr && chr->prop && chr->model) {
-			hat_assign_to_chr(hat, chr);
+			hatAssignToChr(hat, chr);
 		}
 	} else {
-		setup_create_object(&hat->base, cmdindex);
+		setupCreateObject(&hat->base, cmdindex);
 	}
 }
 
-void setup_create_key(struct keyobj *key, s32 cmdindex)
+void setupCreateKey(struct keyobj *key, s32 cmdindex)
 {
-	setup_create_object(&key->base, cmdindex);
+	setupCreateObject(&key->base, cmdindex);
 }
 
-void setup_create_mine(struct mineobj *mine, s32 cmdindex)
+void setupCreateMine(struct mineobj *mine, s32 cmdindex)
 {
 	mine->base.type = OBJTYPE_WEAPON;
 
-	setup_create_object(&mine->base, cmdindex);
+	setupCreateObject(&mine->base, cmdindex);
 
 	if (g_Vars.coopplayernum >= 0 || g_Vars.antiplayernum >= 0) {
 		mine->base.hidden = (mine->base.hidden & 0x0fffffff) | (2 << 28);
@@ -698,21 +786,21 @@ void setup_create_mine(struct mineobj *mine, s32 cmdindex)
 	mine->base.prop->forcetick = true;
 }
 
-void setup_create_cctv(struct cctvobj *cctv, s32 cmdindex)
+void setupCreateCctv(struct cctvobj *cctv, s32 cmdindex)
 {
 	struct defaultobj *obj = &cctv->base;
 
-	setup_create_object(obj, cmdindex);
+	setupCreateObject(obj, cmdindex);
 
 	if (cctv->lookatpadnum >= 0) {
 		struct coord lenspos;
-		union modelrodata *lens = model_get_part_rodata(obj->model->definition, MODELPART_CCTV_CASING);
+		union modelrodata *lens = modelGetPartRodata(obj->model->definition, MODELPART_CCTV_CASING);
 		struct pad pad;
 		f32 xdiff;
 		f32 ydiff;
 		f32 zdiff;
 
-		pad_unpack(cctv->lookatpadnum, PADFIELD_POS, &pad);
+		padUnpack(cctv->lookatpadnum, PADFIELD_POS, &pad);
 
 		lenspos.x = lens->position.pos.x;
 		lenspos.y = lens->position.pos.y;
@@ -736,15 +824,15 @@ void setup_create_cctv(struct cctvobj *cctv, s32 cmdindex)
 		mtx00015f04(obj->model->scale, &cctv->camrotm);
 
 		cctv->toleft = 0;
-		cctv->yleft = *(s32 *)&cctv->yleft * BADDTOR(360) / 65536.0f;
-		cctv->yright = *(s32 *)&cctv->yright * BADDTOR(360) / 65536.0f;
+		cctv->yleft = *(s32 *)&cctv->yleft * M_BADTAU / 65536.0f;
+		cctv->yright = *(s32 *)&cctv->yright * M_BADTAU / 65536.0f;
 		cctv->yspeed = 0.0f;
-		cctv->ymaxspeed = *(s32 *)&cctv->ymaxspeed * BADDTOR(360) / 65536.0f;
+		cctv->ymaxspeed = *(s32 *)&cctv->ymaxspeed * M_BADTAU / 65536.0f;
 		cctv->maxdist = *(s32 *)&cctv->maxdist;
 		cctv->yrot = cctv->yleft;
 
 		cctv->yzero = atan2f(xdiff, zdiff);
-		cctv->xzero = BADDTOR(360) - atan2f(ydiff, sqrtf(xdiff * xdiff + zdiff * zdiff));
+		cctv->xzero = M_BADTAU - atan2f(ydiff, sqrtf(xdiff * xdiff + zdiff * zdiff));
 
 		if (xdiff || zdiff) {
 			// empty
@@ -754,14 +842,14 @@ void setup_create_cctv(struct cctvobj *cctv, s32 cmdindex)
 	}
 }
 
-void setup_create_autogun(struct autogunobj *autogun, s32 cmdindex)
+void setupCreateAutogun(struct autogunobj *autogun, s32 cmdindex)
 {
-	setup_create_object(&autogun->base, cmdindex);
+	setupCreateObject(&autogun->base, cmdindex);
 
-	autogun->maxspeed = *(s32 *)&autogun->maxspeed * PALUPF(BADDTOR(360)) / 65536.0f;
+	autogun->maxspeed = *(s32 *)&autogun->maxspeed * PALUPF(M_BADTAU) / 65536.0f;
 	autogun->aimdist = *(s32 *)&autogun->aimdist * 100.0f / 65536.0f;
-	autogun->ymaxleft = *(s32 *)&autogun->ymaxleft * BADDTOR(360) / 65536.0f;
-	autogun->ymaxright = *(s32 *)&autogun->ymaxright * BADDTOR(360) / 65536.0f;
+	autogun->ymaxleft = *(s32 *)&autogun->ymaxleft * M_BADTAU / 65536.0f;
+	autogun->ymaxright = *(s32 *)&autogun->ymaxright * M_BADTAU / 65536.0f;
 
 	autogun->firecount = 0;
 	autogun->lastseebond60 = -1;
@@ -775,7 +863,7 @@ void setup_create_autogun(struct autogunobj *autogun, s32 cmdindex)
 	autogun->xzero = 0;
 	autogun->barrelspeed = 0;
 	autogun->barrelrot = 0;
-	autogun->beam = memp_alloc(ALIGN16(sizeof(struct beam)), MEMPOOL_STAGE);
+	autogun->beam = mempAlloc(ALIGN16(sizeof(struct beam)), MEMPOOL_STAGE);
 	autogun->beam->age = -1;
 	autogun->firing = false;
 	autogun->ammoquantity = 255;
@@ -789,7 +877,7 @@ void setup_create_autogun(struct autogunobj *autogun, s32 cmdindex)
 		u32 stack2;
 		struct pad pad;
 
-		pad_unpack(autogun->targetpad, PADFIELD_POS, &pad);
+		padUnpack(autogun->targetpad, PADFIELD_POS, &pad);
 
 		xdiff = pad.pos.x - autogun->base.prop->pos.x;
 		ydiff = pad.pos.y - autogun->base.prop->pos.y;
@@ -799,35 +887,35 @@ void setup_create_autogun(struct autogunobj *autogun, s32 cmdindex)
 		autogun->xzero = atan2f(ydiff, sqrtf(xdiff * xdiff + zdiff * zdiff));
 	} else if (autogun->base.modelnum == MODEL_CETROOFGUN) {
 		// Deep Sea roofgun
-		autogun->xzero = BADDTOR(-90);
+		autogun->xzero = -1.5705462694168f;
 	}
 }
 
-void setup_create_hanging_monitors(struct hangingmonitorsobj *monitors, s32 cmdindex)
+void setupCreateHangingMonitors(struct hangingmonitorsobj *monitors, s32 cmdindex)
 {
-	setup_create_object(&monitors->base, cmdindex);
+	setupCreateObject(&monitors->base, cmdindex);
 }
 
-void setup_create_single_monitor(struct singlemonitorobj *monitor, s32 cmdindex)
+void setupCreateSingleMonitor(struct singlemonitorobj *monitor, s32 cmdindex)
 {
 	u32 stack[2];
 
-	monitor->screen = g_TvCmdlistDefaultCopy;
-	tvscreen_set_program(&monitor->screen, monitor->imagenum);
+	monitor->screen = var8009ce98;
+	tvscreenSetImageByNum(&monitor->screen, monitor->imagenum);
 
 	// In GE, monitors with a negative pad are hanging TVs which attach to a
 	// hangingmonitors object, which is actually just the mount. In PD, hanging
 	// monitors do not exist in the setup files so this code is unused.
 	if (monitor->base.pad < 0 && (monitor->base.flags & OBJFLAG_INSIDEANOTHEROBJ) == 0) {
 		s32 modelnum = monitor->base.modelnum;
-		struct defaultobj *owner = (struct defaultobj *)setup_get_cmd_by_index(cmdindex + monitor->owneroffset);
+		struct defaultobj *owner = (struct defaultobj *)setupGetCmdByIndex(cmdindex + monitor->owneroffset);
 		struct prop *prop;
 		f32 scale;
 		struct coord spa4;
 		Mtxf sp64;
 		Mtxf sp24;
 
-		setup_load_modeldef(modelnum);
+		setupLoadModeldef(modelnum);
 
 		scale = monitor->base.extrascale * (1.0f / 256.0f);
 
@@ -835,38 +923,38 @@ void setup_create_single_monitor(struct singlemonitorobj *monitor, s32 cmdindex)
 			monitor->base.hidden2 |= OBJH2FLAG_CANREGEN;
 		}
 
-		prop = obj_init_with_auto_model(&monitor->base);
-		monitor->base.embedment = embedment_allocate();
+		prop = objInitWithAutoModel(&monitor->base);
+		monitor->base.embedment = embedmentAllocate();
 
 		if (prop && monitor->base.embedment) {
 			monitor->base.hidden |= OBJHFLAG_EMBEDDED;
-			model_set_scale(monitor->base.model, monitor->base.model->scale * scale);
+			modelSetScale(monitor->base.model, monitor->base.model->scale * scale);
 			monitor->base.model->attachedtomodel = owner->model;
 
 			if (monitor->ownerpart == MODELPART_0000) {
-				monitor->base.model->attachedtonode = model_get_part(owner->model->definition, MODELPART_0000);
+				monitor->base.model->attachedtonode = modelGetPart(owner->model->definition, MODELPART_0000);
 			} else if (monitor->ownerpart == MODELPART_0001) {
-				monitor->base.model->attachedtonode = model_get_part(owner->model->definition, MODELPART_0001);
+				monitor->base.model->attachedtonode = modelGetPart(owner->model->definition, MODELPART_0001);
 			} else if (monitor->ownerpart == MODELPART_0002) {
-				monitor->base.model->attachedtonode = model_get_part(owner->model->definition, MODELPART_0002);
+				monitor->base.model->attachedtonode = modelGetPart(owner->model->definition, MODELPART_0002);
 			} else {
-				monitor->base.model->attachedtonode = model_get_part(owner->model->definition, MODELPART_0003);
+				monitor->base.model->attachedtonode = modelGetPart(owner->model->definition, MODELPART_0003);
 			}
 
-			prop_reparent(prop, owner->prop);
-			mtx4_load_x_rotation(0.3664608001709f, &sp64);
+			propReparent(prop, owner->prop);
+			mtx4LoadXRotation(0.3664608001709f, &sp64);
 			mtx00015f04(monitor->base.model->scale / owner->model->scale, &sp64);
-			model_get_root_position(monitor->base.model, &spa4);
+			modelGetRootPosition(monitor->base.model, &spa4);
 
 			spa4.x = -spa4.x;
 			spa4.y = -spa4.y;
 			spa4.z = -spa4.z;
 
-			mtx4_load_translation(&spa4, &sp24);
+			mtx4LoadTranslation(&spa4, &sp24);
 			mtx00015be4(&sp64, &sp24, &monitor->base.embedment->matrix);
 		}
 	} else {
-		setup_create_object(&monitor->base, cmdindex);
+		setupCreateObject(&monitor->base, cmdindex);
 	}
 
 	if (monitor->base.prop && (monitor->base.flags & OBJFLAG_MONITOR_RENDERPOSTBG)) {
@@ -874,24 +962,24 @@ void setup_create_single_monitor(struct singlemonitorobj *monitor, s32 cmdindex)
 	}
 }
 
-void setup_create_multi_monitor(struct multimonitorobj *monitor, s32 cmdindex)
+void setupCreateMultiMonitor(struct multimonitorobj *monitor, s32 cmdindex)
 {
-	monitor->screens[0] = g_TvCmdlistDefaultCopy;
-	tvscreen_set_program(&monitor->screens[0], monitor->imagenums[0]);
+	monitor->screens[0] = var8009ce98;
+	tvscreenSetImageByNum(&monitor->screens[0], monitor->imagenums[0]);
 
-	monitor->screens[1] = g_TvCmdlistDefaultCopy;
-	tvscreen_set_program(&monitor->screens[1], monitor->imagenums[1]);
+	monitor->screens[1] = var8009ce98;
+	tvscreenSetImageByNum(&monitor->screens[1], monitor->imagenums[1]);
 
-	monitor->screens[2] = g_TvCmdlistDefaultCopy;
-	tvscreen_set_program(&monitor->screens[2], monitor->imagenums[2]);
+	monitor->screens[2] = var8009ce98;
+	tvscreenSetImageByNum(&monitor->screens[2], monitor->imagenums[2]);
 
-	monitor->screens[3] = g_TvCmdlistDefaultCopy;
-	tvscreen_set_program(&monitor->screens[3], monitor->imagenums[3]);
+	monitor->screens[3] = var8009ce98;
+	tvscreenSetImageByNum(&monitor->screens[3], monitor->imagenums[3]);
 
-	setup_create_object(&monitor->base, cmdindex);
+	setupCreateObject(&monitor->base, cmdindex);
 }
 
-s32 setup_get_portal_by_pad(s32 padnum)
+s32 setupGetPortalByPad(s32 padnum)
 {
 	f32 mult;
 	struct coord centre;
@@ -899,8 +987,8 @@ s32 setup_get_portal_by_pad(s32 padnum)
 	u32 stack;
 	struct pad pad;
 
-	pad_get_centre(padnum, &centre);
-	pad_unpack(padnum, PADFIELD_BBOX | PADFIELD_UP, &pad);
+	padGetCentre(padnum, &centre);
+	padUnpack(padnum, PADFIELD_BBOX | PADFIELD_UP, &pad);
 
 	mult = (pad.bbox.ymax - pad.bbox.ymin) * 0.5f + 10;
 
@@ -912,10 +1000,10 @@ s32 setup_get_portal_by_pad(s32 padnum)
 	centre.y = centre.y - pad.up.y * mult;
 	centre.z = centre.z - pad.up.z * mult;
 
-	return bg_find_portal_between_positions(&centre, &coord);
+	return bgFindPortalBetweenPositions(&centre, &coord);
 }
 
-s32 setup_get_portal_by_door_pad(s32 padnum)
+s32 setupGetPortalByDoorPad(s32 padnum)
 {
 	f32 mult;
 	struct coord centre;
@@ -923,8 +1011,8 @@ s32 setup_get_portal_by_door_pad(s32 padnum)
 	u32 stack;
 	struct pad pad;
 
-	pad_get_centre(padnum, &centre);
-	pad_unpack(padnum, PADFIELD_BBOX | PADFIELD_NORMAL, &pad);
+	padGetCentre(padnum, &centre);
+	padUnpack(padnum, PADFIELD_BBOX | PADFIELD_NORMAL, &pad);
 
 	mult = (pad.bbox.xmax - pad.bbox.xmin) * 0.5f + 10;
 
@@ -936,29 +1024,27 @@ s32 setup_get_portal_by_door_pad(s32 padnum)
 	centre.y = centre.y - pad.normal.y * mult;
 	centre.z = centre.z - pad.normal.z * mult;
 
-	return bg_find_portal_between_positions(&centre, &coord);
+	return bgFindPortalBetweenPositions(&centre, &coord);
 }
 
-f32 g_DoorScale = 1;
-
-void setup_create_door(struct doorobj *door, s32 cmdindex)
+void setupCreateDoor(struct doorobj *door, s32 cmdindex)
 {
 	f32 scale;
 	s32 modelnum = door->base.modelnum;
 	s32 portalnum = -1;
 	struct pad pad;
 
-	setup_load_modeldef(modelnum);
+	setupLoadModeldef(modelnum);
 
 	if (door->doorflags & DOORFLAG_ROTATEDPAD) {
-		pad_rotate_for_door(door->base.pad);
+		padRotateForDoor(door->base.pad);
 	}
 
 	if (door->base.flags & OBJFLAG_DOOR_HASPORTAL) {
-		portalnum = setup_get_portal_by_door_pad(door->base.pad);
+		portalnum = setupGetPortalByDoorPad(door->base.pad);
 	}
 
-	pad_unpack(door->base.pad, PADFIELD_POS | PADFIELD_LOOK | PADFIELD_UP | PADFIELD_NORMAL | PADFIELD_BBOX | PADFIELD_ROOM, &pad);
+	padUnpack(door->base.pad, PADFIELD_POS | PADFIELD_LOOK | PADFIELD_UP | PADFIELD_NORMAL | PADFIELD_BBOX | PADFIELD_ROOM, &pad);
 
 	if (g_DoorScale != 1) {
 		pad.bbox.xmin *= g_DoorScale;
@@ -990,7 +1076,7 @@ void setup_create_door(struct doorobj *door, s32 cmdindex)
 		}
 
 		// Write the modified bbox into the pad file data
-		pad_copy_bbox_from_pad(door->base.pad, &pad);
+		padCopyBboxFromPad(door->base.pad, &pad);
 	}
 
 	if (pad.room > 0) {
@@ -1002,23 +1088,23 @@ void setup_create_door(struct doorobj *door, s32 cmdindex)
 		Mtxf finalmtx;
 		struct coord centre;
 		Mtxf zrotmtx;
-		struct coord slidedist;
+		struct coord sp54;
 		f32 xscale;
 		f32 yscale;
 		f32 zscale;
 		struct modelrodata_bbox *bbox;
 
-		bbox = modeldef_find_bbox_rodata(g_ModelStates[modelnum].modeldef);
+		bbox = modeldefFindBboxRodata(g_ModelStates[modelnum].modeldef);
 
 		mtx00016d58(&sp110, 0, 0, 0,
 				-pad.look.x, -pad.look.y, -pad.look.z,
 				pad.up.x, pad.up.y, pad.up.z);
-		mtx4_load_x_rotation(BADDTOR(90), &finalmtx);
-		mtx4_load_z_rotation(BADDTOR(90), &zrotmtx);
-		mtx4_mult_mtx4_in_place(&zrotmtx, &finalmtx);
-		mtx4_mult_mtx4_in_place(&sp110, &finalmtx);
+		mtx4LoadXRotation(1.5705462694168f, &finalmtx);
+		mtx4LoadZRotation(1.5705462694168f, &zrotmtx);
+		mtx4MultMtx4InPlace(&zrotmtx, &finalmtx);
+		mtx4MultMtx4InPlace(&sp110, &finalmtx);
 
-		pad_get_centre(door->base.pad, &centre);
+		padGetCentre(door->base.pad, &centre);
 
 		xscale = (pad.bbox.ymax - pad.bbox.ymin) / (bbox->xmax - bbox->xmin);
 		yscale = (pad.bbox.zmax - pad.bbox.zmin) / (bbox->ymax - bbox->ymin);
@@ -1040,13 +1126,13 @@ void setup_create_door(struct doorobj *door, s32 cmdindex)
 		rooms[1] = -1;
 
 		if (door->doortype == DOORTYPE_VERTICAL || door->doortype == DOORTYPE_FALLAWAY) {
-			slidedist.x = pad.look.f[0] * (pad.bbox.zmax - pad.bbox.zmin);
-			slidedist.y = pad.look.f[1] * (pad.bbox.zmax - pad.bbox.zmin);
-			slidedist.z = pad.look.f[2] * (pad.bbox.zmax - pad.bbox.zmin);
+			sp54.x = pad.look.f[0] * (pad.bbox.zmax - pad.bbox.zmin);
+			sp54.y = pad.look.f[1] * (pad.bbox.zmax - pad.bbox.zmin);
+			sp54.z = pad.look.f[2] * (pad.bbox.zmax - pad.bbox.zmin);
 		} else {
-			slidedist.x = pad.up.f[0] * (pad.bbox.ymin - pad.bbox.ymax);
-			slidedist.y = pad.up.f[1] * (pad.bbox.ymin - pad.bbox.ymax);
-			slidedist.z = pad.up.f[2] * (pad.bbox.ymin - pad.bbox.ymax);
+			sp54.x = pad.up.f[0] * (pad.bbox.ymin - pad.bbox.ymax);
+			sp54.y = pad.up.f[1] * (pad.bbox.ymin - pad.bbox.ymax);
+			sp54.z = pad.up.f[2] * (pad.bbox.ymin - pad.bbox.ymax);
 		}
 
 		// These values are stored in the setup files as integers, but at
@@ -1062,16 +1148,16 @@ void setup_create_door(struct doorobj *door, s32 cmdindex)
 		// but at runtime it's a pointer.
 		if (door->sibling) {
 			siblingcmdindex = *(s32 *) &door->sibling + cmdindex;
-			door->sibling = (struct doorobj *) setup_get_cmd_by_index(siblingcmdindex);
+			door->sibling = (struct doorobj *) setupGetCmdByIndex(siblingcmdindex);
 		}
 
-		prop = door_init(door, &pos, &finalmtx, rooms, &slidedist, &centre);
+		prop = doorInit(door, &pos, &finalmtx, rooms, &sp54, &centre);
 
 		if (door->base.flags & OBJFLAG_DOOR_HASPORTAL) {
 			door->portalnum = portalnum;
 
 			if (door->portalnum >= 0 && door->frac == 0) {
-				door_deactivate_portal(door);
+				doorDeactivatePortal(door);
 			}
 		}
 
@@ -1086,17 +1172,17 @@ void setup_create_door(struct doorobj *door, s32 cmdindex)
 				scale = zscale;
 			}
 
-			model_set_scale(door->base.model, door->base.model->scale * scale);
+			modelSetScale(door->base.model, door->base.model->scale * scale);
 		}
 
-		prop_activate(prop);
-		prop_enable(prop);
+		propActivate(prop);
+		propEnable(prop);
 	} else {
 		door->base.prop = NULL;
 	}
 }
 
-void setup_create_hov(struct defaultobj *obj, struct hov *hov)
+void setupCreateHov(struct defaultobj *obj, struct hov *hov)
 {
 	hov->bobycur = 0;
 	hov->bobytarget = 0;
@@ -1115,10 +1201,10 @@ void setup_create_hov(struct defaultobj *obj, struct hov *hov)
 	hov->prevgroundframe60 = -1;
 }
 
-void setup_load_briefing(s32 stagenum, u8 *buffer, s32 bufferlen, struct briefing *briefing)
+void setupLoadBriefing(s32 stagenum, u8 *buffer, s32 bufferlen, struct briefing *briefing)
 {
 	if (stagenum < STAGE_TITLE) {
-		s32 stageindex = stage_get_index(stagenum);
+		s32 stageindex = stageGetIndex(stagenum);
 		struct defaultobj *start;
 		u16 setupfilenum;
 		s32 setupfilesize;
@@ -1134,30 +1220,34 @@ void setup_load_briefing(s32 stagenum, u8 *buffer, s32 bufferlen, struct briefin
 		}
 
 		setupfilenum = g_Stages[stageindex].setupfileid;
+#ifdef PLATFORM_N64 // bug?
 		g_LoadType = LOADTYPE_LANG;
+#else
+		g_LoadType = LOADTYPE_SETUP;
+#endif
 
-		file_load_to_addr(setupfilenum, FILELOADMETHOD_DEFAULT, buffer, bufferlen);
+		fileLoadToAddr(setupfilenum, FILELOADMETHOD_DEFAULT, buffer, bufferlen);
 
 		setup = (struct stagesetup *)buffer;
-		setupfilesize = file_get_loaded_size(setupfilenum);
+		setupfilesize = fileGetLoadedSize(setupfilenum);
 		langbuffer = &buffer[setupfilesize];
 		langbufferlen = bufferlen - setupfilesize;
 
-		briefing->langbank = lang_get_lang_bank_index_from_stagenum(stagenum);
+		briefing->langbank = langGetLangBankIndexFromStagenum(stagenum);
 
-		lang_load_to_addr(briefing->langbank, langbuffer, langbufferlen);
+		langLoadToAddr(briefing->langbank, langbuffer, langbufferlen);
 
-		start = (struct defaultobj *)((uintptr_t)setup + (u32)setup->props);
+		start = (struct defaultobj *)((uintptr_t)setup + (uintptr_t)setup->props);
 
 		if (start != NULL) {
 			struct defaultobj *obj;
 			s32 wanttype = BRIEFINGTYPE_TEXT_PA;
 
-			if (lv_get_difficulty() == DIFF_A) {
+			if (lvGetDifficulty() == DIFF_A) {
 				wanttype = BRIEFINGTYPE_TEXT_A;
 			}
 
-			if (lv_get_difficulty() == DIFF_SA) {
+			if (lvGetDifficulty() == DIFF_SA) {
 				wanttype = BRIEFINGTYPE_TEXT_SA;
 			}
 
@@ -1193,13 +1283,13 @@ void setup_load_briefing(s32 stagenum, u8 *buffer, s32 bufferlen, struct briefin
 					break;
 				}
 
-				obj = (struct defaultobj *)((u32 *)obj + setup_get_cmd_length((u32 *)obj));
+				obj = (struct defaultobj *)((u32 *)obj + setupGetCmdLength((u32 *)obj));
 			}
 		}
 	}
 }
 
-void setup_load_files(s32 stagenum)
+void setupLoadFiles(s32 stagenum)
 {
 	s32 i;
 	s32 j;
@@ -1229,18 +1319,18 @@ void setup_load_files(s32 stagenum)
 
 		g_LoadType = LOADTYPE_SETUP;
 
-		g_GeCreditsData = (u8 *)file_load_to_new(filenum, FILELOADMETHOD_DEFAULT);
+		g_GeCreditsData = (u8 *)fileLoadToNew(filenum, FILELOADMETHOD_DEFAULT, LOADTYPE_SETUP);
 		setup = (struct stagesetup *)g_GeCreditsData;
-		lang_load(lang_get_lang_bank_index_from_stagenum(stagenum));
+		langLoad(langGetLangBankIndexFromStagenum(stagenum));
 
-		g_StageSetup.intro = (s32 *)((uintptr_t)setup + (u32)setup->intro);
-		g_StageSetup.props = (u32 *)((uintptr_t)setup + (u32)setup->props);
-		g_StageSetup.paths = (struct path *)((uintptr_t)setup + (u32)setup->paths);
-		g_StageSetup.ailists = (struct ailist *)((uintptr_t)setup + (u32)setup->ailists);
+		g_StageSetup.intro = (s32 *)((uintptr_t)setup + (uintptr_t)setup->intro);
+		g_StageSetup.props = (u32 *)((uintptr_t)setup + (uintptr_t)setup->props);
+		g_StageSetup.paths = (struct path *)((uintptr_t)setup + (uintptr_t)setup->paths);
+		g_StageSetup.ailists = (struct ailist *)((uintptr_t)setup + (uintptr_t)setup->ailists);
 
 		g_LoadType = LOADTYPE_PADS;
 
-		g_StageSetup.padfiledata = file_load_to_new(g_Stages[g_StageIndex].padsfileid, FILELOADMETHOD_DEFAULT);
+		g_StageSetup.padfiledata = fileLoadToNew(g_Stages[g_StageIndex].padsfileid, FILELOADMETHOD_DEFAULT, LOADTYPE_PADS);
 
 		g_StageSetup.waypoints = NULL;
 		g_StageSetup.waygroups = NULL;
@@ -1249,7 +1339,7 @@ void setup_load_files(s32 stagenum)
 		// Convert ailist pointers from file-local to proper pointers
 		if (g_StageSetup.ailists) {
 			for (i = 0; g_StageSetup.ailists[i].list != NULL; i++) {
-				g_StageSetup.ailists[i].list = (u8 *)((uintptr_t)setup + (u32)g_StageSetup.ailists[i].list);
+				g_StageSetup.ailists[i].list = (u8 *)((uintptr_t)setup + (uintptr_t)g_StageSetup.ailists[i].list);
 			}
 		}
 
@@ -1293,7 +1383,7 @@ void setup_load_files(s32 stagenum)
 		// and calculate the path lengths
 		if (g_StageSetup.paths) {
 			for (i = 0; g_StageSetup.paths[i].pads != NULL; i++) {
-				g_StageSetup.paths[i].pads = (s32 *)((uintptr_t)g_StageSetup.paths[i].pads + (u32)setup);
+				g_StageSetup.paths[i].pads = (s32 *)((uintptr_t)g_StageSetup.paths[i].pads + (uintptr_t)setup);
 
 				for (j = 0; g_StageSetup.paths[i].pads[j] >= 0; j++);
 
@@ -1302,7 +1392,7 @@ void setup_load_files(s32 stagenum)
 		}
 
 		// Count the number of chrs and objects so enough model slots can be allocated
-		numchrs += setup_count_command_type(OBJTYPE_CHR);
+		numchrs += setupCountCommandType(OBJTYPE_CHR);
 
 		if (!g_Vars.normmplayerisrunning && g_MissionConfig.iscoop && g_Vars.numaibuddies > 0) {
 			// @bug? The Hotshot buddy has two guns, but only one is counted here.
@@ -1310,42 +1400,42 @@ void setup_load_files(s32 stagenum)
 			numobjs += g_Vars.numaibuddies; // the buddy's weapon
 		}
 
-		numobjs += setup_count_command_type(OBJTYPE_WEAPON);
-		numobjs += setup_count_command_type(OBJTYPE_KEY);
-		numobjs += setup_count_command_type(OBJTYPE_HAT);
-		numobjs += setup_count_command_type(OBJTYPE_DOOR);
-		numobjs += setup_count_command_type(OBJTYPE_CCTV);
-		numobjs += setup_count_command_type(OBJTYPE_AUTOGUN);
-		numobjs += setup_count_command_type(OBJTYPE_HANGINGMONITORS);
-		numobjs += setup_count_command_type(OBJTYPE_SINGLEMONITOR);
-		numobjs += setup_count_command_type(OBJTYPE_MULTIMONITOR);
-		numobjs += setup_count_command_type(OBJTYPE_SHIELD);
-		numobjs += setup_count_command_type(OBJTYPE_BASIC);
-		numobjs += setup_count_command_type(OBJTYPE_DEBRIS);
-		numobjs += setup_count_command_type(OBJTYPE_GLASS);
-		numobjs += setup_count_command_type(OBJTYPE_TINTEDGLASS);
-		numobjs += setup_count_command_type(OBJTYPE_SAFE);
-		numobjs += setup_count_command_type(OBJTYPE_29);
-		numobjs += setup_count_command_type(OBJTYPE_GASBOTTLE);
-		numobjs += setup_count_command_type(OBJTYPE_ALARM);
-		numobjs += setup_count_command_type(OBJTYPE_AMMOCRATE);
-		numobjs += setup_count_command_type(OBJTYPE_MULTIAMMOCRATE);
-		numobjs += setup_count_command_type(OBJTYPE_TRUCK);
-		numobjs += setup_count_command_type(OBJTYPE_TANK);
-		numobjs += setup_count_command_type(OBJTYPE_LIFT);
-		numobjs += setup_count_command_type(OBJTYPE_HOVERBIKE);
-		numobjs += setup_count_command_type(OBJTYPE_HOVERPROP);
-		numobjs += setup_count_command_type(OBJTYPE_FAN);
-		numobjs += setup_count_command_type(OBJTYPE_HOVERCAR);
-		numobjs += setup_count_command_type(OBJTYPE_CHOPPER);
-		numobjs += setup_count_command_type(OBJTYPE_HELI);
-		numobjs += setup_count_command_type(OBJTYPE_ESCASTEP);
+		numobjs += setupCountCommandType(OBJTYPE_WEAPON);
+		numobjs += setupCountCommandType(OBJTYPE_KEY);
+		numobjs += setupCountCommandType(OBJTYPE_HAT);
+		numobjs += setupCountCommandType(OBJTYPE_DOOR);
+		numobjs += setupCountCommandType(OBJTYPE_CCTV);
+		numobjs += setupCountCommandType(OBJTYPE_AUTOGUN);
+		numobjs += setupCountCommandType(OBJTYPE_HANGINGMONITORS);
+		numobjs += setupCountCommandType(OBJTYPE_SINGLEMONITOR);
+		numobjs += setupCountCommandType(OBJTYPE_MULTIMONITOR);
+		numobjs += setupCountCommandType(OBJTYPE_SHIELD);
+		numobjs += setupCountCommandType(OBJTYPE_BASIC);
+		numobjs += setupCountCommandType(OBJTYPE_DEBRIS);
+		numobjs += setupCountCommandType(OBJTYPE_GLASS);
+		numobjs += setupCountCommandType(OBJTYPE_TINTEDGLASS);
+		numobjs += setupCountCommandType(OBJTYPE_SAFE);
+		numobjs += setupCountCommandType(OBJTYPE_29);
+		numobjs += setupCountCommandType(OBJTYPE_GASBOTTLE);
+		numobjs += setupCountCommandType(OBJTYPE_ALARM);
+		numobjs += setupCountCommandType(OBJTYPE_AMMOCRATE);
+		numobjs += setupCountCommandType(OBJTYPE_MULTIAMMOCRATE);
+		numobjs += setupCountCommandType(OBJTYPE_TRUCK);
+		numobjs += setupCountCommandType(OBJTYPE_TANK);
+		numobjs += setupCountCommandType(OBJTYPE_LIFT);
+		numobjs += setupCountCommandType(OBJTYPE_HOVERBIKE);
+		numobjs += setupCountCommandType(OBJTYPE_HOVERPROP);
+		numobjs += setupCountCommandType(OBJTYPE_FAN);
+		numobjs += setupCountCommandType(OBJTYPE_HOVERCAR);
+		numobjs += setupCountCommandType(OBJTYPE_CHOPPER);
+		numobjs += setupCountCommandType(OBJTYPE_HELI);
+		numobjs += setupCountCommandType(OBJTYPE_ESCASTEP);
 
 		if (g_Vars.normmplayerisrunning) {
-			numobjs += scenario_num_props();
+			numobjs += scenarioNumProps();
 		}
 
-		modelmgr_allocate_slots(numobjs, numchrs);
+		modelmgrAllocateSlots(numobjs, numchrs);
 	} else {
 		// cover isn't set to NULL here... I guess it's not important
 		g_StageSetup.waypoints = NULL;
@@ -1356,7 +1446,7 @@ void setup_load_files(s32 stagenum)
 		g_StageSetup.ailists = NULL;
 		g_StageSetup.padfiledata = NULL;
 
-		modelmgr_allocate_slots(0, 0);
+		modelmgrAllocateSlots(0, 0);
 	}
 
 	if (IS4MB()) {
@@ -1370,10 +1460,38 @@ void setup_load_files(s32 stagenum)
 	g_Vars.maxprops = numobjs + numchrs + extra + 40;
 }
 
-void setup_create_props(s32 stagenum)
+static void setupMarkLiftDoors()
 {
-	s32 withchrs = !arg_find_by_prefix(1, "-nochr") && !arg_find_by_prefix(1, "-noprop");
-	s32 withobjs = !arg_find_by_prefix(1, "-noobj") && !arg_find_by_prefix(1, "-noprop");
+	s32 index = 0;
+
+	struct defaultobj *obj = (struct defaultobj *)g_StageSetup.props;
+	while (obj->type != OBJTYPE_END) {
+		if (obj->type == OBJTYPE_LIFT) {
+			struct liftobj *lift = (struct liftobj *)obj;
+			for (int i = 0; i < ARRAYCOUNT(lift->doors); i++) {
+				if (lift->doors[i]) {
+					s32 doorindex = index + *(s32*)&lift->doors[i];
+					struct doorobj *door = (struct doorobj *)setupGetCmdByIndex(doorindex);
+					// we use this 'extra1' field here to mark the door, since its not used anywhere else
+					door->extra1 = 1;
+
+					if (door->sibling) {
+						s32 siblingidx = *(s32 *) &door->sibling + doorindex;
+						struct doorobj *sibling = (struct doorobj *) setupGetCmdByIndex(siblingidx);
+						sibling->extra1 = 1;
+					}
+				}
+			}
+		}
+		obj = (struct defaultobj *) ((u32 *) obj + setupGetCmdLength((u32 *) obj));
+		index++;
+	}
+}
+
+void setupCreateProps(s32 stagenum)
+{
+	s32 withchrs = !argFindByPrefix(1, "-nochr") && !argFindByPrefix(1, "-noprop");
+	s32 withobjs = !argFindByPrefix(1, "-noobj") && !argFindByPrefix(1, "-noprop");
 	s32 withhovercars;
 	s32 escstepx;
 	s32 escstepy;
@@ -1397,15 +1515,15 @@ void setup_create_props(s32 stagenum)
 
 	if (stagenum < STAGE_TITLE) {
 		if (g_StageSetup.padfiledata) {
-			setup_prepare_pads();
+			setupPreparePads();
 		}
 
-		setup_load_waypoints();
+		setupLoadWaypoints();
 
 		if (withchrs) {
 			s32 numchrs = 0;
 
-			numchrs += setup_count_command_type(OBJTYPE_CHR);
+			numchrs += setupCountCommandType(OBJTYPE_CHR);
 
 			if (g_Vars.normmplayerisrunning == false
 					&& g_MissionConfig.iscoop
@@ -1413,21 +1531,21 @@ void setup_create_props(s32 stagenum)
 				numchrs += g_Vars.numaibuddies;
 			}
 
-			chrmgr_configure(numchrs);
+			chrmgrConfigure(numchrs);
 		} else {
-			chrmgr_configure(0);
+			chrmgrConfigure(0);
 		}
 
 		for (j = 0; j < PLAYERCOUNT(); j++) {
-			set_current_player_num(j);
-			inv_init(setup_count_command_type(OBJTYPE_LINKGUNS));
+			setCurrentPlayerNum(j);
+			invInit(setupCountCommandType(OBJTYPE_LINKGUNS));
 		}
 
 		if (g_StageSetup.props) {
 			u32 diffflag = 0;
 			s32 index;
 
-			diffflag |= 1 << (lv_get_difficulty() + 4);
+			diffflag |= 1 << (lvGetDifficulty() + 4);
 
 			if (g_Vars.mplayerisrunning) {
 				if (PLAYERCOUNT() == 2) {
@@ -1439,8 +1557,14 @@ void setup_create_props(s32 stagenum)
 				}
 			}
 
-			botmgr_remove_all();
+			botmgrRemoveAll();
 			index = 0;
+
+            bool nodoors = (g_MpSetup.options & MPOPTION_NODOORS) != 0;
+            
+			if (nodoors) {
+				setupMarkLiftDoors();
+			}
 
 			obj = (struct defaultobj *)g_StageSetup.props;
 
@@ -1450,7 +1574,7 @@ void setup_create_props(s32 stagenum)
 					{
 						struct grenadeprobobj *grenadeprob = (struct grenadeprobobj *)obj;
 						u8 probability = grenadeprob->probability;
-						struct chrdata *chr = chr_find_by_literal_id(grenadeprob->chrnum);
+						struct chrdata *chr = chrFindByLiteralId(grenadeprob->chrnum);
 
 						if (chr && chr->prop && chr->model) {
 							chr->grenadeprob = probability;
@@ -1459,14 +1583,18 @@ void setup_create_props(s32 stagenum)
 					break;
 				case OBJTYPE_CHR:
 					if (withchrs) {
-						body_instantiate_chr(stagenum, (struct packedchr *) obj, index);
+						bodyAllocateChr(stagenum, (struct packedchr *) obj, index);
 					}
 					break;
-				case OBJTYPE_DOOR:
-					if (withobjs && (obj->flags2 & diffflag) == 0) {
-						setup_create_door((struct doorobj *)obj, index);
+				case OBJTYPE_DOOR: {
+					struct doorobj *door = (struct doorobj *) obj;
+					// dont skip doors that are locked or are lift doors
+					bool skipdoor = nodoors && g_Vars.normmplayerisrunning && door->keyflags == 0 && door->extra1 == 0;
+					if (!skipdoor && withobjs && (obj->flags2 & diffflag) == 0) {
+						setupCreateDoor(door, index);
 					}
 					break;
+				}
 				case OBJTYPE_DOORSCALE:
 					{
 						struct doorscaleobj *scale = (struct doorscaleobj *)obj;
@@ -1475,42 +1603,42 @@ void setup_create_props(s32 stagenum)
 					break;
 				case OBJTYPE_WEAPON:
 					if (withchrs && (obj->flags2 & diffflag) == 0) {
-						setup_place_weapon((struct weaponobj *)obj, index);
+						setupPlaceWeapon((struct weaponobj *)obj, index);
 					}
 					break;
 				case OBJTYPE_KEY:
 					if (withchrs && (obj->flags2 & diffflag) == 0) {
-						setup_create_key((struct keyobj *)obj, index);
+						setupCreateKey((struct keyobj *)obj, index);
 					}
 					break;
 				case OBJTYPE_HAT:
 					if (withchrs && (obj->flags2 & diffflag) == 0) {
-						setup_create_hat((struct hatobj *)obj, index);
+						setupCreateHat((struct hatobj *)obj, index);
 					}
 					break;
 				case OBJTYPE_CCTV:
 					if (withobjs && (obj->flags2 & diffflag) == 0) {
-						setup_create_cctv((struct cctvobj *)obj, index);
+						setupCreateCctv((struct cctvobj *)obj, index);
 					}
 					break;
 				case OBJTYPE_AUTOGUN:
 					if (withobjs && (obj->flags2 & diffflag) == 0) {
-						setup_create_autogun((struct autogunobj *)obj, index);
+						setupCreateAutogun((struct autogunobj *)obj, index);
 					}
 					break;
 				case OBJTYPE_HANGINGMONITORS:
 					if (withobjs && (obj->flags2 & diffflag) == 0) {
-						setup_create_hanging_monitors((struct hangingmonitorsobj *)obj, index);
+						setupCreateHangingMonitors((struct hangingmonitorsobj *)obj, index);
 					}
 					break;
 				case OBJTYPE_SINGLEMONITOR:
 					if (withobjs && (obj->flags2 & diffflag) == 0) {
-						setup_create_single_monitor((struct singlemonitorobj *)obj, index);
+						setupCreateSingleMonitor((struct singlemonitorobj *)obj, index);
 					}
 					break;
 				case OBJTYPE_MULTIMONITOR:
 					if (withobjs && (obj->flags2 & diffflag) == 0) {
-						setup_create_multi_monitor((struct multimonitorobj *)obj, index);
+						setupCreateMultiMonitor((struct multimonitorobj *)obj, index);
 					}
 					break;
 				case OBJTYPE_SHIELD:
@@ -1524,7 +1652,7 @@ void setup_create_props(s32 stagenum)
 							struct shieldobj *shield = (struct shieldobj *)obj;
 							shield->initialamount = *(s32 *)&shield->initialamount / 65536.0f;
 							shield->amount = shield->initialamount;
-							setup_create_object(obj, index);
+							setupCreateObject(obj, index);
 						}
 					}
 					break;
@@ -1532,11 +1660,11 @@ void setup_create_props(s32 stagenum)
 					if (withobjs && (obj->flags2 & diffflag) == 0) {
 						if (obj->flags & OBJFLAG_GLASS_HASPORTAL) {
 							struct tintedglassobj *glass = (struct tintedglassobj *)obj;
-							glass->portalnum = setup_get_portal_by_pad(obj->pad);
+							glass->portalnum = setupGetPortalByPad(obj->pad);
 							glass->unk64 = *(s32 *)&glass->unk64 / 65536.0f;
 						}
 
-						setup_create_object(obj, index);
+						setupCreateObject(obj, index);
 					}
 					break;
 				case OBJTYPE_LIFT:
@@ -1556,35 +1684,35 @@ void setup_create_props(s32 stagenum)
 
 						for (i = 0; i < ARRAYCOUNT(lift->doors); i++) {
 							if (lift->doors[i]) {
-								lift->doors[i] = (struct doorobj *)setup_get_cmd_by_index(index + *(s32*)&lift->doors[i]);
+								lift->doors[i] = (struct doorobj *)setupGetCmdByIndex(index + *(s32*)&lift->doors[i]);
 							}
 						}
 
 						obj->geocount = 1;
-						setup_load_modeldef(modelnum);
+						setupLoadModeldef(modelnum);
 						modelstate = &g_ModelStates[modelnum];
 
 						if (modelstate->modeldef) {
-							if (model_get_part_rodata(modelstate->modeldef, MODELPART_LIFT_WALL1)) {
+							if (modelGetPartRodata(modelstate->modeldef, MODELPART_LIFT_WALL1)) {
 								obj->geocount++;
 							}
-							if (model_get_part_rodata(modelstate->modeldef, MODELPART_LIFT_WALL2)) {
+							if (modelGetPartRodata(modelstate->modeldef, MODELPART_LIFT_WALL2)) {
 								obj->geocount++;
 							}
-							if (model_get_part_rodata(modelstate->modeldef, MODELPART_LIFT_WALL3)) {
+							if (modelGetPartRodata(modelstate->modeldef, MODELPART_LIFT_WALL3)) {
 								obj->geocount++;
 							}
-							if (model_get_part_rodata(modelstate->modeldef, MODELPART_LIFT_DOORBLOCK)) {
+							if (modelGetPartRodata(modelstate->modeldef, MODELPART_LIFT_DOORBLOCK)) {
 								obj->geocount++;
 							}
-							if (model_get_part_rodata(modelstate->modeldef, MODELPART_LIFT_FLOORNONRECT2)) {
+							if (modelGetPartRodata(modelstate->modeldef, MODELPART_LIFT_FLOORNONRECT2)) {
 								obj->geocount++;
 							}
 						}
 
-						obj->flags &= ~OBJFLAG_CORE_GEO_INUSE;
+						obj->flags &= ~OBJFLAG_00000100;
 
-						setup_create_object(obj, index);
+						setupCreateObject(obj, index);
 
 						prop = obj->prop;
 
@@ -1593,7 +1721,7 @@ void setup_create_props(s32 stagenum)
 							lift->prevpos.y = prop->pos.y;
 							lift->prevpos.z = prop->pos.z;
 
-							lift_update_tiles(lift, true);
+							liftUpdateTiles(lift, true);
 						}
 					}
 					break;
@@ -1601,16 +1729,16 @@ void setup_create_props(s32 stagenum)
 					if (withobjs && (obj->flags2 & diffflag) == 0) {
 						struct hoverpropobj *hoverprop = (struct hoverpropobj *)obj;
 
-						setup_create_object(obj, index);
-						setup_create_hov(obj, &hoverprop->hov);
+						setupCreateObject(obj, index);
+						setupCreateHov(obj, &hoverprop->hov);
 					}
 					break;
 				case OBJTYPE_HOVERBIKE:
 					if (withobjs && (obj->flags2 & diffflag) == 0) {
 						struct hoverbikeobj *bike = (struct hoverbikeobj *)obj;
 
-						setup_create_object(obj, index);
-						setup_create_hov(obj, &bike->hov);
+						setupCreateObject(obj, index);
+						setupCreateHov(obj, &bike->hov);
 
 						bike->speed[0] = 0;
 						bike->speed[1] = 0;
@@ -1637,17 +1765,17 @@ void setup_create_props(s32 stagenum)
 						fan->ymaxspeed = PALUPF(*(s32 *)&fan->ymaxspeed) / 65536.0f;
 						fan->yaccel = PALUPF(*(s32 *)&fan->yaccel) / 65536.0f;
 
-						setup_create_object(obj, index);
+						setupCreateObject(obj, index);
 					}
 					break;
 				case OBJTYPE_GLASS:
 					if (withobjs && (obj->flags2 & diffflag) == 0) {
 						if (obj->flags & OBJFLAG_GLASS_HASPORTAL) {
 							struct glassobj *glass = (struct glassobj *)obj;
-							glass->portalnum = setup_get_portal_by_pad(obj->pad);
+							glass->portalnum = setupGetPortalByPad(obj->pad);
 						}
 
-						setup_create_object(obj, index);
+						setupCreateObject(obj, index);
 					}
 					break;
 				case OBJTYPE_ESCASTEP:
@@ -1665,7 +1793,7 @@ void setup_create_props(s32 stagenum)
 #endif
 						f32 sp184[3][3];
 
-						setup_create_object(obj, index);
+						setupCreateObject(obj, index);
 
 						prop = obj->prop;
 
@@ -1678,14 +1806,14 @@ void setup_create_props(s32 stagenum)
 						if (obj->flags & OBJFLAG_ESCSTEP_ZALIGNED) {
 							step->frame = escstepy;
 							escstepy += 40;
-							mtx4_load_y_rotation(BADDTOR(270), (Mtxf *) &sp1a8);
-							mtx4_to_mtx3((Mtxf *) &sp1a8, sp184);
+							mtx4LoadYRotation(4.7116389274597f, (Mtxf *) &sp1a8);
+							mtx4ToMtx3((Mtxf *) &sp1a8, sp184);
 							mtx00016110(sp184, obj->realrot);
 						} else {
 							step->frame = escstepx;
 							escstepx += 40;
-							mtx4_load_y_rotation(BADDTOR(180), (Mtxf *) &sp1a8);
-							mtx4_to_mtx3((Mtxf *) &sp1a8, sp184);
+							mtx4LoadYRotation(M_BADPI, (Mtxf *) &sp1a8);
+							mtx4ToMtx3((Mtxf *) &sp1a8, sp184);
 							mtx00016110(sp184, obj->realrot);
 						}
 					}
@@ -1698,7 +1826,7 @@ void setup_create_props(s32 stagenum)
 				case OBJTYPE_29:
 				case OBJTYPE_SAFE:
 					if (withobjs && (obj->flags2 & diffflag) == 0) {
-						setup_create_object(obj, index);
+						setupCreateObject(obj, index);
 					}
 					break;
 				case OBJTYPE_MULTIAMMOCRATE:
@@ -1708,7 +1836,7 @@ void setup_create_props(s32 stagenum)
 						s32 i;
 
 						if (g_Vars.normmplayerisrunning && g_SetupCurMpLocation >= 0) {
-							struct mpweapon *mpweapon = mp_get_mp_weapon_by_location(g_SetupCurMpLocation);
+							struct mpweapon *mpweapon = mpGetMpWeaponByLocation(g_SetupCurMpLocation);
 							ammoqty = mpweapon->priammoqty;
 
 							if (mpweapon->priammotype > 0 && mpweapon->priammotype < 20) {
@@ -1723,11 +1851,11 @@ void setup_create_props(s32 stagenum)
 						if (ammoqty > 0 && withobjs && (obj->flags2 & diffflag) == 0) {
 							for (i = 0; i < ARRAYCOUNT(crate->slots); i++) {
 								if (crate->slots[i].quantity > 0 && crate->slots[i].modelnum != 0xffff) {
-									setup_load_modeldef(crate->slots[i].modelnum);
+									setupLoadModeldef(crate->slots[i].modelnum);
 								}
 							}
 
-							setup_create_object(obj, index);
+							setupCreateObject(obj, index);
 						}
 					}
 					break;
@@ -1735,14 +1863,14 @@ void setup_create_props(s32 stagenum)
 					if (withobjs && (obj->flags2 & diffflag) == 0) {
 						struct truckobj *truck = (struct truckobj *)obj;
 
-						setup_create_object(obj, index);
+						setupCreateObject(obj, index);
 
 						if (obj->model) {
-							struct modelnode *node = model_get_part(obj->model->definition, MODELPART_TRUCK_0005);
+							struct modelnode *node = modelGetPart(obj->model->definition, MODELPART_TRUCK_0005);
 
 							if (node) {
 								// The truck model doesn't exist in PD, so I'm assuming this is a toggle node
-								union modelrwdata *rwdata = model_get_node_rw_data(obj->model, node);
+								union modelrwdata *rwdata = modelGetNodeRwData(obj->model, node);
 								rwdata->toggle.visible = ((obj->flags & OBJFLAG_DEACTIVATED) == 0);
 							}
 						}
@@ -1754,7 +1882,7 @@ void setup_create_props(s32 stagenum)
 						truck->speedtime60 = -1;
 						truck->turnrot60 = 0;
 						truck->roty = 0;
-						truck->ailist = ailist_find_by_id((u32)truck->ailist);
+						truck->ailist = ailistFindById((uintptr_t)truck->ailist);
 						truck->aioffset = 0;
 						truck->aireturnlist = -1;
 						truck->path = NULL;
@@ -1766,7 +1894,7 @@ void setup_create_props(s32 stagenum)
 						struct hovercarobj *car = (struct hovercarobj *)obj;
 						struct prop *prop;
 
-						setup_create_object(obj, index);
+						setupCreateObject(obj, index);
 
 						prop = obj->prop;
 
@@ -1776,14 +1904,14 @@ void setup_create_props(s32 stagenum)
 						car->roty = 0;
 						car->rotx = 0;
 						car->speedtime60 = -1;
-						car->ailist = ailist_find_by_id((s32)car->ailist);
+						car->ailist = ailistFindById((uintptr_t)car->ailist);
 						car->aioffset = 0;
 						car->aireturnlist = -1;
 						car->path = NULL;
 						car->nextstep = 0;
 
 						if (obj->flags & OBJFLAG_CHOPPER_INACTIVE) {
-							prop->pos.y = cd_find_ground_at_pos_ct(&prop->pos, prop->rooms, NULL, 0) + 30;
+							prop->pos.y = cdFindFloorYColourTypeAtPos(&prop->pos, prop->rooms, NULL, 0) + 30;
 						}
 
 						prop->forcetick = true;
@@ -1793,7 +1921,7 @@ void setup_create_props(s32 stagenum)
 					if (withobjs && (obj->flags2 & diffflag) == 0) {
 						struct chopperobj *chopper = (struct chopperobj *)obj;
 
-						setup_create_object(obj, index);
+						setupCreateObject(obj, index);
 
 						obj->flags |= OBJFLAG_CHOPPER_INIT;
 						obj->prop->forcetick = true;
@@ -1805,7 +1933,7 @@ void setup_create_props(s32 stagenum)
 						chopper->gunrotx = 0;
 						chopper->barrelrot = 0;
 						chopper->barrelrotspeed = 0;
-						chopper->ailist = ailist_find_by_id((u32)chopper->ailist);
+						chopper->ailist = ailistFindById((uintptr_t)chopper->ailist);
 						chopper->aioffset = 0;
 						chopper->aireturnlist = -1;
 						chopper->path = NULL;
@@ -1826,8 +1954,8 @@ void setup_create_props(s32 stagenum)
 						chopper->patroltimer60 = 0;
 						chopper->cw = 0;
 						chopper->weaponsarmed = true;
-						chopper->fireslotthing = memp_alloc(sizeof(struct fireslotthing), MEMPOOL_STAGE);
-						chopper->fireslotthing->beam = memp_alloc(ALIGN16(sizeof(struct beam)), MEMPOOL_STAGE);
+						chopper->fireslotthing = mempAlloc(sizeof(struct fireslotthing), MEMPOOL_STAGE);
+						chopper->fireslotthing->beam = mempAlloc(ALIGN16(sizeof(struct beam)), MEMPOOL_STAGE);
 						chopper->fireslotthing->beam->age = -1;
 						chopper->fireslotthing->unk08 = -1;
 						chopper->fireslotthing->unk00 = 0;
@@ -1842,7 +1970,7 @@ void setup_create_props(s32 stagenum)
 					if (withobjs && (obj->flags2 & diffflag) == 0) {
 						struct heliobj *heli = (struct heliobj *)obj;
 
-						setup_create_object(obj, index);
+						setupCreateObject(obj, index);
 
 						heli->speed = 0;
 						heli->speedaim = 0;
@@ -1852,7 +1980,7 @@ void setup_create_props(s32 stagenum)
 						heli->yrot = 0;
 						heli->speedtime60 = -1;
 						heli->rotoryspeedtime = -1;
-						heli->ailist = ailist_find_by_id((u32)heli->ailist);
+						heli->ailist = ailistFindById((uintptr_t)heli->ailist);
 						heli->aioffset = 0;
 						heli->aireturnlist = -1;
 						heli->path = NULL;
@@ -1862,27 +1990,27 @@ void setup_create_props(s32 stagenum)
 				case OBJTYPE_TAG:
 					{
 						struct tag *tag = (struct tag *)obj;
-						struct defaultobj *taggedobj = setup_get_obj_by_cmd_index(index + tag->cmdoffset);
+						struct defaultobj *taggedobj = setupGetObjByCmdIndex(index + tag->cmdoffset);
 						tag->obj = taggedobj;
 
 						if (taggedobj) {
 							taggedobj->hidden |= OBJHFLAG_TAGGED;
 						}
 
-						tag_insert(tag);
+						tagInsert(tag);
 					}
 					break;
 				case OBJTYPE_RENAMEOBJ:
 					{
 						struct textoverride *override = (struct textoverride *)obj;
-						struct defaultobj *targetobj = setup_get_obj_by_cmd_index(override->objoffset + index);
+						struct defaultobj *targetobj = setupGetObjByCmdIndex(override->objoffset + index);
 						override->obj = targetobj;
 
 						if (targetobj) {
 							targetobj->hidden |= OBJHFLAG_HASTEXTOVERRIDE;
 						}
 
-						inv_insert_text_override(override);
+						invInsertTextOverride(override);
 					}
 					break;
 				case OBJTYPE_BRIEFING:
@@ -1890,13 +2018,13 @@ void setup_create_props(s32 stagenum)
 						struct briefingobj *briefing = (struct briefingobj *)obj;
 						s32 wanttype = BRIEFINGTYPE_TEXT_PA;
 
-						briefing_insert(briefing);
+						briefingInsert(briefing);
 
-						if (lv_get_difficulty() == DIFF_A) {
+						if (lvGetDifficulty() == DIFF_A) {
 							wanttype = BRIEFINGTYPE_TEXT_A;
 						}
 
-						if (lv_get_difficulty() == DIFF_SA) {
+						if (lvGetDifficulty() == DIFF_SA) {
 							wanttype = BRIEFINGTYPE_TEXT_SA;
 						}
 
@@ -1905,21 +2033,21 @@ void setup_create_props(s32 stagenum)
 						}
 					}
 					break;
-				case OBJTYPE_CAMERAPRESET:
+				case OBJTYPE_CAMERAPOS:
 					{
-						struct camerapresetobj *preset = (struct camerapresetobj *)obj;
-						preset->x = *(s32 *)&preset->x / 100.0f;
-						preset->y = *(s32 *)&preset->y / 100.0f;
-						preset->z = *(s32 *)&preset->z / 100.0f;
-						preset->theta = *(s32 *)&preset->theta / 65536.0f;
-						preset->verta = *(s32 *)&preset->verta / 65536.0f;
+						struct cameraposobj *camera = (struct cameraposobj *)obj;
+						camera->x = *(s32 *)&camera->x / 100.0f;
+						camera->y = *(s32 *)&camera->y / 100.0f;
+						camera->z = *(s32 *)&camera->z / 100.0f;
+						camera->theta = *(s32 *)&camera->theta / 65536.0f;
+						camera->verta = *(s32 *)&camera->verta / 65536.0f;
 					}
 					break;
 				case OBJTYPE_BEGINOBJECTIVE:
 					{
 						struct objective *objective = (struct objective *)obj;
 
-						objective_insert(objective);
+						objectiveInsert(objective);
 
 						if ((u32)objective->index < 7) {
 							g_Briefing.objectivenames[objective->index] = objective->text;
@@ -1928,13 +2056,13 @@ void setup_create_props(s32 stagenum)
 					}
 					break;
 				case OBJECTIVETYPE_ENTERROOM:
-					objective_add_room_entered_criteria((struct criteria_roomentered *)obj);
+					objectiveAddRoomEnteredCriteria((struct criteria_roomentered *)obj);
 					break;
 				case OBJECTIVETYPE_THROWINROOM:
-					objective_add_throw_in_room_criteria((struct criteria_throwinroom *)obj);
+					objectiveAddThrowInRoomCriteria((struct criteria_throwinroom *)obj);
 					break;
 				case OBJECTIVETYPE_HOLOGRAPH:
-					objective_add_holograph_criteria((struct criteria_holograph *)obj);
+					objectiveAddHolographCriteria((struct criteria_holograph *)obj);
 					break;
 				case OBJTYPE_PADEFFECT:
 					{
@@ -1947,18 +2075,18 @@ void setup_create_props(s32 stagenum)
 					break;
 				case OBJTYPE_MINE:
 					if (withobjs && (obj->flags2 & diffflag) == 0) {
-						setup_create_mine((struct mineobj *)obj, index);
+						setupCreateMine((struct mineobj *)obj, index);
 					}
 					break;
 				}
 
-				obj = (struct defaultobj *)((u32 *)obj + setup_get_cmd_length((u32 *)obj));
+				obj = (struct defaultobj *)((u32 *)obj + setupGetCmdLength((u32 *)obj));
 				index++;
 			}
 
 			index = 0;
 
-			if (g_Vars.normmplayerisrunning && mp_has_simulants()) {
+			if (g_Vars.normmplayerisrunning && mpHasSimulants()) {
 				u32 stack[4];
 				s32 i;
 				s32 slotsdone[MAX_BOTS];
@@ -1966,7 +2094,7 @@ void setup_create_props(s32 stagenum)
 				s32 maxsimulants;
 				s32 slotnum;
 
-				if (challenge_is_feature_unlocked(MPFEATURE_8BOTS)) {
+				if (challengeIsFeatureUnlocked(MPFEATURE_8BOTS)) {
 					maxsimulants = MAX_BOTS;
 				} else {
 					maxsimulants = 4;
@@ -1977,15 +2105,15 @@ void setup_create_props(s32 stagenum)
 				}
 
 				for (i = 0; i < maxsimulants; i++) {
-					slotnum = random() % maxsimulants;
+					slotnum = rngRandom() % maxsimulants;
 
 					while (slotsdone[slotnum]) {
 						slotnum = (slotnum + 1) % maxsimulants;
 					}
 
 					if ((g_MpSetup.chrslots & (1 << (slotnum + 4)))
-							&& mp_is_sim_slot_enabled(slotnum)) {
-						botmgr_allocate_bot(chrnum, slotnum);
+							&& mpIsSimSlotEnabled(slotnum)) {
+						botmgrAllocateBot(chrnum, slotnum);
 						chrnum++;
 					}
 
@@ -1994,7 +2122,7 @@ void setup_create_props(s32 stagenum)
 			}
 
 			if (g_Vars.normmplayerisrunning) {
-				scenario_init_props();
+				scenarioInitProps();
 			}
 
 			obj = (struct defaultobj *)g_StageSetup.props;
@@ -2016,41 +2144,41 @@ void setup_create_props(s32 stagenum)
 				case OBJTYPE_TINTEDGLASS:
 					if (obj->prop && (obj->flags & OBJFLAG_INSIDEANOTHEROBJ)) {
 						s32 offset = obj->pad;
-						struct defaultobj *owner = setup_get_obj_by_cmd_index(index + offset);
+						struct defaultobj *owner = setupGetObjByCmdIndex(index + offset);
 
 						if (owner && owner->prop) {
 							obj->hidden |= OBJHFLAG_HASOWNER;
-							model_set_scale(obj->model, obj->model->scale);
-							prop_reparent(obj->prop, owner->prop);
+							modelSetScale(obj->model, obj->model->scale);
+							propReparent(obj->prop, owner->prop);
 						}
 					}
 					break;
 				case OBJTYPE_LINKGUNS:
 					{
 						struct linkgunsobj *link = (struct linkgunsobj *)obj;
-						struct weaponobj *gun1 = (struct weaponobj *)setup_get_cmd_by_index(link->offset1 + index);
-						struct weaponobj *gun2 = (struct weaponobj *)setup_get_cmd_by_index(link->offset2 + index);
+						struct weaponobj *gun1 = (struct weaponobj *)setupGetCmdByIndex(link->offset1 + index);
+						struct weaponobj *gun2 = (struct weaponobj *)setupGetCmdByIndex(link->offset2 + index);
 
 						if (gun1 && gun2
 								&& gun1->base.type == OBJTYPE_WEAPON
 								&& gun2->base.type == OBJTYPE_WEAPON) {
-							weapon_set_dual(gun1, gun2);
+							propweaponSetDual(gun1, gun2);
 						}
 					}
 					break;
 				case OBJTYPE_LINKLIFTDOOR:
 					{
 						struct linkliftdoorobj *link = (struct linkliftdoorobj *)obj;
-						s32 dooroffset = (s32)link->door;
-						s32 liftoffset = (s32)link->lift;
-						struct defaultobj *door = setup_get_obj_by_cmd_index(index + dooroffset);
-						struct defaultobj *lift = setup_get_obj_by_cmd_index(index + liftoffset);
+						uintptr_t dooroffset = (uintptr_t)link->door;
+						uintptr_t liftoffset = (uintptr_t)link->lift;
+						struct defaultobj *door = setupGetObjByCmdIndex(index + dooroffset);
+						struct defaultobj *lift = setupGetObjByCmdIndex(index + liftoffset);
 
 						if (door && door->prop && lift && lift->prop) {
 							link->door = door->prop;
 							link->lift = lift->prop;
 
-							setup_create_lift_door(link);
+							setupCreateLiftDoor(link);
 
 							door->hidden |= OBJHFLAG_LIFTDOOR;
 						}
@@ -2059,12 +2187,12 @@ void setup_create_props(s32 stagenum)
 				case OBJTYPE_SAFEITEM:
 					{
 						struct safeitemobj *link = (struct safeitemobj *)obj;
-						s32 itemoffset = (s32)link->item;
-						s32 safeoffset = (s32)link->safe;
-						s32 dooroffset = (s32)link->door;
-						struct defaultobj *item = setup_get_obj_by_cmd_index(index + itemoffset);
-						struct defaultobj *safe = setup_get_obj_by_cmd_index(index + safeoffset);
-						struct defaultobj *door = setup_get_obj_by_cmd_index(index + dooroffset);
+						uintptr_t itemoffset = (uintptr_t)link->item;
+						uintptr_t safeoffset = (uintptr_t)link->safe;
+						uintptr_t dooroffset = (uintptr_t)link->door;
+						struct defaultobj *item = setupGetObjByCmdIndex(index + itemoffset);
+						struct defaultobj *safe = setupGetObjByCmdIndex(index + safeoffset);
+						struct defaultobj *door = setupGetObjByCmdIndex(index + dooroffset);
 
 						if (item && item->prop
 								&& safe && safe->prop && safe->type == OBJTYPE_SAFE
@@ -2073,7 +2201,7 @@ void setup_create_props(s32 stagenum)
 							link->safe = (struct safeobj *)safe;
 							link->door = (struct doorobj *)door;
 
-							setup_create_safe_item(link);
+							setupCreateSafeItem(link);
 
 							item->flags2 |= OBJFLAG2_LINKEDTOSAFE;
 							door->flags2 |= OBJFLAG2_LINKEDTOSAFE;
@@ -2083,17 +2211,17 @@ void setup_create_props(s32 stagenum)
 				case OBJTYPE_PADLOCKEDDOOR:
 					{
 						struct padlockeddoorobj *link = (struct padlockeddoorobj *)obj;
-						s32 dooroffset = (s32)link->door;
-						s32 lockoffset = (s32)link->lock;
-						struct defaultobj *door = setup_get_obj_by_cmd_index(index + dooroffset);
-						struct defaultobj *lock = setup_get_obj_by_cmd_index(index + lockoffset);
+						uintptr_t dooroffset = (uintptr_t)link->door;
+						uintptr_t lockoffset = (uintptr_t)link->lock;
+						struct defaultobj *door = setupGetObjByCmdIndex(index + dooroffset);
+						struct defaultobj *lock = setupGetObjByCmdIndex(index + lockoffset);
 
 						if (door && door->prop && lock && lock->prop
 								&& door->type == OBJTYPE_DOOR) {
 							link->door = (struct doorobj *)door;
 							link->lock = lock;
 
-							setup_create_padlocked_door(link);
+							setupCreatePadlockedDoor(link);
 
 							door->hidden |= OBJHFLAG_PADLOCKEDDOOR;
 						}
@@ -2102,20 +2230,20 @@ void setup_create_props(s32 stagenum)
 				case OBJTYPE_CONDITIONALSCENERY:
 					{
 						struct linksceneryobj *link = (struct linksceneryobj *)obj;
-						s32 triggeroffset = (s32)link->trigger;
-						s32 unexpoffset = (s32)link->unexp;
-						s32 expoffset = (s32)link->exp;
-						struct defaultobj *trigger = setup_get_obj_by_cmd_index(index + triggeroffset);
+						uintptr_t triggeroffset = (uintptr_t)link->trigger;
+						uintptr_t unexpoffset = (uintptr_t)link->unexp;
+						uintptr_t expoffset = (uintptr_t)link->exp;
+						struct defaultobj *trigger = setupGetObjByCmdIndex(index + triggeroffset);
 						struct defaultobj *unexp = NULL;
 						struct defaultobj *exp = NULL;
 						s32 alwayszero = 0;
 
 						if (unexpoffset) {
-							unexp = setup_get_obj_by_cmd_index(index + unexpoffset);
+							unexp = setupGetObjByCmdIndex(index + unexpoffset);
 						}
 
 						if (expoffset) {
-							exp = setup_get_obj_by_cmd_index(index + expoffset);
+							exp = setupGetObjByCmdIndex(index + expoffset);
 						}
 
 						if (trigger && trigger->prop
@@ -2125,7 +2253,7 @@ void setup_create_props(s32 stagenum)
 							link->unexp = unexp;
 							link->exp = exp;
 
-							setup_create_conditional_scenery(link);
+							setupCreateConditionalScenery(link);
 
 							trigger->hidden |= OBJHFLAG_CONDITIONALSCENERY;
 
@@ -2137,7 +2265,7 @@ void setup_create_props(s32 stagenum)
 							// for storing OBJHFLAG_CONDITIONALSCENERY, which is required
 							// for a match. Any function call would work.
 							if (alwayszero) {
-								random();
+								rngRandom();
 							}
 
 							if (expoffset) {
@@ -2146,7 +2274,7 @@ void setup_create_props(s32 stagenum)
 							}
 
 							if (trigger->hidden & OBJHFLAG_BLOCKEDPATH) {
-								obj_set_blocked_path_unblocked(trigger, false);
+								objSetBlockedPathUnblocked(trigger, false);
 							}
 						}
 					}
@@ -2154,31 +2282,31 @@ void setup_create_props(s32 stagenum)
 				case OBJTYPE_BLOCKEDPATH:
 					{
 						struct blockedpathobj *blockedpath = (struct blockedpathobj *)obj;
-						s32 objoffset = (s32)blockedpath->blocker;
-						struct defaultobj *blocker = setup_get_obj_by_cmd_index(index + objoffset);
+						uintptr_t objoffset = (uintptr_t)blockedpath->blocker;
+						struct defaultobj *blocker = setupGetObjByCmdIndex(index + objoffset);
 
 						if (blocker && blocker->prop) {
 							blockedpath->blocker = blocker;
 
-							setup_create_blocked_path(blockedpath);
+							setupCreateBlockedPath(blockedpath);
 
 							blocker->hidden |= OBJHFLAG_BLOCKEDPATH;
 
 							if (blocker->hidden & OBJHFLAG_CONDITIONALSCENERY) {
-								obj_set_blocked_path_unblocked(blocker, false);
+								objSetBlockedPathUnblocked(blocker, false);
 							}
 						}
 					}
 					break;
 				}
 
-				obj = (struct defaultobj *)((u32 *)obj + setup_get_cmd_length((u32 *)obj));
+				obj = (struct defaultobj *)((u32 *)obj + setupGetCmdLength((u32 *)obj));
 				index++;
 			}
 		}
 	} else {
-		chrmgr_configure(0);
+		chrmgrConfigure(0);
 	}
 
-	chrai_load_bgchrs();
+	stageAllocateBgChrs();
 }

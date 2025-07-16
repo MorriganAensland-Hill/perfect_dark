@@ -4,7 +4,7 @@
 #include "data.h"
 #include "types.h"
 
-void sparks_tick(void)
+void sparksTick(void)
 {
 	struct sparkgroup *group;
 	struct sparktype *type;
