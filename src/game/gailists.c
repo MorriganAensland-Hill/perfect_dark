@@ -1820,7 +1820,7 @@ u8 func0007_alerted[] = {
 	/**
 	 * Pseudocode for the below logic:
 	 *
-	 * rand = random()
+	 * rand = rngRandom()
 	 * if rand < 10
 	 *     gun jammed
 	 * else if rand <= 64
@@ -1832,7 +1832,7 @@ u8 func0007_alerted[] = {
 	 *         goto regular_attack
 	 * else
 	 *     regular_attack:
-	 *     if random() > 50
+	 *     if rngRandom() > 50
 	 *         stand or kneel attack (50% chance each)
 	 *     else
 	 *         walk or roll attack (50% chance each)
@@ -1900,11 +1900,11 @@ u8 func0007_alerted[] = {
 		if_self_flag_bankx_eq(CHRFLAG1_CAN_RELOAD, FALSE, BANK_1, /*goto*/ 0x16)
 		if_timer_lt(120, /*goto*/ 0x16)
 #if VERSION >= VERSION_NTSC_1_0
-		assign_sound(SFXMAP_80F6, CHANNEL_7)
+		assign_sound(SFX_80F6, CHANNEL_7)
 #else
-		assign_sound(SFXNUM_01D9_RELOAD_INSERT, CHANNEL_7)
+		assign_sound(SFX_01D9, CHANNEL_7)
 #endif
-		bind_channel_to_entity(CHANNEL_7, CHR_SELF, 0x0bb8, 0x1770, 0x01)
+		play_sound_from_entity(CHANNEL_7, CHR_SELF, 0x0bb8, 0x1770, 0x01)
 		unset_self_flag_bankx(CHRFLAG1_CAN_RELOAD, BANK_1)
 
 		label(0x16)
@@ -1968,7 +1968,7 @@ u8 func0007_alerted[] = {
 	label(0x13)
 	dprint 'F','L','A','N','K',' ','B','E','S','T','\n',0,
 	unset_self_flag_bankx(CHRFLAG1_DODGED, BANK_1)
-	flank(25, GOPOSFLAG_RUN, TRUE)
+	cmd0139(25, 0x02, TRUE)
 	if_self_flag_bankx_eq(CHRFLAG0_CAN_FLANK, FALSE, BANK_0, /*goto*/ 0x16)
 	set_team_orders(MA_FLANKLEFT, /*goto*/ 0x16)
 	set_team_orders(MA_FLANKRIGHT, /*goto*/ 0x16)
@@ -1979,7 +1979,7 @@ u8 func0007_alerted[] = {
 	label(LABEL_FLANK_LEFT)
 	dprint 'F','L','A','N','K',' ','L','E','F','T','\n',0,
 	set_action(MA_FLANKLEFT, FALSE)
-	flank(335, GOPOSFLAG_RUN, FALSE)
+	cmd0139(335, 0x02, FALSE)
 	if_self_flag_bankx_eq(CHRFLAG0_CAN_FLANK, FALSE, BANK_0, /*goto*/ 0x16)
 	set_team_orders(MA_FLANKLEFT, /*goto*/ 0x16)
 
@@ -1993,7 +1993,7 @@ u8 func0007_alerted[] = {
 	set_team_orders(MA_FLANKRIGHT, /*goto*/ 0x16)
 
 	label(0x16)
-	flank(25, GOPOSFLAG_RUN, FALSE)
+	cmd0139(25, 0x02, FALSE)
 
 	label(0x33)
 	set_self_flag_bankx(CHRFLAG1_FLANKED, BANK_1)
@@ -2321,11 +2321,11 @@ u8 func0007_alerted[] = {
 		if_self_flag_bankx_eq(CHRFLAG1_CAN_RELOAD, FALSE, BANK_1, /*goto*/ 0x16)
 		if_timer_lt(120, /*goto*/ 0x16)
 #if VERSION >= VERSION_NTSC_1_0
-		assign_sound(SFXMAP_80F6, CHANNEL_6)
+		assign_sound(SFX_80F6, CHANNEL_6)
 #else
-		assign_sound(SFXNUM_01D9_RELOAD_INSERT, CHANNEL_6)
+		assign_sound(SFX_01D9, CHANNEL_6)
 #endif
-		bind_channel_to_entity(CHANNEL_6, CHR_SELF, 0x0bb8, 0x1770, 0x01)
+		play_sound_from_entity(CHANNEL_6, CHR_SELF, 0x0bb8, 0x1770, 0x01)
 		unset_self_flag_bankx(CHRFLAG1_CAN_RELOAD, BANK_1)
 
 		label(0x16)
@@ -2352,7 +2352,7 @@ u8 func0007_alerted[] = {
 	unset_self_flag_bankx(CHRFLAG1_FLANKED, BANK_1)
 	unset_self_flag_bankx(CHRFLAG1_DODGED, BANK_1)
 	restart_timer
-	retreat(GOPOSFLAG_RUN, 1)
+	retreat(0x02, 0x01)
 	cmd012f
 
 	beginloop(0x4f)
@@ -2708,11 +2708,11 @@ u8 func0007_alerted[] = {
 		if_self_flag_bankx_eq(CHRFLAG1_CAN_RELOAD, FALSE, BANK_1, /*goto*/ 0x16)
 		if_timer_lt(120, /*goto*/ 0x16)
 #if VERSION >= VERSION_NTSC_1_0
-		assign_sound(SFXMAP_80F6, CHANNEL_6)
+		assign_sound(SFX_80F6, CHANNEL_6)
 #else
-		assign_sound(SFXNUM_01D9_RELOAD_INSERT, CHANNEL_6)
+		assign_sound(SFX_01D9, CHANNEL_6)
 #endif
-		bind_channel_to_entity(CHANNEL_6, CHR_SELF, 0x0bb8, 0x1770, 0x01)
+		play_sound_from_entity(CHANNEL_6, CHR_SELF, 0x0bb8, 0x1770, 0x01)
 		unset_self_flag_bankx(CHRFLAG1_CAN_RELOAD, BANK_1)
 
 		label(0x16)
@@ -2792,7 +2792,7 @@ u8 func0007_alerted[] = {
 	label(0x16)
 	dprint 'R','U','N','N','I','N','G','\n',0,
 	set_target_chr(CHR_P1P2)
-	retreat(GOPOSFLAG_RUN, 1)
+	retreat(2, 1)
 
 	beginloop(0x6c)
 		if_dangerous_object_nearby(3, /*goto*/ LABEL_FLEE_GRENADE)
@@ -4928,16 +4928,16 @@ u8 func001d_search_for_player[] = {
 	if_rand_lt(64, /*goto*/ 0x28)
 	if_rand_lt(128, /*goto*/ 0x29)
 	if_rand_lt(196, /*goto*/ 0x2a)
-	try_set_padpreset_to_quadrant(QUADRANT_FRONT, /*goto*/ 0x13)
+	try_set_target_pad_to_something(0x08, /*goto*/ 0x13)
 
 	label(0x28)
-	try_set_padpreset_to_quadrant(QUADRANT_SIDE1, /*goto*/ 0x13)
+	try_set_target_pad_to_something(0x02, /*goto*/ 0x13)
 
 	label(0x29)
-	try_set_padpreset_to_quadrant(QUADRANT_SIDE2, /*goto*/ 0x13)
+	try_set_target_pad_to_something(0x04, /*goto*/ 0x13)
 
 	label(0x2a)
-	try_set_padpreset_to_quadrant(QUADRANT_FRONT, /*goto*/ 0x13)
+	try_set_target_pad_to_something(0x08, /*goto*/ 0x13)
 	goto_next(0x04)
 
 	label(0x13)
@@ -5560,7 +5560,7 @@ u8 func0023_dodge[] = {
 
 	// Unreachable
 	label(0xbb)
-	flank(25, GOPOSFLAG_JOG, TRUE)
+	cmd0139(25, 0x01, TRUE)
 	goto_next(0x2c)
 
 	// Was able to start dodge
@@ -5583,11 +5583,6 @@ u8 func0023_dodge[] = {
  *
  * In co-op mode with an AI buddy, this ailist is applied to the buddy when you
  * give them the Stealth command.
- *
- * Make the buddy cloak, then hide/remove them. Wait a few seconds, and until
- * there's no cutscene, and until nothing is in the buddy's space, then unhide
- * them. While waiting for these conditions, periodically relocate the buddy to
- * near the player.
  */
 u8 func0015_buddy_stealth[] = {
 	stop_chr
@@ -5615,8 +5610,9 @@ u8 func0015_buddy_stealth[] = {
 
 	label(0x16)
 
-	// Wait for any (mid level) cutscene to finish and for 1 second to have passed
-	#define wait_for_cutscene(loopid) \
+	// Wait for intro to finish and for 1 second to have passed
+	// (in case intro was cut by player)
+	#define wait_intro(loopid) \
 		restart_timer \
 		beginloop(loopid) \
 			if_camera_animating(/*goto*/ 0x13) \
@@ -5625,26 +5621,26 @@ u8 func0015_buddy_stealth[] = {
 		endloop(loopid) \
 		label(0x16)
 
-	wait_for_cutscene(0x05)
-	if_nothing_in_my_space(/*goto*/ 0x17)
+	wait_intro(0x05)
+	cmd01b4_if_something(/*goto*/ 0x17)
 
-	wait_for_cutscene(0x06)
-	if_nothing_in_my_space(/*goto*/ 0x17)
+	wait_intro(0x06)
+	cmd01b4_if_something(/*goto*/ 0x17)
 
-	wait_for_cutscene(0x07)
-	if_nothing_in_my_space(/*goto*/ 0x17)
+	wait_intro(0x07)
+	cmd01b4_if_something(/*goto*/ 0x17)
 
-	wait_for_cutscene(0x08)
-	if_nothing_in_my_space(/*goto*/ 0x17)
+	wait_intro(0x08)
+	cmd01b4_if_something(/*goto*/ 0x17)
 
-	wait_for_cutscene(0x09)
-	if_nothing_in_my_space(/*goto*/ 0x17)
+	wait_intro(0x09)
+	cmd01b4_if_something(/*goto*/ 0x17)
 
-	wait_for_cutscene(0x0a)
-	if_nothing_in_my_space(/*goto*/ 0x17)
+	wait_intro(0x0a)
+	cmd01b4_if_something(/*goto*/ 0x17)
 
 	label(0x19)
-	wait_for_cutscene(0x0b)
+	wait_intro(0x0b)
 
 	// This will execute every second after the initial 7ish seconds and while
 	// cutscene is not running. The chr is being moved back to the player
@@ -5653,7 +5649,6 @@ u8 func0015_buddy_stealth[] = {
 	chr_move_to_pad(CHR_SELF, CHR_BOND, 88, /*goto*/ 0x17)
 	goto_first(0x19)
 
-	// Unhide
 	label(0x17)
 	unset_self_chrflag(CHRCFLAG_HIDDEN | CHRCFLAG_PERIMDISABLEDTMP | CHRCFLAG_NEVERSLEEP)
 	unset_self_chrflag(CHRCFLAG_INVINCIBLE)
@@ -6010,7 +6005,7 @@ u8 func0020_buddy_warp[] = {
 	// Move to pad worked
 	label(0x13)
 	stop_chr
-	set_chr_hiddenflag(CHR_SELF, CHRHFLAG_FINDROOMSFAST)
+	set_chr_hiddenflag(CHR_SELF, CHRHFLAG_00020000)
 	set_chr_hiddenflag(CHR_SELF, CHRHFLAG_UNTARGETABLE)
 
 	// Wait until flag unset (timer is not checked)

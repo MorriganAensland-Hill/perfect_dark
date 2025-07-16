@@ -29,8 +29,6 @@ bool var80075bd0[] = { true, true, true, true };
 bool var80075be0[] = { false, false, false, false };
 u32 var80075bf0 = false;
 
-void filelist_update(struct filelist *list);
-
 void func0f110bf0(void)
 {
 	// empty
@@ -42,7 +40,7 @@ void func0f110bf8(void)
 
 	for (i = 0; i < ARRAYCOUNT(g_FileLists); i++) {
 		if (g_FileLists[i] != NULL) {
-			mema_free(g_FileLists[i], align16(sizeof(struct filelist)));
+			memaFree(g_FileLists[i], align16(sizeof(struct filelist)));
 			g_FileLists[i] = NULL;
 		}
 	}
@@ -51,24 +49,24 @@ void func0f110bf8(void)
 /**
  * Allocate and build a file list.
  */
-void filelist_create(s32 listnum, u8 filetype)
+void filelistCreate(s32 listnum, u8 filetype)
 {
 	if (g_FileLists[listnum] == NULL) {
-		bg_garbage_collect_rooms(align16(sizeof(struct filelist)), 1);
-		g_FileLists[listnum] = mema_alloc(align16(sizeof(struct filelist)));
+		bgGarbageCollectRooms(align16(sizeof(struct filelist)), 1);
+		g_FileLists[listnum] = memaAlloc(align16(sizeof(struct filelist)));
 	}
 
 	g_FileLists[listnum]->timeuntilupdate = 1;
 	g_FileLists[listnum]->filetype = filetype;
 
 	if (var80062944 == 0) {
-		joy_set_pfs_poll_interval(3);
+		joySetPfsPollInterval(3);
 	}
 
 	var80062944 = 1;
 }
 
-s32 filelist_find_or_create(u8 filetype)
+s32 filelistFindOrCreate(u8 filetype)
 {
 	s32 bestindex = -1;
 	s32 i;
@@ -86,7 +84,7 @@ s32 filelist_find_or_create(u8 filetype)
 	}
 
 	if (bestindex >= 0) {
-		filelist_create(bestindex, filetype);
+		filelistCreate(bestindex, filetype);
 		return bestindex;
 	}
 
@@ -94,13 +92,13 @@ s32 filelist_find_or_create(u8 filetype)
 }
 
 #if VERSION >= VERSION_NTSC_1_0
-void filelist_invalidate_pak(s32 device)
+void filelistInvalidatePak(s32 device)
 {
 	g_FilelistKnownPlugCounts[device] = -1;
 }
 #endif
 
-void filelists_tick(void)
+void filelistsTick(void)
 {
 	u32 updateall;
 	u32 update;
@@ -117,14 +115,14 @@ void filelists_tick(void)
 
 #if VERSION >= VERSION_NTSC_1_0
 	for (i = 0, updateall = false; i < ARRAYCOUNT(g_FilelistKnownPlugCounts); i++) {
-		if (pak0f1167d8(i) && pak_get_plug_count(i) != g_FilelistKnownPlugCounts[i]) {
+		if (pak0f1167d8(i) && pakGetPlugCount(i) != g_FilelistKnownPlugCounts[i]) {
 			updateall = true;
-			g_FilelistKnownPlugCounts[i] = pak_get_plug_count(i);
+			g_FilelistKnownPlugCounts[i] = pakGetPlugCount(i);
 		}
 	}
 #else
 	for (i = 0, updateall = false; i < ARRAYCOUNT(g_FilelistKnownPlugCounts); i++) {
-		s32 plugcount = pak_get_plug_count(i);
+		s32 plugcount = pakGetPlugCount(i);
 
 		pak0f11698c(i);
 
@@ -159,7 +157,7 @@ void filelists_tick(void)
 
 			if (update) {
 				osSyncPrintf("Rebuilding pakWad %d:\n", i);
-				filelist_update(g_FileLists[i]);
+				filelistUpdate(g_FileLists[i]);
 				g_FileLists[i]->updatedthisframe = true;
 			}
 		}
@@ -170,7 +168,7 @@ void filelists_tick(void)
 	}
 }
 
-void filelist_update(struct filelist *list)
+void filelistUpdate(struct filelist *list)
 {
 	const u32 sp3a88[] = {
 		PAKFILETYPE_GAME,
@@ -209,7 +207,7 @@ void filelist_update(struct filelist *list)
 		list->unk305[dis2dev[i]] = 0;
 		list->devicestartindexes[i] = -1;
 
-		ret = pak_get_file_ids_by_type(dis2dev[i], sp3a88[list->filetype], spa88);
+		ret = pakGetFileIdsByType(dis2dev[i], sp3a88[list->filetype], spa88);
 
 		if (ret == 0) {
 			// No error
@@ -222,11 +220,11 @@ void filelist_update(struct filelist *list)
 			list->spacesfree[dis2dev[i]] = 0;
 
 			if (list->filetype == FILETYPE_CAMERA) {
-				list->spacesfree[dis2dev[i]] = pak_get_num_free_camera_spaces_in_pak(dis2dev[i]);
+				list->spacesfree[dis2dev[i]] = pakGetNumFreeCameraSpacesInPak(dis2dev[i]);
 			}
 
 			list->deviceguids[dis2dev[i]].fileid = 0;
-			list->deviceguids[dis2dev[i]].deviceserial = pak_get_serial(dis2dev[i]);
+			list->deviceguids[dis2dev[i]].deviceserial = pakGetSerial(dis2dev[i]);
 		} else {
 			// PFS error?
 			list->spacesfree[dis2dev[i]] = -1;
@@ -244,7 +242,7 @@ void filelist_update(struct filelist *list)
 	// Iterating files
 	for (i = 0; i < len; i++) {
 		struct filelistfile *file = &list->files[list->numfiles];
-		s32 ret = pak_read_body_at_guid(filedevices[i], sp1288[i], file->name, sizeof(file->name));
+		s32 ret = pakReadBodyAtGuid(filedevices[i], sp1288[i], file->name, sizeof(file->name));
 
 		if (ret);
 
@@ -255,7 +253,7 @@ void filelist_update(struct filelist *list)
 				list->devicestartindexes[dev2dis[filedevices[i]]] = list->numfiles;
 			}
 
-			file->deviceserial = pak_get_serial(filedevices[i]);
+			file->deviceserial = pakGetSerial(filedevices[i]);
 			file->fileid = sp1288[i];
 
 			list->numfiles++;
@@ -268,14 +266,14 @@ void filelist_update(struct filelist *list)
 
 				if (list->deviceguids[filedevices[i]].fileid == 0) {
 					list->deviceguids[filedevices[i]].fileid = sp1288[i];
-					list->deviceguids[filedevices[i]].deviceserial = pak_get_serial(filedevices[i]);
+					list->deviceguids[filedevices[i]].deviceserial = pakGetSerial(filedevices[i]);
 				}
 			}
 		}
 	}
 }
 
-void phead_allocate_textures(s32 playernum, struct perfectheadtexturelist *textures)
+void pheadAllocateTextures(s32 playernum, struct perfectheadtexturelist *textures)
 {
 	s32 i;
 	s32 j;
@@ -284,8 +282,8 @@ void phead_allocate_textures(s32 playernum, struct perfectheadtexturelist *textu
 	if (g_Menus[playernum].fm.headtextures == NULL) {
 		if (textures == NULL) {
 			g_Menus[playernum].fm.unke40_01 = true;
-			bg_garbage_collect_rooms(align16(sizeof(struct perfectheadtexturelist)), 1);
-			g_Menus[playernum].fm.headtextures = mema_alloc(align16(sizeof(struct perfectheadtexturelist)));
+			bgGarbageCollectRooms(align16(sizeof(struct perfectheadtexturelist)), 1);
+			g_Menus[playernum].fm.headtextures = memaAlloc(align16(sizeof(struct perfectheadtexturelist)));
 		} else {
 			g_Menus[playernum].fm.headtextures = textures;
 			g_Menus[playernum].fm.unke40_01 = false;
@@ -294,9 +292,9 @@ void phead_allocate_textures(s32 playernum, struct perfectheadtexturelist *textu
 
 	if (g_Menus[playernum].fm.headtextures == NULL) {
 #if VERSION >= VERSION_NTSC_1_0
-		fault_assert("tc != NULL", "gamefile.c", 458);
+		faultAssert("tc != NULL", "gamefile.c", 458);
 #else
-		fault_assert("tc != NULL", "gamefile.c", 450);
+		faultAssert("tc != NULL", "gamefile.c", 450);
 #endif
 	}
 
@@ -323,18 +321,18 @@ void phead_allocate_textures(s32 playernum, struct perfectheadtexturelist *textu
 	}
 }
 
-void phead_free_textures(s32 playernum)
+void pheadFreeTextures(s32 playernum)
 {
 	if (g_Menus[playernum].fm.headtextures != NULL) {
 		if (g_Menus[playernum].fm.unke40_01) {
-			mema_free(g_Menus[playernum].fm.headtextures, align16(sizeof(struct perfectheadtexturelist)));
+			memaFree(g_Menus[playernum].fm.headtextures, align16(sizeof(struct perfectheadtexturelist)));
 		}
 
 		g_Menus[playernum].fm.headtextures = NULL;
 	}
 }
 
-struct textureconfig *phead_get_texture(s32 playernum, s32 fileid, u16 deviceserial)
+struct textureconfig *pheadGetTexture(s32 playernum, s32 fileid, u16 deviceserial)
 {
 	s32 i;
 	s32 freeslot = -1;
@@ -355,7 +353,7 @@ struct textureconfig *phead_get_texture(s32 playernum, s32 fileid, u16 deviceser
 	}
 
 	if (indextouse == -1) {
-		s8 device = pak_find_by_serial(deviceserial);
+		s8 device = pakFindBySerial(deviceserial);
 
 		if (device < 0) {
 			return NULL;
@@ -371,7 +369,7 @@ struct textureconfig *phead_get_texture(s32 playernum, s32 fileid, u16 deviceser
 
 		g_Menus[playernum].fm.headtextures->lastupdated240 = g_Vars.thisframestart240;
 
-		camdraw_get_filemgr_preview(device, fileid, g_Menus[playernum].fm.headtextures->unk000[freeslot]);
+		func0f15015c(device, fileid, g_Menus[playernum].fm.headtextures->unk000[freeslot]);
 
 		g_Menus[playernum].fm.headtextures->fileguids[freeslot].fileid = fileid;
 		g_Menus[playernum].fm.headtextures->fileguids[freeslot].deviceserial = deviceserial;

@@ -5,7 +5,7 @@
 #include "data.h"
 #include "types.h"
 
-void explosions_reset(void)
+void explosionsReset(void)
 {
 	s32 i;
 	s32 j;
@@ -14,16 +14,10 @@ void explosions_reset(void)
 	g_ExplosionShakeIntensityTimer = 0;
 	g_ExplosionDamageTxScale = 1;
 
-	g_MaxExplosions = MAX_EXPLOSIONS;
-
-	if (g_Vars.stagenum >= STAGE_TITLE) {
-		g_MaxExplosions = 0;
-	}
-
 	if (g_MaxExplosions == 0) {
 		g_Explosions = NULL;
 	} else {
-		g_Explosions = memp_alloc((g_MaxExplosions * sizeof(struct explosion) + 0xf) & ~0xf, MEMPOOL_STAGE);
+		g_Explosions = mempAlloc((g_MaxExplosions * sizeof(struct explosion) + 0xf) & ~0xf, MEMPOOL_STAGE);
 
 		for (i = 0; i < g_MaxExplosions; i++) {
 			g_Explosions[i].prop = NULL;

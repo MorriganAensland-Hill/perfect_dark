@@ -11,6 +11,7 @@
 #include "lib/str.h"
 #include "data.h"
 #include "types.h"
+#include "platform.h"
 
 /**
  * This file handles memory usage for graphics related tasks.
@@ -35,6 +36,15 @@
  * marker for the end of the second element's allocation.
  */
 
+/**
+ * On 64-bit platforms the Gfx struct is twice as large.
+*/
+#ifdef PLATFORM_64BIT
+#define GFX_SIZE_MULTIPLIER 2
+#else
+#define GFX_SIZE_MULTIPLIER 1
+#endif
+
 u8 *g_GfxBuffers[NUM_GFXTASKS + 1];
 u32 var800aa58c;
 u8 *g_VtxBuffers[NUM_GFXTASKS + 1];
@@ -43,10 +53,10 @@ u8 g_GfxActiveBufferIndex;
 u32 g_GfxRequestedDisplayList;
 
 u32 g_GfxSizesByPlayerCount[] = {
-	0x00010000,
-	0x00018000,
-	0x00020000,
-	0x00028000,
+	0x00010000 * GFX_SIZE_MULTIPLIER,
+	0x00018000 * GFX_SIZE_MULTIPLIER,
+	0x00020000 * GFX_SIZE_MULTIPLIER,
+	0x00028000 * GFX_SIZE_MULTIPLIER,
 };
 
 u32 g_VtxSizesByPlayerCount[] = {
@@ -65,18 +75,18 @@ u32 g_GfxNumSwaps = 2;
  * Comments in this function are strings that appear in an XBLA debug build.
  * They were likely in the N64 version but ifdeffed out.
  */
-void gfx_reset(void)
+void gfxReset(void)
 {
 	s32 stack;
 
-	if (arg_find_by_prefix(1, "-mgfx")) {
+	if (argFindByPrefix(1, "-mgfx")) {
 		// Argument specified master_dl_size\n
 		s32 gfx;
 		s32 gfxtra = 0;
 
-		gfx = strtol(arg_find_by_prefix(1, "-mgfx"), NULL, 0) * 1024;
+		gfx = strtol(argFindByPrefix(1, "-mgfx"), NULL, 0) * 1024;
 
-		if (arg_find_by_prefix(1, "-mgfxtra")) {
+		if (argFindByPrefix(1, "-mgfxtra")) {
 			// ******** Extra specified but are we in the correct game mode I wonder???\n
 			if ((g_Vars.coopplayernum >= 0 || g_Vars.antiplayernum >= 0) && PLAYERCOUNT() == 2) {
 				// ******** Extra Display List Memeory Required\n
@@ -84,7 +94,7 @@ void gfx_reset(void)
 				// ******** If you try and run hi-res then\n
 				// ******** you're gonna shafted up the arse\n
 				// ******** so don't blame me\n
-				gfxtra = strtol(arg_find_by_prefix(1, "-mgfxtra"), NULL, 0) * 1024;
+				gfxtra = strtol(argFindByPrefix(1, "-mgfxtra"), NULL, 0) * 1024;
 			} else {
 				// ******** No we're not so there\n
 			}
@@ -93,21 +103,21 @@ void gfx_reset(void)
 		// ******** Original Amount required = %dK ber buffer\n
 		// ******** Extra Amount required = %dK ber buffer\n
 		// ******** Total of %dK (Double Buffered)\n
-		g_GfxSizesByPlayerCount[PLAYERCOUNT() - 1] = gfx + gfxtra;
+		g_GfxSizesByPlayerCount[PLAYERCOUNT() - 1] = (gfx + gfxtra) * GFX_SIZE_MULTIPLIER;
 	}
 
-	if (arg_find_by_prefix(1, "-mvtx")) {
+	if (argFindByPrefix(1, "-mvtx")) {
 		// Argument specified mtxvtx_size\n
-		g_VtxSizesByPlayerCount[PLAYERCOUNT() - 1] = strtol(arg_find_by_prefix(1, "-mvtx"), NULL, 0) * 1024;
+		g_VtxSizesByPlayerCount[PLAYERCOUNT() - 1] = strtol(argFindByPrefix(1, "-mvtx"), NULL, 0) * 1024;
 	}
 
 	// %d Players : Allocating %d bytes for master dl's\n
-	g_GfxBuffers[0] = memp_alloc(g_GfxSizesByPlayerCount[PLAYERCOUNT() - 1] * NUM_GFXTASKS, MEMPOOL_STAGE);
+	g_GfxBuffers[0] = mempAlloc(g_GfxSizesByPlayerCount[PLAYERCOUNT() - 1] * NUM_GFXTASKS, MEMPOOL_STAGE);
 	g_GfxBuffers[1] = g_GfxBuffers[0] + g_GfxSizesByPlayerCount[PLAYERCOUNT() - 1];
 	g_GfxBuffers[2] = g_GfxBuffers[1] + g_GfxSizesByPlayerCount[PLAYERCOUNT() - 1];
 
 	// Allocating %d bytes for mtxvtx space\n
-	g_VtxBuffers[0] = memp_alloc(g_VtxSizesByPlayerCount[PLAYERCOUNT() - 1] * NUM_GFXTASKS, MEMPOOL_STAGE);
+	g_VtxBuffers[0] = mempAlloc(g_VtxSizesByPlayerCount[PLAYERCOUNT() - 1] * NUM_GFXTASKS, MEMPOOL_STAGE);
 	g_VtxBuffers[1] = g_VtxBuffers[0] + g_VtxSizesByPlayerCount[PLAYERCOUNT() - 1];
 	g_VtxBuffers[2] = g_VtxBuffers[1] + g_VtxSizesByPlayerCount[PLAYERCOUNT() - 1];
 
@@ -116,14 +126,14 @@ void gfx_reset(void)
 	g_GfxMemPos = g_VtxBuffers[0];
 }
 
-Gfx *gfx_get_master_display_list(void)
+Gfx *gfxGetMasterDisplayList(void)
 {
 	g_GfxRequestedDisplayList = true;
 
 	return (Gfx *)g_GfxBuffers[g_GfxActiveBufferIndex];
 }
 
-Vtx *gfx_allocate_vertices(u32 count)
+Vtx *gfxAllocateVertices(u32 count)
 {
 	void *ptr = g_GfxMemPos;
 	g_GfxMemPos += count * sizeof(Vtx);
@@ -132,7 +142,7 @@ Vtx *gfx_allocate_vertices(u32 count)
 	return ptr;
 }
 
-void *gfx_allocate_matrix(void)
+void *gfxAllocateMatrix(void)
 {
 	void *ptr = g_GfxMemPos;
 	g_GfxMemPos += sizeof(Mtx);
@@ -145,15 +155,19 @@ void *gfx_allocate_matrix(void)
  * The function allocates 0x8 for every count, so it could be allocating lights
  * instead, however it's only used for LookAts so it's named as LookAt.
  */
-LookAt *gfx_allocate_look_at(s32 count)
+LookAt *gfxAllocateLookAt(s32 count)
 {
 	void *ptr = g_GfxMemPos;
+#ifdef PLATFORM_64BIT
+	g_GfxMemPos += count * (sizeof(LookAt) * 2);
+#else
 	g_GfxMemPos += count * (sizeof(LookAt) / 2);
+#endif
 
 	return ptr;
 }
 
-Col *gfx_allocate_colours(s32 count)
+Col *gfxAllocateColours(s32 count)
 {
 	void *ptr = g_GfxMemPos;
 	count = ALIGN16(count * sizeof(Col));
@@ -162,7 +176,7 @@ Col *gfx_allocate_colours(s32 count)
 	return ptr;
 }
 
-void *gfx_allocate(u32 size)
+void *gfxAllocate(u32 size)
 {
 	void *ptr = g_GfxMemPos;
 	size = ALIGN16(size);
@@ -171,7 +185,7 @@ void *gfx_allocate(u32 size)
 	return ptr;
 }
 
-void gfx_swap_buffers(void)
+void gfxSwapBuffers(void)
 {
 	g_GfxActiveBufferIndex ^= 1;
 	g_GfxRequestedDisplayList = false;
@@ -184,12 +198,12 @@ void gfx_swap_buffers(void)
 	}
 }
 
-s32 gfx_get_free_gfx(Gfx *gdl)
+s32 gfxGetFreeGfx(Gfx *gdl)
 {
 	return (Gfx *)g_GfxBuffers[g_GfxActiveBufferIndex + 1] - gdl;
 }
 
-u32 gfx_get_free_vtx(void)
+u32 gfxGetFreeVtx(void)
 {
 	return g_VtxBuffers[g_GfxActiveBufferIndex + 1] - g_GfxMemPos;
 }

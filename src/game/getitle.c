@@ -38,6 +38,8 @@ u32 var80062494 = 0x00000001;
 s32 var80062498 = 0;
 u32 var8006249c = 0x00000000;
 
+#ifdef PLATFORM_N64
+
 extern u8 var020043f8;
 extern u8 var02004468;
 extern u8 var02004700;
@@ -63,11 +65,11 @@ Gfx *getitle0f0155f0(Gfx *gdl, s32 arg1, u8 arg2)
 	gSPDisplayList(gdl++, &var80061360);
 
 	if (var80062494) {
-		gdl = title_clear(gdl);
+		gdl = titleClear(gdl);
 		var80062494 = 0;
 	} else {
 		gDPSetCycleType(gdl++, G_CYC_FILL);
-		gDPSetColorImage(gdl++, G_IM_FMT_RGBA, G_IM_SIZ_16b, vi_get_width(), osVirtualToPhysical(vi_get_back_buffer()));
+		gDPSetColorImage(gdl++, G_IM_FMT_RGBA, G_IM_SIZ_16b, viGetWidth(), osVirtualToPhysical(viGetBackBuffer()));
 		gDPSetFillColor(gdl++, 0x00010001);
 		gDPFillRectangle(gdl++, 200, 100, 439, 379);
 	}
@@ -138,13 +140,13 @@ Gfx *getitle0f0155f0(Gfx *gdl, s32 arg1, u8 arg2)
 	return gdl;
 }
 
-extern u8 _getitleSegmentRomStart;
-extern u8 _getitleSegmentStart;
-extern u8 _getitleSegmentEnd;
+extern u8 EXT_SEG _getitleSegmentRomStart;
+extern u8 EXT_SEG _getitleSegmentStart;
+extern u8 EXT_SEG _getitleSegmentEnd;
 
-void getitle_load(void *addr, u32 arg1)
+void getitleLoad(void *addr, u32 arg1)
 {
-	u32 len = (romptr_t)&_getitleSegmentEnd - (romptr_t)&_getitleSegmentStart;
+	u32 len = (romptr_t) REF_SEG _getitleSegmentEnd - (romptr_t) REF_SEG _getitleSegmentStart;
 
 	var80062414 = 0;
 	var8009cc8c = 880;
@@ -152,10 +154,10 @@ void getitle_load(void *addr, u32 arg1)
 	var80062498 = 0;
 	var8009cc90 = addr;
 
-	dma_exec(var8009cc90, (romptr_t) &_getitleSegmentRomStart, ALIGN64(len));
+	dmaExec(var8009cc90, (romptr_t) REF_SEG _getitleSegmentRomStart, ALIGN64(len));
 }
 
-Gfx *getitle_render(Gfx *gdl)
+Gfx *getitleRender(Gfx *gdl)
 {
 	var80062410 = 1 - var80062410;
 
@@ -211,3 +213,5 @@ bool getitle0f0160e8(void)
 {
 	return (var80062414 ^ 2) == 0;
 }
+
+#endif // PLATFORM_N64

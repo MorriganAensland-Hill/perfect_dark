@@ -290,7 +290,7 @@ Gfx g_GfxGroup10[] = {
 	0,
 };
 
-void gfx_replace_gbi_commands(Gfx *startgdl, Gfx *endgdl, s32 type)
+void gfxReplaceGbiCommands(Gfx *startgdl, Gfx *endgdl, s32 type)
 {
 	static Gfx *groups[] = {
 		g_GfxGroup00,
@@ -308,7 +308,11 @@ void gfx_replace_gbi_commands(Gfx *startgdl, Gfx *endgdl, s32 type)
 
 	Gfx *gdl = startgdl;
 
+#ifdef PLATFORM_N64
 	while ((endgdl && gdl < endgdl) || (!endgdl && *(s8 *)gdl != G_ENDDL)) {
+#else
+	while ((endgdl && gdl < endgdl) || (!endgdl && (s8)gdl->bytes[GFX_W0_BYTE(0)] != G_ENDDL)) {
+#endif
 		Gfx *src = groups[type];
 
 		while (src->words.w0 != 0) {
@@ -323,9 +327,13 @@ void gfx_replace_gbi_commands(Gfx *startgdl, Gfx *endgdl, s32 type)
 	}
 }
 
-void gfx_replace_gbi_commands_recursively(struct roomblock *block, s32 type)
+void gfxReplaceGbiCommandsRecursively(struct roomblock *block, s32 type)
 {
+#ifndef AVOID_UB
+	// Sometimes block is NULL when this is called.
+	// If UBSan is being used, this will crash in this instance.
 	if (block->type == ROOMBLOCKTYPE_PARENT);
+#endif
 
 	while (true) {
 		if (!block) {
@@ -334,11 +342,11 @@ void gfx_replace_gbi_commands_recursively(struct roomblock *block, s32 type)
 
 		switch (block->type) {
 		case ROOMBLOCKTYPE_LEAF:
-			gfx_replace_gbi_commands(block->gdl, NULL, type);
+			gfxReplaceGbiCommands(block->gdl, NULL, type);
 			block = block->next;
 			break;
 		case ROOMBLOCKTYPE_PARENT:
-			gfx_replace_gbi_commands_recursively(block->child, type);
+			gfxReplaceGbiCommandsRecursively(block->child, type);
 			block = block->next;
 			break;
 		default:

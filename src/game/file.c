@@ -10,6 +10,9 @@
 #include "lib/rzip.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "system.h"
+#endif
 
 /**
  * This file contains functions relating to ROM asset files.
@@ -39,7 +42,7 @@
  * perspect they just call a load function and they receive an inflated file.
  * Exceptions to this are:
  * - BG files, which contain multiple compressed parts. The caller uses
- *   file_load_part_to_addr which loads a slice of the file without inflation.
+ *   fileLoadPartToAddr which loads a slice of the file without inflation.
  * - MP3 files, which are not compressed. The caller retrieves the ROM start and
  *   end addresses from the file system, then gives that to the MP3 system which
  *   does its own DMA operations.
@@ -49,6 +52,14 @@
  * functions that support this theory.
  */
 
+/**
+ * Currently the port just takes the filename from the filename[] array and feeds it
+ * into its own FS API that just loads it from disk. The whole file number/slot system
+ * is still mostly intact as a kludge. This will probably be removed later and reworked
+ * to just use filenames.
+ */
+
+#ifdef PLATFORM_N64
 extern void *_file_bg_sev_seg;
 extern void *_file_bg_silo_seg;
 extern void *_file_bg_stat_seg;
@@ -2068,7 +2079,9 @@ extern void *_file_Asaucerexp1M;
 extern void *_file_PjaplogoZ;
 extern void *_file_PjappdZ;
 #endif
+
 extern void *_filenamesSegmentRomStart;
+#endif // PLATFORM_N64
 
 struct fileinfo g_FileInfo[NUM_FILES];
 
@@ -2076,6 +2089,7 @@ struct fileinfo g_FileInfo[NUM_FILES];
 u32 var800aa570;
 #endif
 
+#ifdef PLATFORM_N64
 u32 g_FileTable[] = {
 	/*0x0000*/ 0,
 	/*0x0001*/ (uintptr_t) &_file_bg_sev_seg,
@@ -4099,14 +4113,22 @@ u32 g_FileTable[] = {
 #endif
 	(uintptr_t) &_filenamesSegmentRomStart,
 };
+#else // PLATFORM_N64
+uintptr_t g_FileTable[NUM_FILES + 1]; // TODO: this is only used to get the filenum, remove this
+#endif // PLATFORM_N64
 
-romptr_t file_get_rom_address(s32 filenum)
+romptr_t fileGetRomAddress(s32 filenum)
 {
+#ifdef PLATFORM_N64
 	return (romptr_t) g_FileTable[filenum];
+#else
+	return (romptr_t) romdataFileGetData(filenum);
+#endif
 }
 
-u32 file_get_rom_size_by_table_address(u32 *filetableaddr)
+u32 fileGetRomSizeByTableAddress(uintptr_t *filetableaddr)
 {
+#ifdef PLATFORM_N64
 	u32 size;
 
 	if (filetableaddr[1]) {
@@ -4116,29 +4138,45 @@ u32 file_get_rom_size_by_table_address(u32 *filetableaddr)
 	}
 
 	return size;
+#else
+	const s32 size = romdataFileGetSize(filetableaddr - g_FileTable);
+	return (size < 0) ? 0 : size;
+#endif
 }
 
-s32 file_get_rom_size(s32 filenum)
+s32 fileGetRomSize(s32 filenum)
 {
-	return file_get_rom_size_by_table_address((u32 *)&g_FileTable[filenum]);
+	return fileGetRomSizeByTableAddress((uintptr_t*)&g_FileTable[filenum]);
 }
 
-u32 file0f166ea8(u32 *filetableaddr)
+u32 file0f166ea8(uintptr_t *filetableaddr)
 {
 	return 0;
 }
 
-void file_load(u8 *dst, u32 allocationlen, u32 *romaddrptr, struct fileinfo *info)
+void fileLoad(u8 *dst, u32 allocationlen, romptr_t *romaddrptr, struct fileinfo *info)
 {
-	u32 romsize = file_get_rom_size_by_table_address(romaddrptr);
+#ifndef PLATFORM_N64
+	// load the file first
+	const s32 filenum = (uintptr_t *)romaddrptr - g_FileTable;
+	u32 romsize = 0;
+	u8 *filedata = romdataFileLoad(filenum, &romsize);
+	if (!filedata) {
+		return;
+	}
+	romaddrptr = (romptr_t *)&filedata;
+#else
+	u32 romsize = fileGetRomSizeByTableAddress(romaddrptr);
+#endif
+
 	u8 buffer[5 * 1024];
 
 	if (allocationlen == 0) {
 		// DMA with no inflate
-		dma_exec(dst, *romaddrptr, romsize);
+		dmaExec(dst, *romaddrptr, romsize);
 	} else {
 		// DMA the compressed data to scratch space then inflate
-		u8 *scratch = (dst + allocationlen) - ((romsize + 7) & 0xfffffff8);
+		u8 *scratch = (dst + allocationlen) - ((romsize + 7) & (uintptr_t)~7);
 
 		if ((uintptr_t)scratch - (uintptr_t)dst < 8) {
 			info->loadedsize = 0;
@@ -4149,15 +4187,15 @@ void file_load(u8 *dst, u32 allocationlen, u32 *romaddrptr, struct fileinfo *inf
 			u32 stack[2];
 #endif
 
-			dma_exec(scratch, *romaddrptr, romsize);
-			result = rzip_inflate(scratch, dst, buffer);
+			dmaExec(scratch, *romaddrptr, romsize);
+			result = rzipInflate(scratch, dst, buffer);
 
 #if VERSION < VERSION_NTSC_1_0
 			if (result == 0) {
 				sprintf(sp54, "DMA-Crash %s %d Ram: %02x%02x%02x%02x%02x%02x%02x%02x", "ob.c", 204,
 						scratch[0], scratch[1], scratch[2], scratch[3],
 						scratch[4], scratch[5], scratch[6], scratch[7]);
-				crash_set_message(sp54);
+				crashSetMessage(sp54);
 				CRASH();
 			}
 #endif
@@ -4167,9 +4205,16 @@ void file_load(u8 *dst, u32 allocationlen, u32 *romaddrptr, struct fileinfo *inf
 			info->loadedsize = result;
 		}
 	}
+
+#ifndef PLATFORM_N64
+	// byteswap/preprocess file according to g_LoadType right after inflating it
+	const u32 dstsize = allocationlen ? info->loadedsize : romsize; 
+	romdataFilePreprocess(filenum, g_LoadType, dst, dstsize, &info->loadedsize);
+	g_LoadType = LOADTYPE_NONE;
+#endif
 }
 
-void files_init(void)
+void filesInit(void)
 {
 	s32 i;
 	s32 j = 0;
@@ -4181,7 +4226,9 @@ void files_init(void)
 		info->loadedsize = 0;
 		info->allocsize = 0;
 
-		file_get_rom_size_by_table_address((u32 *)(g_FileTable + i));
+#ifdef PLATFORM_N64
+		fileGetRomSizeByTableAddress((u32 *)(g_FileTable + i));
+#endif
 
 		if (g_FileTable);
 		if (g_FileInfo);
@@ -4190,40 +4237,53 @@ void files_init(void)
 	if (j);
 }
 
-void file_load_part_to_addr(u16 filenum, void *memaddr, s32 offset, u32 len)
+void fileLoadPartToAddr(u16 filenum, void *memaddr, s32 offset, u32 len)
 {
 	u32 stack[2];
 
-	if (file_get_rom_size_by_table_address((u32 *)&g_FileTable[filenum])) {
-		dma_exec(memaddr, (romptr_t) g_FileTable[filenum] + offset, len);
+	if (fileGetRomSizeByTableAddress((uintptr_t*)&g_FileTable[filenum])) {
+#ifdef PLATFORM_N64
+		dmaExec(memaddr, (romptr_t) g_FileTable[filenum] + offset, len);
+#else
+		const u8 *src = romdataFileGetData(filenum);
+		if (src) {
+			dmaExec(memaddr, (uintptr_t) src + offset, len);
+		}
+		// this intentionally does not execute romdataFilePreprocess,
+		// because bg files are loaded and inflated in parts
+#endif
 	}
 }
 
-u32 file_get_inflated_size(s32 filenum)
+u32 fileGetInflatedSize(s32 filenum, u32 loadtype)
 {
 	u8 *ptr;
 	u8 buffer[0x50];
-	u32 *romaddrptr;
+	uintptr_t *romaddrptr;
 #if VERSION < VERSION_NTSC_1_0
 	char message[128];
 #endif
-	u32 romaddr;
+	uintptr_t romaddr;
 
 	romaddrptr = &g_FileTable[filenum];
 
 	if (1);
 
+#ifdef PLATFORM_N64
 	romaddr = *romaddrptr;
+#else
+	romaddr = (uintptr_t)romdataFileGetData(filenum);
+#endif
 	ptr = (u8 *) ((uintptr_t) &buffer[0x10] & ~0xf);
 
 	if (romaddr == 0) {
 		stub0f175f58(file0f166ea8(&g_FileTable[filenum]), ptr, 16);
 	} else {
-		dma_exec(ptr, romaddr, 0x40);
+		dmaExec(ptr, romaddr, 0x40);
 	}
 
-	if (rzip_is_1173(ptr)) {
-		return (ptr[2] << 16) | (ptr[3] << 8) | ptr[4];
+	if (rzipIs1173(ptr)) {
+		return romdataFileGetEstimatedSize((ptr[2] << 16) | (ptr[3] << 8) | ptr[4], loadtype);
 	}
 
 #if VERSION < VERSION_NTSC_1_0
@@ -4233,14 +4293,14 @@ u32 file_get_inflated_size(s32 filenum)
 			ptr[0x04], ptr[0x05], ptr[0x06], ptr[0x07],
 			ptr[0x08], ptr[0x09], ptr[0x0a], ptr[0x0b],
 			ptr[0x0c], ptr[0x0d], ptr[0x0e], ptr[0x0f]);
-	crash_set_message(message);
+	crashSetMessage(message);
 	CRASH();
 #endif
 
 	return 0;
 }
 
-void *file_load_to_new(s32 filenum, u32 method)
+void *fileLoadToNew(s32 filenum, u32 method, u32 loadtype)
 {
 	struct fileinfo *info = &g_FileInfo[filenum];
 	u32 stack;
@@ -4248,19 +4308,19 @@ void *file_load_to_new(s32 filenum, u32 method)
 
 	if (method == FILELOADMETHOD_EXTRAMEM || method == FILELOADMETHOD_DEFAULT) {
 		if (info->loadedsize == 0) {
-			info->loadedsize = (file_get_inflated_size(filenum) + 0x20) & 0xfffffff0;
+			info->loadedsize = (fileGetInflatedSize(filenum, loadtype) + 0x20) & 0xfffffff0;
 
 			if (method == FILELOADMETHOD_EXTRAMEM) {
 				info->loadedsize += 0x8000;
 			}
 		}
 
-		ptr = memp_alloc(info->loadedsize, MEMPOOL_STAGE);
+		ptr = mempAlloc(info->loadedsize, MEMPOOL_STAGE);
 		info->allocsize = info->loadedsize;
-		file_load(ptr, info->loadedsize, (u32 *)&g_FileTable[filenum], info);
+		fileLoad(ptr, info->loadedsize, (uintptr_t*)&g_FileTable[filenum], info);
 
 		if (method != FILELOADMETHOD_EXTRAMEM) {
-			memp_realloc(ptr, info->loadedsize, MEMPOOL_STAGE);
+			mempRealloc(ptr, info->loadedsize, MEMPOOL_STAGE);
 		}
 	} else {
 		while (1);
@@ -4269,18 +4329,21 @@ void *file_load_to_new(s32 filenum, u32 method)
 	return ptr;
 }
 
-void file_remove(s32 filenum)
+void fileRemove(s32 filenum)
 {
 	g_FileTable[filenum] = 0;
+#ifndef PLATFORM_N64
+	romdataFileFree(filenum);
+#endif
 }
 
-void *file_load_to_addr(s32 filenum, s32 method, u8 *ptr, u32 size)
+void *fileLoadToAddr(s32 filenum, s32 method, u8 *ptr, u32 size)
 {
 	struct fileinfo *info = &g_FileInfo[filenum];
 
 	if (method == FILELOADMETHOD_EXTRAMEM || method == FILELOADMETHOD_DEFAULT) {
 		info->allocsize = size;
-		file_load(ptr, size, (u32 *)&g_FileTable[filenum], info);
+		fileLoad(ptr, size, (uintptr_t*)&g_FileTable[filenum], info);
 	} else {
 		while (1);
 	}
@@ -4288,27 +4351,27 @@ void *file_load_to_addr(s32 filenum, s32 method, u8 *ptr, u32 size)
 	return ptr;
 }
 
-u32 file_get_loaded_size(s32 filenum)
+u32 fileGetLoadedSize(s32 filenum)
 {
 	return g_FileInfo[filenum].loadedsize;
 }
 
-u32 file_get_allocation_size(s32 filenum)
+u32 fileGetAllocationSize(s32 filenum)
 {
 	return g_FileInfo[filenum].allocsize;
 }
 
-void file_set_size(s32 filenum, void *ptr, u32 size, bool reallocate)
+void fileSetSize(s32 filenum, void *ptr, u32 size, bool reallocate)
 {
 	g_FileInfo[filenum].loadedsize = size;
 	g_FileInfo[filenum].allocsize = size;
 
 	if (reallocate) {
-		memp_realloc(ptr, g_FileInfo[filenum].loadedsize, MEMPOOL_STAGE);
+		mempRealloc(ptr, g_FileInfo[filenum].loadedsize, MEMPOOL_STAGE);
 	}
 }
 
-void files_stop(u8 arg0)
+void filesStop(u8 arg0)
 {
 	s32 i;
 
@@ -4322,5 +4385,5 @@ void files_stop(u8 arg0)
 
 void func0f167330(void)
 {
-	files_stop(5);
+	filesStop(5);
 }
