@@ -8,12 +8,12 @@
 OSMesg g_ViDebugMesgs[8];
 OSMesgQueue g_ViDebugMesgQueue;
 
-void videbug_create(void)
+void videbugCreate(void)
 {
 	// empty
 }
 
-void videbug_init(void)
+void videbugInit(void)
 {
 	osCreateMesgQueue(&g_ViDebugMesgQueue, g_ViDebugMesgs, ARRAYCOUNT(g_ViDebugMesgs));
 }

@@ -7,17 +7,12 @@
 #include "data.h"
 #include "types.h"
 
-void mtx00017614(f32 arg0[4][4], f32 arg1[4][4]);
-f32 mtx00017a78(f32 arg0[4][4]);
-f32 mtx00017c2c(f32 arg0, f32 arg1, f32 arg2, f32 arg3, f32 arg4, f32 arg5, f32 arg6, f32 arg7, f32 arg8);
-f32 mtx00017cbc(f32 arg0, f32 arg1, f32 arg2, f32 arg3);
-
 void mtx00016110(f32 mtx1[3][3], f32 mtx2[3][3])
 {
 	f32 mtx3[3][3];
 
 	mtx00016140(mtx1, mtx2, mtx3);
-	mtx3_copy(mtx3, mtx2);
+	mtx3Copy(mtx3, mtx2);
 }
 
 void mtx00016140(f32 mtx1[3][3], f32 mtx2[3][3], f32 dst[3][3])
@@ -52,7 +47,7 @@ void mtx00016208(f32 mtx[3][3], struct coord *coord)
 	coord->z = tmp[2];
 }
 
-void mtx4_load_y_rotation_with_translation(struct coord *coord, f32 angle, Mtxf *mtx)
+void mtx4LoadYRotationWithTranslation(struct coord *coord, f32 angle, Mtxf *mtx)
 {
 	f32 cos = cosf(angle);
 	f32 sin = sinf(angle);
@@ -79,7 +74,7 @@ void mtx4_load_y_rotation_with_translation(struct coord *coord, f32 angle, Mtxf 
 }
 
 #if VERSION < VERSION_NTSC_1_0
-void mtx4_load_x_rotation_with_translation(struct coord *coord, f32 angle, Mtxf *mtx)
+void mtx4LoadXRotationWithTranslation(struct coord *coord, f32 angle, Mtxf *mtx)
 {
 	f32 cos = cosf(angle);
 	f32 sin = sinf(angle);
@@ -106,7 +101,7 @@ void mtx4_load_x_rotation_with_translation(struct coord *coord, f32 angle, Mtxf 
 }
 #endif
 
-void mtx4_load_x_rotation(f32 angle, Mtxf *mtx)
+void mtx4LoadXRotation(f32 angle, Mtxf *mtx)
 {
 	f32 cos = cosf(angle);
 	f32 sin = sinf(angle);
@@ -132,7 +127,7 @@ void mtx4_load_x_rotation(f32 angle, Mtxf *mtx)
 	mtx->m[3][3] = 1;
 }
 
-void mtx4_load_y_rotation(f32 angle, Mtxf *mtx)
+void mtx4LoadYRotation(f32 angle, Mtxf *mtx)
 {
 	f32 cos = cosf(angle);
 	f32 sin = sinf(angle);
@@ -158,7 +153,7 @@ void mtx4_load_y_rotation(f32 angle, Mtxf *mtx)
 	mtx->m[3][3] = 1;
 }
 
-void mtx4_load_z_rotation(f32 angle, Mtxf *mtx)
+void mtx4LoadZRotation(f32 angle, Mtxf *mtx)
 {
 	f32 cos = cosf(angle);
 	f32 sin = sinf(angle);
@@ -184,7 +179,7 @@ void mtx4_load_z_rotation(f32 angle, Mtxf *mtx)
 	mtx->m[3][3] = 1;
 }
 
-void mtx4_load_rotation(struct coord *src, Mtxf *dest)
+void mtx4LoadRotation(struct coord *src, Mtxf *dest)
 {
 	f32 xcos = cosf(src->x);
 	f32 xsin = sinf(src->x);
@@ -220,7 +215,7 @@ void mtx4_load_rotation(struct coord *src, Mtxf *dest)
 
 #define EPSILON 0.0000019073486f
 
-void mtx4_get_rotation(f32 mtx[4][4], struct coord *dst)
+void mtx4GetRotation(f32 mtx[4][4], struct coord *dst)
 {
 	f32 norm;
 	f32 sin_x_cos_y = mtx[1][2];
@@ -239,16 +234,16 @@ void mtx4_get_rotation(f32 mtx[4][4], struct coord *dst)
 	}
 }
 
-void mtx4_load_rotation_and_translation(struct coord *pos, struct coord *rot, Mtxf *mtx)
+void mtx4LoadRotationAndTranslation(struct coord *pos, struct coord *rot, Mtxf *mtx)
 {
-	mtx4_load_rotation(rot, mtx);
-	mtx4_set_translation(pos, mtx);
+	mtx4LoadRotation(rot, mtx);
+	mtx4SetTranslation(pos, mtx);
 }
 
-void mtx4_load_translation(struct coord *pos, Mtxf *mtx)
+void mtx4LoadTranslation(struct coord *pos, Mtxf *mtx)
 {
-	mtx4_load_identity(mtx);
-	mtx4_set_translation(pos, mtx);
+	mtx4LoadIdentity(mtx);
+	mtx4SetTranslation(pos, mtx);
 }
 
 void mtx00016710(f32 mult, f32 mtx[4][4])
@@ -484,34 +479,34 @@ void mtx00016e98(f32 mtx[4][4], f32 angle, f32 x, f32 y, f32 z)
 		return;
 	}
 
-	mtx4_load_identity((Mtxf *)mtx);
+	mtx4LoadIdentity((Mtxf *)mtx);
 }
 
-void mtx4_align(f32 mtx[4][4], f32 angle, f32 x, f32 y, f32 z)
+void mtx4Align(f32 mtx[4][4], f32 angle, f32 x, f32 y, f32 z)
 {
-	angle = RTOD2(angle);
+	angle = RAD2DEG(angle);
 	guAlignF(mtx, angle, x, y, z);
 }
 
 #if VERSION < VERSION_NTSC_1_0
-void mtx4_print(f32 mtx[4][4])
+void mtx4Print(f32 mtx[4][4])
 {
 	s32 i;
 	s32 j;
 
 	for (i = 0; i < 4; i++) {
-		rmon_printf("(");
+		rmonPrintf("(");
 
 		for (j = 0; j < 4; j++) {
-			rmon_printf("%s%s %9f", "", "", mtx[i][j]);
+			rmonPrintf("%s%s %9f", "", "", mtx[i][j]);
 		}
 
-		rmon_printf(" )\n");
+		rmonPrintf(" )\n");
 	}
 }
 #endif
 
-void mtx4_load_rotation_from(f32 src[4][4], f32 dst[4][4])
+void mtx4LoadRotationFrom(f32 src[4][4], f32 dst[4][4])
 {
 	dst[0][0] = src[0][0];
 	dst[0][1] = src[1][0];

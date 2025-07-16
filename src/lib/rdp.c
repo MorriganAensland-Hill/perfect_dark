@@ -63,7 +63,7 @@ struct rdptask *g_RdpCurTask = &g_RdpTaskA;
 extern u8 gspTextStart;
 extern u8 gspDataStart;
 
-void rdp_init(void)
+void rdpInit(void)
 {
 	s32 size = 0x10000;
 
@@ -71,11 +71,11 @@ void rdp_init(void)
 		size = 0x8000;
 	}
 
-	g_RdpOutBufferStart = memp_alloc(size, MEMPOOL_PERMANENT);
+	g_RdpOutBufferStart = mempAlloc(size, MEMPOOL_PERMANENT);
 	g_RdpOutBufferEnd = (u16 *) ((uintptr_t) g_RdpOutBufferStart + size);
 }
 
-void rdp_create_task(Gfx *gdlstart, Gfx *gdlend, u32 arg2, s32 msg)
+void rdpCreateTask(Gfx *gdlstart, Gfx *gdlend, u32 arg2, uintptr_t msg)
 {
 	OSScTask *sctask;
 	OSTask *task;
@@ -83,6 +83,7 @@ void rdp_create_task(Gfx *gdlstart, Gfx *gdlend, u32 arg2, s32 msg)
 	sctask = &g_RdpCurTask->sctask;
 	task = &sctask->list;
 
+#ifdef PLATFORM_N64
 	task->t.ucode_boot = (u64 *) rspbootTextStart;
 	task->t.ucode_boot_size = (uintptr_t) rspbootTextEnd - (uintptr_t) rspbootTextStart;
 
@@ -90,6 +91,7 @@ void rdp_create_task(Gfx *gdlstart, Gfx *gdlend, u32 arg2, s32 msg)
 
 	task->t.ucode = (u64 *) &gspTextStart;
 	task->t.ucode_data = (u64 *) &gspDataStart;
+#endif
 	task->t.output_buff = (u64 *)g_RdpOutBufferStart;
 	task->t.output_buff_size = (u64 *)g_RdpOutBufferEnd;
 	task->t.data_ptr = (u64 *) gdlstart;
@@ -104,7 +106,7 @@ void rdp_create_task(Gfx *gdlstart, Gfx *gdlend, u32 arg2, s32 msg)
 	sctask->framebuffer = g_RdpCurTask->framebuffer;
 
 	osWritebackDCacheAll();
-	sched_submit_task(&g_Sched, sctask);
+	schedSubmitTask(&g_Sched, sctask);
 
 	// Swap g_RdpCurTask
 	g_RdpCurTask = (struct rdptask *)((uintptr_t) g_RdpCurTask ^ (uintptr_t) &g_RdpTaskA ^ (uintptr_t) &g_RdpTaskB);

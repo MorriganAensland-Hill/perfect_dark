@@ -4,7 +4,7 @@
  * There are two inflate implementations in this codebase:
  *
  * 1. src/inflate/inflate.c:
- * - Is pretty much regular zlib but with some memp_alloc functions changed to use
+ * - Is pretty much regular zlib but with some mempAlloc functions changed to use
  *   stack or data.
  * - Being C, is more readable than this file.
  * - Is stored uncompressed in the ROM and is used to decompress the lib and
@@ -220,7 +220,7 @@ glabel errstr_unrecognised
 .text
 
 /**
- * u32 rzip_inflate(void *src, void *dst, void *scratch);
+ * u32 rzipInflate(void *src, void *dst, void *scratch);
  *
  * Inflate a 1172 (GE) or 1173 (PD) compressed stream.
  *
@@ -230,7 +230,7 @@ glabel errstr_unrecognised
  *
  * The scratch argument must be a pointer to a 5KB allocation (5120 bytes).
  */
-glabel rzip_inflate
+glabel rzipInflate
  	addiu  $sp, $sp, -0xa88
  	sw     $s0, 0xa48($sp)
  	sw     $s1, 0xa4c($sp)
@@ -279,7 +279,7 @@ glabel rzip_inflate
  	sw     $sp, 0x74($sp)
  	sw     $s8, 0x78($sp)
  	addiu  $sp, $sp, -0x18
- 	jal    rmon_printf
+ 	jal    rmonPrintf
  	addiu  $a0, $a0, %lo(errstr_unrecognised)
  	addiu  $sp, $sp, 0x18
  	lw     $ra, 0x0($sp)
@@ -352,7 +352,7 @@ glabel rzip_inflate
  	sw     $sp, 0x74($sp)
  	sw     $s8, 0x78($sp)
  	addiu  $sp, $sp, -0x18
- 	jal    rmon_printf
+ 	jal    rmonPrintf
  	addiu  $a0, $a0, %lo(errstr_unrecognised)
  	addiu  $sp, $sp, 0x18
  	lw     $ra, 0x0($sp)
@@ -413,7 +413,7 @@ glabel rzip_inflate
  	move   $t2, $t0
 .L000077ac:
  	mtc1   $t2, $f18
- 	jal    rzip_inflate_body
+ 	jal    rzipInflateBody
  	nop
  	bnez   $v0, .failed
  	mfc1   $v0, $f17
@@ -466,7 +466,7 @@ glabel rzip_inflate
  	sw     $v0, 0x4($sp)
  	lui    $a0, %hi(errstr_inflatefailed)
  	addiu  $a0, $a0, %lo(errstr_inflatefailed)
- 	jal    rmon_printf
+ 	jal    rmonPrintf
  	lw     $a1, 0x4($sp)
  	addiu  $sp, $sp, 0x18
  	lw     $ra, 0x0($sp)
@@ -505,14 +505,14 @@ glabel rzip_inflate
 /**
  * Return 0 on success.
  */
-glabel rzip_inflate_body
+glabel rzipInflateBody
  	sw     $ra, 0xa6c($sp)
  	mtc1   $zero, $f17
  	li     $gp, 0
  	li     $s8, 0
 .L00007918:
  	mtc1   $zero, $f19
- 	jal    rzip_inflate_block
+ 	jal    rzipInflateBlock
  	addiu  $a0, $sp, 0xa70
  	bnez   $v0, .L00007960
  	lw     $t3, 0xa70($sp)
@@ -536,7 +536,7 @@ glabel rzip_inflate_body
  	jr      $ra
  	nop
 
-glabel rzip_inflate_block
+glabel rzipInflateBlock
  	sw      $ra, 0xa68($sp)
  	slti    $at, $s8, 0x3
  	beqz    $at, .L0000799c
@@ -560,21 +560,21 @@ glabel rzip_inflate_block
  	li      $at, 2
  	bne     $t3, $at, .L000079d0
  	nop
- 	jal     rzip_inflate_dynamic
+ 	jal     rzipInflateDynamic
  	nop
  	j       .L00007a04
  	nop
 .L000079d0:
  	bnez    $t3, .L000079e8
  	li      $at, 1
- 	jal     rzip_inflate_stored
+ 	jal     rzipInflateStored
  	nop
  	j       .L00007a04
  	nop
 .L000079e8:
  	bne     $t3, $at, .L00007a00
  	nop
- 	jal     rzip_inflate_fixed
+ 	jal     rzipInflateFixed
  	nop
  	j       .L00007a04
  	nop
@@ -585,7 +585,7 @@ glabel rzip_inflate_block
  	jr      $ra
  	nop
 
-glabel rzip_inflate_dynamic
+glabel rzipInflateDynamic
  	sw      $ra, 0xa44($sp)
  	lui     $t5, %hi(border)
  	addiu   $t5, $t5, %lo(border)
@@ -666,7 +666,7 @@ glabel rzip_inflate_dynamic
  	li      $a3, 0
  	li      $t7, 0
  	addiu   $t8, $sp, 0xa38
- 	jal     rzip_build_hufts
+ 	jal     rzipBuildHufts
  	addiu   $t9, $sp, 0xa3c
  	mfc1    $t2, $f0
  	mfc1    $t3, $f1
@@ -832,7 +832,7 @@ glabel rzip_inflate_dynamic
  	lui     $t7, %hi(cplext)
  	addiu   $t7, $t7, %lo(cplext)
  	addiu   $t8, $sp, 0xa38
- 	jal     rzip_build_hufts
+ 	jal     rzipBuildHufts
  	addiu   $t9, $sp, 0xa3c
  	mfc1    $t2, $f0
  	mfc1    $t3, $f1
@@ -849,7 +849,7 @@ glabel rzip_inflate_dynamic
  	lui     $t7, %hi(cpdext)
  	addiu   $t7, $t7, %lo(cpdext)
  	addiu   $t8, $sp, 0xa3a
- 	jal     rzip_build_hufts
+ 	jal     rzipBuildHufts
  	addiu   $t9, $sp, 0xa40
  	bnez    $v0, .L00007f10
  	lhu     $a0, 0xa38($sp)
@@ -859,7 +859,7 @@ glabel rzip_inflate_dynamic
  	sll     $a1, $a1, 0x2
  	addu    $a1, $a1, $s6
  	lw      $a2, 0xa3c($sp)
- 	jal     rzip_inflate_codes
+ 	jal     rzipInflateCodes
  	lw      $a3, 0xa40($sp)
  	bnez    $v0, .L00007f10
  	nop
@@ -898,7 +898,7 @@ glabel rzip_inflate_dynamic
  	sw      $sp, 0x74($sp)
  	sw      $s8, 0x78($sp)
  	addiu   $sp, $sp, -24
- 	jal     rmon_printf
+ 	jal     rmonPrintf
  	addiu   $a0, $a0, %lo(errstr_badlen)
  	addiu   $sp, $sp, 0x18
  	lw      $ra, 0x0($sp)
@@ -938,7 +938,7 @@ glabel rzip_inflate_dynamic
  	jr      $ra
  	nop
 
-glabel rzip_inflate_stored
+glabel rzipInflateStored
  	mfc1    $t2, $f17
  	mfc1    $t6, $f18
  	mfc1    $t7, $f16
@@ -1014,7 +1014,7 @@ glabel rzip_inflate_stored
  	jr      $ra
  	li      $v0, 1
 
-glabel rzip_inflate_fixed
+glabel rzipInflateFixed
  	sw     $ra, 0xa44($sp)
  	sw     $s6, 0xa74($sp)
  	lui    $s6, %hi(var80090b10)
@@ -1025,14 +1025,14 @@ glabel rzip_inflate_fixed
  	addiu  $a1, $a1, %lo(var800914d8)
  	li     $a2, 7
  	li     $a3, 5
- 	jal    rzip_inflate_codes
+ 	jal    rzipInflateCodes
  	nop
  	lw     $s6, 0xa74($sp)
  	lw     $ra, 0xa44($sp)
  	jr     $ra
  	li     $v0, 0
 
-glabel rzip_build_hufts
+glabel rzipBuildHufts
  	beqz   $a1, .L000084e8
  	mtc1   $s0, $f2
  	mtc1   $s1, $f3
@@ -1402,7 +1402,7 @@ glabel rzip_build_hufts
  	sw     $s3, 0x4($sp)
  	lui    $a0, %hi(errstr_huftsoverflow)
  	addiu  $a0, $a0, %lo(errstr_huftsoverflow)
- 	jal    rmon_printf
+ 	jal    rmonPrintf
  	lw     $a1, 0x4($sp)
  	addiu  $sp, $sp, 0x18
  	lw     $ra, 0x0($sp)
@@ -1437,7 +1437,7 @@ glabel rzip_build_hufts
  	j      .L0000833c
  	addiu  $sp, $sp, 0x80
 
-glabel rzip_inflate_codes
+glabel rzipInflateCodes
  	mfc1   $t3, $f16
  	mfc1   $t5, $f18
  	mfc1   $s4, $f17
@@ -1630,7 +1630,7 @@ glabel rzip_inflate_codes
  	jr     $ra
  	li     $v0, 4
 
-glabel rzip_init
+glabel rzipInit
  	addiu  $sp, $sp, -2696
  	sw     $s0, 0xa48($sp)
  	sw     $s1, 0xa4c($sp)
@@ -1679,7 +1679,7 @@ glabel rzip_init
  	lui    $t7, %hi(cplext)
  	addiu  $t7, $t7, %lo(cplext)
  	addiu  $t8, $sp, 0x9c8
- 	jal    rzip_build_hufts
+ 	jal    rzipBuildHufts
  	addiu  $t9, $sp, 0x9cc
  	addiu  $t0, $sp, 0x548
  	li     $t1, 5
@@ -1698,7 +1698,7 @@ glabel rzip_init
  	lui    $t7, %hi(cpdext)
  	addiu  $t7, $t7, %lo(cpdext)
  	addiu  $t8, $sp, 0x9d0
- 	jal    rzip_build_hufts
+ 	jal    rzipBuildHufts
  	addiu  $t9, $sp, 0x9d4
  	lw     $s0, 0xa48($sp)
  	lw     $s1, 0xa4c($sp)
@@ -1712,7 +1712,7 @@ glabel rzip_init
  	jr     $ra
  	addiu  $sp, $sp, 0xa88
 
-glabel rzip_is_1173
+glabel rzipIs1173
  	li     $t1, 0x11
  	lbu    $t0, 0x0($a0)
  	bne    $t0, $t1, .L00008a00
@@ -1726,7 +1726,7 @@ glabel rzip_is_1173
  	jr     $ra
  	li     $v0, 0
 
-glabel rzip_get_something
+glabel rzipGetSomething
  	lui    $v0, %hi(var80091558)
  	addiu  $v0, $v0, %lo(var80091558)
  	jr     $ra

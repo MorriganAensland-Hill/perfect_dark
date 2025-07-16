@@ -58,7 +58,7 @@ glabel g_VmZipTable
 glabel g_VmTempStack
 .space 0x1000
 
-# A scratch area that can be used by rzip_inflate.
+# A scratch area that can be used by rzipInflate.
 glabel g_VmScratch
 .space 0x1400
 
@@ -99,7 +99,7 @@ glabel g_VmSlotsPhysicalAddr
 /**
  * Sets up TLB index 0 (0x70000000), then calls boot.
  */
-glabel vm_boot
+glabel vmBoot
 	li     $t0, OS_PM_4M
 	mtc0   $t0, C0_PAGEMASK
 	li     $t0, 0x70000000
@@ -119,7 +119,7 @@ glabel vm_boot
 	jr     $t0
  	nop
 
-glabel vm_init_vars
+glabel vmInitVars
 	addiu  $sp, $sp, -8
 	sw     $ra, 0x0($sp)
 
@@ -164,7 +164,7 @@ glabel vm_init_vars
 	jr     $ra
  	nop
 
-glabel vm_init_vacant
+glabel vmInitVacant
 	# Fill array with 0xff (ie. all vacant)
 	li     $t0, 0xff
 	lw     $v0, g_VmVacantFirstByte
@@ -187,15 +187,15 @@ glabel vm_init_vacant
  	nop
 
 /**
- * vm_handle_miss is called from the exception handler when a request is made to
+ * vmHandleMiss is called from the exception handler when a request is made to
  * access a virtual memory address that isn't currently mapped in the TLB.
- * vm_handle_miss must load the page from ROM if not already loaded, then map it
+ * vmHandleMiss must load the page from ROM if not already loaded, then map it
  * in the TLB.
  *
  * In NTSC Final, there are 443 virtual pages, 268 slots where these can be loaded,
  * and 30 of these can be mapped in the TLB at the same time.
  */
-glabel vm_handle_miss
+glabel vmHandleMiss
 	# C0_CONTEXT must be the 512-byte chunk index that was requested?
 	# Convert it to a virtual address
 	mfc0   $t0, C0_CONTEXT
@@ -378,7 +378,7 @@ glabel vm_handle_miss
 	sw     $sp, 0x0($a0)
 	addiu  $sp, $a0, 0
 
-	# Prepare arguments for rzip_inflate
+	# Prepare arguments for rzipInflate
 	lw     $a0, g_VmZipBuffer
 	addiu  $a0, $a0, 2  # Move past the 2-byte checksum
 	li     $t0, K0BASE
@@ -418,7 +418,7 @@ glabel vm_handle_miss
 	sw     $s8, 0x78($sp)
 
 	# Unzip the zip
-	jal    rzip_inflate
+	jal    rzipInflate
  	nop
 
 	# Reload registers from the stack
@@ -599,7 +599,7 @@ glabel vm_handle_miss
 	j      handle_fault
  	nop
 
-glabel vm_unmap_range
+glabel vmUnmapRange
 	mfc0   $t0, C0_ENTRYHI
 	li     $t2, K0BASE
 	mtc0   $t2, C0_ENTRYHI
@@ -618,7 +618,7 @@ glabel vm_unmap_range
  	nop
 
 #if VERSION < VERSION_NTSC_1_0
-glabel vm_invalidate_first_8kb
+glabel vmInvalidateFirst8Kb
 	li     $t0, K0BASE
 	addiu  $t1, $t0, 0x1ff0
 .invalidate_dcache_loop4:

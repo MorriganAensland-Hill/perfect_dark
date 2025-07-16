@@ -28,10 +28,10 @@ glabel var8005ef7c
 .word 0x00000000
 
 glabel var8005ef80
-.word modelasm_read_frame_data+0x84
-.word modelasm_read_frame_data+0x90
-.word modelasm_read_frame_data+0xa8
-.word modelasm_read_frame_data+0xcc
+.word modelasmReadFrameData+0x84
+.word modelasmReadFrameData+0x90
+.word modelasmReadFrameData+0xa8
+.word modelasmReadFrameData+0xcc
 
 glabel var8005ef90
 .word 0xff08ffff
@@ -194,7 +194,7 @@ glabel modelasm00018680
 	sll    $t6, $t6, 0x2
 	add    $t6, $t5, $t6
 	lw     $t6, 0x0($t6)
-	jal    modelasm_iterate_things1
+	jal    modelasmIterateThings1
 	addi   $gp, $zero, 0x0
 	mtc1   $zero, $f1
 	lwc1   $f0, 0x10($a2)
@@ -247,7 +247,7 @@ glabel modelasm00018680
 	sll    $t6, $t6, 0x2
 	add    $t6, $t5, $t6
 	lw     $t6, 0x0($t6)
-	jal    modelasm_iterate_things2
+	jal    modelasmIterateThings2
 	addi   $gp, $zero, 0x0
 .L00018874:
 	mtc1   $zero, $f1
@@ -289,7 +289,7 @@ glabel modelasm00018680
 	sll    $t6, $t6, 0x2
 	add    $t6, $t5, $t6
 	lw     $t6, 0x0($t6)
-	jal    modelasm_iterate_things1
+	jal    modelasmIterateThings1
 	addi   $gp, $zero, 0x0
 	mtc1   $zero, $f1
 	lwc1   $f0, 0x34($a2)
@@ -334,7 +334,7 @@ glabel modelasm00018680
 	sll    $t6, $t6, 0x2
 	add    $t6, $t5, $t6
 	lw     $t6, 0x0($t6)
-	jal    modelasm_iterate_things2
+	jal    modelasmIterateThings2
 	addi   $gp, $zero, 0x0
 .L000189cc:
 	lw     $a3, 0x8($a1)
@@ -438,9 +438,9 @@ glabel modelasm00018680
 	lhu    $s3, 0x3c4($t0)
 	lhu    $s4, 0x3c6($t0)
 .L00018b3c:
-	jal    modelasm_prepare_rot_mtx360
+	jal    modelasmPrepareRotMtx360
 	sw     $t0, 0x7e8($sp)
-	jal    modelasm_math_pain2
+	jal    modelasmMathPain2
  	nop
 	mov.s  $f16, $f0
 	mov.s  $f17, $f1
@@ -448,11 +448,11 @@ glabel modelasm00018680
 	mov.s  $f19, $f3
 	move   $t2, $s2
 	move   $t3, $s3
-	jal    modelasm_prepare_rot_mtx360
+	jal    modelasmPrepareRotMtx360
 	move   $t4, $s4
-	jal    modelasm_math_pain2
+	jal    modelasmMathPain2
  	nop
-	jal    modelasm_math_pain1
+	jal    modelasmMathPain1
 	lwc1   $f30, 0x7e0($sp)
 	li     $t0, 0x1
 	sw     $t0, 0x7e4($sp)
@@ -461,7 +461,7 @@ glabel modelasm00018680
 	swc1   $f1, 0x7ec($sp)
 	swc1   $f2, 0x7f0($sp)
 	swc1   $f3, 0x7f4($sp)
-	jal    modelasm_math_pain4
+	jal    modelasmMathPain4
  	nop
 	j      .L00018c6c
  	nop
@@ -516,9 +516,9 @@ glabel modelasm00018680
 	add    $s0, $zero, $t2
 	add    $s1, $zero, $t3
 	add    $s2, $zero, $t4
-	jal    modelasm_prepare_rot_mtx180
+	jal    modelasmPrepareRotMtx180
 	add    $s3, $zero, $t0
-	jal    modelasm_math_pain3
+	jal    modelasmMathPain3
 	add    $t0, $zero, $s3
 .L00018c6c:
 	andi   $t2, $s8, 0x2
@@ -576,7 +576,7 @@ glabel modelasm00018680
 	lw     $t0, 0x8($gp)
 	beqz   $t0, .L00018d48
  	nop
-	jal    modelasm_find_node_mtx
+	jal    modelasmFindNodeMtx
  	nop
 	b      .L00018d4c
  	nop
@@ -587,7 +587,7 @@ glabel modelasm00018680
 	lhu    $t2, 0xe($t1)
 	sll    $t2, $t2, 0x6
 	lw     $t1, 0xc($a1)
-	jal    modelasm_mtx_multiply
+	jal    modelasmMtxMultiply
 	add    $t1, $t1, $t2
 	lui    $t3, %hi(g_ModelJointPositionedFunc)
 	addiu  $t3, $t3, %lo(g_ModelJointPositionedFunc)
@@ -677,9 +677,9 @@ glabel modelasm00018680
 	add    $t2, $zero, $s0
 	add    $t3, $zero, $s1
 	add    $t4, $zero, $s2
-	jal    modelasm_prepare_rot_mtx360
+	jal    modelasmPrepareRotMtx360
 	add    $s0, $zero, $t0
-	jal    modelasm_math_pain2
+	jal    modelasmMathPain2
 	add    $t0, $zero, $s0
 .L00018ecc:
 	lui    $at, 0x3f00
@@ -714,7 +714,7 @@ glabel modelasm00018680
 	c.le.s $f6, $f7
 	bc1f   .L00018f8c
  	nop
-	jal    modelasm_acos_or_asin
+	jal    modelasmAcosOrAsin
  	nop
 	mov.s  $f17, $f0
 	mul.s  $f12, $f6, $f8
@@ -744,12 +744,12 @@ glabel modelasm00018680
 	mul.s  $f3, $f3, $f8
 	add.s  $f0, $f0, $f4
 .L00018fb4:
-	jal    modelasm_math_pain4
+	jal    modelasmMathPain4
 	lw     $t1, 0x4($gp)
 	lhu    $t2, 0x10($t1)
 	sll    $t2, $t2, 0x6
 	lw     $t1, 0xc($a1)
-	jal    modelasm_mtx_multiply
+	jal    modelasmMtxMultiply
 	add    $t1, $t1, $t2
 	j      .L00019574
  	nop
@@ -769,11 +769,11 @@ glabel modelasm00018680
 	lhu    $s8, 0x0($t0)
 .L0001900c:
  	syscall
-	jal    modelasm_find_node_mtx
+	jal    modelasmFindNodeMtx
 	add    $t0, $zero, $gp
 	lui    $t2, %hi(g_ModelDistanceDisabled)
 	addiu  $t2, $t2, %lo(g_ModelDistanceDisabled)
-	jal    modelasm_get_node_rw_data
+	jal    modelasmGetNodeRwData
 	lw     $t1, 0x4($gp)
 	lw     $t2, 0x0($t2)
 	bnez   $t2, .L00019068
@@ -895,9 +895,9 @@ glabel modelasm00018680
 	lhu    $s3, 0x3c4($t0)
 	lhu    $s4, 0x3c6($t0)
 .L000191cc:
-	jal    modelasm_prepare_rot_mtx360
+	jal    modelasmPrepareRotMtx360
 	sw     $t0, 0x7e8($sp)
-	jal    modelasm_math_pain2
+	jal    modelasmMathPain2
  	nop
 	mov.s  $f16, $f0
 	mov.s  $f17, $f1
@@ -905,14 +905,14 @@ glabel modelasm00018680
 	mov.s  $f19, $f3
 	move   $t2, $s2
 	move   $t3, $s3
-	jal    modelasm_prepare_rot_mtx360
+	jal    modelasmPrepareRotMtx360
 	move   $t4, $s4
-	jal    modelasm_math_pain2
+	jal    modelasmMathPain2
  	nop
-	jal    modelasm_math_pain1
+	jal    modelasmMathPain1
 	lwc1   $f30, 0x7e0($sp)
 	lw     $t0, 0x7e8($sp)
-	jal    modelasm_math_pain4
+	jal    modelasmMathPain4
  	nop
 	j      .L000192a8
  	nop
@@ -940,7 +940,7 @@ glabel modelasm00018680
 .L0001926c:
 	andi   $t3, $t3, 0xffff
 	andi   $t4, $t4, 0xffff
-	jal    modelasm_prepare_rot_mtx180
+	jal    modelasmPrepareRotMtx180
 	lhu    $t2, 0x2($t0)
 	b      .L000192a0
  	nop
@@ -950,13 +950,13 @@ glabel modelasm00018680
 	lhu    $s8, 0x0($t0)
 	lhu    $t4, 0x6($t0)
 	lhu    $t3, 0x4($t0)
-	jal    modelasm_prepare_rot_mtx180
+	jal    modelasmPrepareRotMtx180
 	lhu    $t2, 0x2($t0)
 .L000192a0:
-	jal    modelasm_math_pain3
+	jal    modelasmMathPain3
  	nop
 .L000192a8:
-	jal    modelasm_get_node_rw_data
+	jal    modelasmGetNodeRwData
 	mtc1   $zero, $f0
 	mov.s  $f27, $f12
 	mov.s  $f28, $f13
@@ -1070,7 +1070,7 @@ glabel modelasm00018680
 	lhu    $t2, 0x2($t1)
 	sll    $t2, $t2, 0x6
 	lw     $t1, 0xc($a1)
-	jal    modelasm_mtx_multiply
+	jal    modelasmMtxMultiply
 	add    $t1, $t1, $t2
 	j      .L00019574
  	nop
@@ -1090,7 +1090,7 @@ glabel modelasm00018680
 	lhu    $s8, 0x0($t0)
 .L000194a0:
  	syscall
-	jal    modelasm_get_node_rw_data
+	jal    modelasmGetNodeRwData
  	nop
 	lw     $t1, 0x0($v0)
 	beqz   $t1, .L00019574
@@ -1112,7 +1112,7 @@ glabel modelasm00018680
 	j      .L000194fc
 	lw     $t0, 0x0($a0)
 .L000194f4:
-	jal    modelasm_find_node_mtx
+	jal    modelasmFindNodeMtx
  	nop
 .L000194fc:
 	lw     $t1, 0x4($gp)
@@ -1131,13 +1131,13 @@ glabel modelasm00018680
 	lhu    $t2, 0xc($t1)
 	sll    $t2, $t2, 0x6
 	lw     $t1, 0xc($a1)
-	jal    modelasm_mtx_multiply
+	jal    modelasmMtxMultiply
 	add    $t1, $t1, $t2
 	j      .L00019574
  	nop
 	j      .L00019574
  	nop
-	jal    modelasm_get_node_rw_data
+	jal    modelasmGetNodeRwData
 	lw     $t0, 0x4($gp)
 	lw     $t1, 0x0($v0)
 	beqz   $t1, .L00019570
@@ -1200,7 +1200,7 @@ glabel modelasm00018680
 	addiu  $sp, $sp, 0x800
  	syscall
 
-glabel modelasm_iterate_things1
+glabel modelasmIterateThings1
 	sw     $ra, 0x7ac($sp)
 .L00019638:
 	lbu    $t7, 0x0($t2)
@@ -1242,7 +1242,7 @@ glabel modelasm_iterate_things1
 	j      .L00019808
 	addi   $t2, $t2, 0xc
 .L000196cc:
-	jal    modelasm_read_frame_data
+	jal    modelasmReadFrameData
 	lbu    $v1, 0x2($t2)
 	add    $s0, $zero, $v0
 	lbu    $v1, 0x2($t2)
@@ -1268,7 +1268,7 @@ glabel modelasm_iterate_things1
 	addu   $s3, $s3, $s4
 	addu   $s0, $s0, $s3
 	andi   $s0, $s0, 0xffff
-	jal    modelasm_read_frame_data
+	jal    modelasmReadFrameData
 	lbu    $v1, 0x5($t2)
 	add    $s1, $zero, $v0
 	lbu    $v1, 0x5($t2)
@@ -1294,7 +1294,7 @@ glabel modelasm_iterate_things1
 	addu   $s3, $s3, $s4
 	addu   $s1, $s1, $s3
 	andi   $s1, $s1, 0xffff
-	jal    modelasm_read_frame_data
+	jal    modelasmReadFrameData
 	lbu    $v1, 0x8($t2)
 	add    $s2, $zero, $v0
 	lbu    $v1, 0x8($t2)
@@ -1332,7 +1332,7 @@ glabel modelasm_iterate_things1
 	j      .L000198b4
 	addi   $s2, $zero, 0x0
 .L00019820:
-	jal    modelasm_read_frame_data
+	jal    modelasmReadFrameData
 	lbu    $v1, 0x2($t2)
 	add    $s0, $zero, $v0
 	lbu    $v1, 0x0($t2)
@@ -1344,7 +1344,7 @@ glabel modelasm_iterate_things1
 	sub    $v0, $v0, $t4
 	sllv   $s0, $s0, $v0
 	andi   $s0, $s0, 0xffff
-	jal    modelasm_read_frame_data
+	jal    modelasmReadFrameData
 	lbu    $v1, 0x5($t2)
 	add    $s1, $zero, $v0
 	lbu    $v1, 0x3($t2)
@@ -1356,7 +1356,7 @@ glabel modelasm_iterate_things1
 	sub    $v0, $v0, $t4
 	sllv   $s1, $s1, $v0
 	andi   $s1, $s1, 0xffff
-	jal    modelasm_read_frame_data
+	jal    modelasmReadFrameData
 	lbu    $v1, 0x8($t2)
 	add    $s2, $zero, $v0
 	lbu    $v1, 0x6($t2)
@@ -1381,7 +1381,7 @@ glabel modelasm_iterate_things1
 	jr     $ra
  	nop
 
-glabel modelasm_iterate_things2
+glabel modelasmIterateThings2
 	sw     $ra, 0x7ac($sp)
 .L000198e0:
 	lbu    $t7, 0x0($t2)
@@ -1449,7 +1449,7 @@ glabel modelasm_iterate_things2
 	j      .L00019a64
 	addi   $s2, $zero, 0x0
 .L000199d0:
-	jal    modelasm_read_frame_data
+	jal    modelasmReadFrameData
 	lbu    $v1, 0x2($t2)
 	add    $s0, $zero, $v0
 	lbu    $v1, 0x0($t2)
@@ -1461,7 +1461,7 @@ glabel modelasm_iterate_things2
 	sub    $v0, $v0, $t4
 	sllv   $s0, $s0, $v0
 	andi   $s0, $s0, 0xffff
-	jal    modelasm_read_frame_data
+	jal    modelasmReadFrameData
 	lbu    $v1, 0x5($t2)
 	add    $s1, $zero, $v0
 	lbu    $v1, 0x3($t2)
@@ -1473,7 +1473,7 @@ glabel modelasm_iterate_things2
 	sub    $v0, $v0, $t4
 	sllv   $s1, $s1, $v0
 	andi   $s1, $s1, 0xffff
-	jal    modelasm_read_frame_data
+	jal    modelasmReadFrameData
 	lbu    $v1, 0x8($t2)
 	add    $s2, $zero, $v0
 	lbu    $v1, 0x6($t2)
@@ -1592,7 +1592,7 @@ glabel modelasm_iterate_things2
 	jr     $ra
  	nop
 
-glabel modelasm_read_frame_data
+glabel modelasmReadFrameData
 	beqz   $v1, .L00019d14
 	addi   $v0, $zero, 0x0
 .L00019be8:
@@ -1679,7 +1679,7 @@ glabel modelasm_read_frame_data
 	jr     $ra
  	nop
 
-glabel modelasm_get_node_rw_data
+glabel modelasmGetNodeRwData
 	addiu  $sp, $sp, -32
 	sw     $gp, 0x0($sp)
 	sw     $t0, 0x4($sp)
@@ -1716,7 +1716,7 @@ glabel modelasm_get_node_rw_data
 	li     $at, 0x17
 	bne    $t1, $at, .L00019d84
  	nop
-	jal    modelasm_get_node_rw_data
+	jal    modelasmGetNodeRwData
  	nop
 	lw     $t3, 0x4($v0)
 .L00019db0:
@@ -1737,7 +1737,7 @@ glabel modelasm_get_node_rw_data
  * NTSC beta uses a simple version of this function, implemented here in ASM.
  * NTSC 1.0 and newer reimplements the function in C and adds more to it.
  */
-glabel model_get_node_rw_data
+glabel modelGetNodeRwData
 	addiu  $sp, $sp, -16
 	sw     $t0, 0x0($sp)
 	sw     $t1, 0x4($sp)
@@ -1771,7 +1771,7 @@ glabel model_get_node_rw_data
 	li     $at, 0x17
 	bne    $t1, $at, .NB0001af08
 	sll    $zero, $zero, 0x0
-	jal    model_get_node_rw_data
+	jal    modelGetNodeRwData
 	sll    $zero, $zero, 0x0
 	lw     $t3, 0x4($v0)
 .NB0001af34:
@@ -1785,7 +1785,7 @@ glabel model_get_node_rw_data
 	addiu  $sp, $sp, 0x10
 #endif
 
-glabel modelasm_math_pain1
+glabel modelasmMathPain1
 	sw     $ra, 0x7ac($sp)
 .L00019de0:
 	mul.s  $f5, $f16, $f0
@@ -1835,7 +1835,7 @@ glabel modelasm_math_pain1
 	c.le.s $f6, $f7
 	bc1f   .L00019f20
  	nop
-	jal    modelasm_acos_or_asin
+	jal    modelasmAcosOrAsin
  	nop
 	mov.s  $f20, $f0
 	jal    sinf
@@ -1876,7 +1876,7 @@ glabel modelasm_math_pain1
 	j      .L00019ed8
 	sub.s  $f5, $f5, $f30
 
-glabel modelasm_math_pain2
+glabel modelasmMathPain2
 	mul.s  $f6, $f0, $f2
  	nop
 	mul.s  $f7, $f0, $f3
@@ -1905,7 +1905,7 @@ glabel modelasm_math_pain2
 	jr     $ra
 	sub.s  $f3, $f26, $f10
 
-glabel modelasm_prepare_rot_mtx180
+glabel modelasmPrepareRotMtx180
 	add    $t5, $zero, $ra
 	lui    $at, %hi(var7005422c)
 	lwc1   $f29, %lo(var7005422c)($at)
@@ -1942,7 +1942,7 @@ glabel modelasm_prepare_rot_mtx180
 	jr     $ra
  	nop
 
-glabel modelasm_prepare_rot_mtx360
+glabel modelasmPrepareRotMtx360
 	add    $t5, $zero, $ra
 	lui    $at, %hi(var70054234)
 	lwc1   $f29, %lo(var70054234)($at)
@@ -1978,7 +1978,7 @@ glabel modelasm_prepare_rot_mtx360
 	jr     $ra
  	nop
 
-glabel modelasm_math_pain3
+glabel modelasmMathPain3
 	mul.s  $f6, $f1, $f5
  	nop
 	mul.s  $f7, $f0, $f5
@@ -2005,7 +2005,7 @@ glabel modelasm_math_pain3
 	jr     $ra
 	sub.s  $f19, $f19, $f8
 
-glabel modelasm_math_pain4
+glabel modelasmMathPain4
 	mul.s  $f4, $f0, $f0
  	nop
 	mul.s  $f5, $f1, $f1
@@ -2051,7 +2051,7 @@ glabel modelasm_math_pain4
 	jr     $ra
 	sub.s  $f20, $f20, $f26
 
-glabel modelasm_mtx_multiply
+glabel modelasmMtxMultiply
 	li     $t2, 0x3
 .L0001a1c4:
 	lwc1   $f0, 0x0($t0)
@@ -2093,7 +2093,7 @@ glabel modelasm_mtx_multiply
 	jr     $ra
 	swc1   $f31, 0x30($t1)
 
-glabel modelasm_find_node_mtx
+glabel modelasmFindNodeMtx
 .L0001a25c:
 	lh     $t1, 0x0($t0)
 	andi   $t1, $t1, 0xff
@@ -2131,7 +2131,7 @@ glabel modelasm_find_node_mtx
 	jr     $ra
 	add    $t0, $zero, $zero
 
-glabel modelasm_acos_or_asin
+glabel modelasmAcosOrAsin
 	lui    $at, %hi(var7005423c)
 	lwc1   $f7, %lo(var7005423c)($at)
 	mul.s  $f7, $f6, $f7

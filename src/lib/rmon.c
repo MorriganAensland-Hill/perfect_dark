@@ -1,3 +1,4 @@
+#ifdef PLATFORM_N64
 #include <ultra64.h>
 #include <stdarg.h>
 #include "constants.h"
@@ -6,13 +7,20 @@
 #include "lib/libc/xprintf.h"
 #include "data.h"
 #include "types.h"
+#else
+#include <stdarg.h>
+#include <stdio.h>
+#include "system.h"
+#include "types.h"
+#include "lib/crash.h"
+#endif
 
 void rmonproc()
 {
 	// empty
 }
 
-bool rmon_is_disabled(void)
+bool rmonIsDisabled(void)
 {
 	return true;
 }
@@ -53,21 +61,30 @@ void rmon0002fa40(void)
 	// empty
 }
 
-char *rmon_prout(char *dst, const char *src, size_t count)
+char *rmonProut(char *dst, const char *src, size_t count)
 {
 	s32 i = 0;
 
 	while (i != count) {
-		crash_append_char(src[i++]);
+		crashAppendChar(src[i++]);
 	}
 
 	return (char *) 1;
 }
 
-void rmon_printf(const char *format, ...)
+void rmonPrintf(const char *format, ...)
 {
+#ifndef PLATFORM_N64
+	char msg[2048];
+#endif
 	va_list ap;
 	va_start(ap, format);
 
-	_Printf(rmon_prout, NULL, format, ap);
+#ifdef PLATFORM_N64
+	_Printf(rmonProut, NULL, format, ap);
+#else
+	vsnprintf(msg, sizeof(msg), format, ap);
+	va_end(ap);
+	sysLogPrintf(LOG_NOTE, "rmonPrintf: %s", msg);
+#endif
 }
