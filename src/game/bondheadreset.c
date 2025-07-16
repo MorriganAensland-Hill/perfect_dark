@@ -20,7 +20,7 @@ void func0f0125a0(s16 animnum, s32 frame, s32 endframe, s32 totalinttranslate[3]
 	totalinttranslate[2] = 0;
 
 	while (frame < endframe) {
-		anim_get_pos_angle_as_int(0, false, &g_SkelChr, animnum, frame, inttranslate, false);
+		animGetPosAngleAsInt(0, false, &g_SkelChr, animnum, frame, inttranslate, false);
 
 		totalinttranslate[0] += inttranslate[0];
 		totalinttranslate[1] += inttranslate[1];
@@ -30,14 +30,14 @@ void func0f0125a0(s16 animnum, s32 frame, s32 endframe, s32 totalinttranslate[3]
 	}
 }
 
-void bhead_reset(void)
+void bheadReset(void)
 {
 	s32 i;
 
-	model_init(&g_Vars.currentplayer->model, &g_PlayerModeldef, g_Vars.currentplayer->bondheadsave, false);
-	anim_init(g_Vars.currentplayer->model.anim);
-	model_set_scale(&g_Vars.currentplayer->model, 0.1000000089407f);
-	model_set_anim_play_speed(&g_Vars.currentplayer->model, (PAL ? 1.2f : 1), 0);
+	modelInit(&g_Vars.currentplayer->model, &g_PlayerModeldef, g_Vars.currentplayer->bondheadsave, false);
+	animInit(g_Vars.currentplayer->model.anim);
+	modelSetScale(&g_Vars.currentplayer->model, 0.1000000089407f);
+	modelSetAnimPlaySpeed(&g_Vars.currentplayer->model, (PAL ? 1.2f : 1), 0);
 
 	g_Vars.currentplayer->headanim = HEADANIM_RESTING;
 	g_Vars.currentplayer->headdamp = (PAL ? 0.9166f : 0.93f);
@@ -94,18 +94,16 @@ void bhead_reset(void)
 	}
 
 	{
-		struct modelrenderdata renderdata = { NULL, true, MODELRENDERFLAG_DEFAULT };
-		Mtxf rendermtx;
+		struct modelrenderdata renderdata = {NULL, 1, 3};
+		Mtxf sp48;
 
-		model_set_animation(&g_Vars.currentplayer->model, ANIM_TWO_GUN_HOLD, 0, 0, 0.5f, 0);
+		modelSetAnimation(&g_Vars.currentplayer->model, ANIM_TWO_GUN_HOLD, 0, 0, 0.5f, 0);
 
-		model_update_info(&g_Vars.currentplayer->model);
-		mtx4_load_identity(&rendermtx);
-
-		renderdata.rendermtx = &rendermtx;
-		renderdata.matrices = g_Vars.currentplayer->bondheadmatrices;
-
-		model_set_matrices_with_anim(&renderdata, &g_Vars.currentplayer->model);
+		modelUpdateInfo(&g_Vars.currentplayer->model);
+		mtx4LoadIdentity(&sp48);
+		renderdata.unk00 = &sp48;
+		renderdata.unk10 = g_Vars.currentplayer->bondheadmatrices;
+		modelSetMatricesWithAnim(&renderdata, &g_Vars.currentplayer->model);
 
 		g_Vars.currentplayer->standheight = g_Vars.currentplayer->bondheadmatrices[0].m[3][1];
 
@@ -113,16 +111,16 @@ void bhead_reset(void)
 		g_Vars.currentplayer->standbodyoffset.y = g_Vars.currentplayer->bondheadmatrices[1].m[3][1] - g_Vars.currentplayer->bondheadmatrices[0].m[3][1];
 		g_Vars.currentplayer->standbodyoffset.z = g_Vars.currentplayer->bondheadmatrices[1].m[3][2] - g_Vars.currentplayer->bondheadmatrices[0].m[3][2];
 
-		model_set_animation(&g_Vars.currentplayer->model,
+		modelSetAnimation(&g_Vars.currentplayer->model,
 				g_HeadAnims[g_Vars.currentplayer->headanim].animnum,
 				0,
 				g_HeadAnims[g_Vars.currentplayer->headanim].loopframe,
 				0.5f, 0);
 
-		model_set_anim_looping(&g_Vars.currentplayer->model, g_HeadAnims[g_Vars.currentplayer->headanim].loopframe, 0);
-		model_set_anim_end_frame(&g_Vars.currentplayer->model, g_HeadAnims[g_Vars.currentplayer->headanim].endframe);
-		model_set_anim_flip_function(&g_Vars.currentplayer->model, bhead_flip_animation);
+		modelSetAnimLooping(&g_Vars.currentplayer->model, g_HeadAnims[g_Vars.currentplayer->headanim].loopframe, 0);
+		modelSetAnimEndFrame(&g_Vars.currentplayer->model, g_HeadAnims[g_Vars.currentplayer->headanim].endframe);
+		modelSetAnimFlipFunction(&g_Vars.currentplayer->model, bheadFlipAnimation);
 
-		bhead_update_idle_roll();
+		bheadUpdateIdleRoll();
 	}
 }

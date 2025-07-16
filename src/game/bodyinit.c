@@ -7,12 +7,12 @@
 #include "data.h"
 #include "types.h"
 
-void bodies_init(void)
+void bodiesInit(void)
 {
-	g_NumTuxedos = 0;
+	g_NumBondBodies = 0;
 
-	while (g_TuxedoBodynums[g_NumTuxedos] >= 0) {
-		g_NumTuxedos++;
+	while (g_BondBodies[g_NumBondBodies] >= 0) {
+		g_NumBondBodies++;
 	}
 
 	g_NumMaleGuardTeamHeads = 0;

@@ -3,7 +3,7 @@
 #include "game/activemenu.h"
 #include "game/pdmode.h"
 #include "game/bondgun.h"
-#include "game/gset.h"
+#include "game/game_0b0fd0.h"
 #include "game/inv.h"
 #include "game/playermgr.h"
 #include "game/options.h"
@@ -12,18 +12,22 @@
 #include "lib/str.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "game/player.h"
+#include "input.h"
+#endif
 
-void am_tick(void)
+void amTick(void)
 {
 	s32 prevplayernum = g_Vars.currentplayernum;
 	s32 i;
 
 	for (i = 0; i < PLAYERCOUNT(); i++) {
-		set_current_player_num(i);
+		setCurrentPlayerNum(i);
 		g_AmIndex = g_Vars.currentplayernum;
 
 		if (g_AmMenus[g_AmIndex].togglefunc) {
-			if (bgun_consider_toggle_gun_function(60, false, true) > 0) {
+			if (bgunConsiderToggleGunFunction(60, false, true, 0) > 0) {
 				g_AmMenus[g_AmIndex].togglefunc = false;
 			}
 		} else {
@@ -31,24 +35,47 @@ void am_tick(void)
 		}
 
 		if (g_Vars.normmplayerisrunning == false
-				&& inv_get_count() != g_AmMenus[g_AmIndex].numitems) {
-			am_assign_weapon_slots();
+				&& invGetCount() != g_AmMenus[g_AmIndex].numitems) {
+			amAssignWeaponSlots();
 		}
 
 		if (g_Vars.currentplayer->activemenumode != AMMODE_CLOSED) {
-			s32 controlmode = options_get_control_mode(g_Vars.currentplayerstats->mpindex);
-			s8 contpadnum = options_get_contpad_num1(g_Vars.currentplayerstats->mpindex);
-			s32 numsamples = joy_get_num_samples();
+			s32 controlmode = optionsGetControlMode(g_Vars.currentplayerstats->mpindex);
+			s8 contpadnum = optionsGetContpadNum1(g_Vars.currentplayerstats->mpindex);
+			s32 numsamples = joyGetNumSamples();
 			s32 j;
+			u32 amask, lrtmask, umask, dmask, lmask, rmask;
+
+			if (controlmode == CONTROLMODE_PC) {
+				amask = D_JPAD;
+				lrtmask = R_TRIG;
+				umask = U_CBUTTONS;
+				dmask = D_CBUTTONS;
+				lmask = L_CBUTTONS;
+				rmask = R_CBUTTONS;
+			} else {
+				amask = A_BUTTON;
+				lrtmask = L_TRIG | R_TRIG;
+				umask = U_JPAD | U_CBUTTONS;
+				dmask = D_JPAD | D_CBUTTONS;
+				lmask = L_JPAD | L_CBUTTONS;
+				rmask = R_JPAD | R_CBUTTONS;
+			}
 
 			for (j = 0; j < numsamples; j++) {
 				s8 gotonextscreen = false;
-				s8 cstickx = joy_get_stick_x_on_sample(j, contpadnum);
-				s8 csticky = joy_get_stick_y_on_sample(j, contpadnum);
+				s8 cstickx = joyGetStickXOnSample(j, contpadnum);
+				s8 csticky = joyGetStickYOnSample(j, contpadnum);
+#ifdef AVOID_UB
+				// if cstickx is -128, it will get negated and stored into absstickx, negating it again if it's 8 bit
+				s32 absstickx;
+				s32 abssticky;
+#else
 				s8 absstickx;
 				s8 abssticky;
-				u16 buttonsstate = joy_get_buttons_on_sample(j, contpadnum, 0xffff);
-				u16 buttonspressed = joy_get_buttons_pressed_on_sample(j, contpadnum, 0xffff);
+#endif
+				u32 buttonsstate = joyGetButtonsOnSample(j, contpadnum, 0xffffffff);
+				u32 buttonspressed = joyGetButtonsPressedOnSample(j, contpadnum, 0xffffffff);
 				bool stickpushed = false;
 				s32 slotnum;
 				bool stayopen;
@@ -63,21 +90,41 @@ void am_tick(void)
 
 				g_AmMenus[g_AmIndex].allbots = false;
 
+#ifndef PLATFORM_N64
+				s32 newstickx = (s32)cstickx;
+				s32 newsticky = (s32)csticky;
+				if (j == 0 && g_Vars.currentplayernum == 0 && inputMouseIsLocked()) {
+					f32 mdx, mdy;
+					struct activemenu *am = &g_AmMenus[g_AmIndex];
+					inputMouseGetAbsScaledDelta(&mdx, &mdy);
+					if (mdx || mdy) {
+						am->mousex += mdx * PLAYER_EXTCFG().radialmenuspeed;
+						am->mousey += mdy * PLAYER_EXTCFG().radialmenuspeed;
+						am->mousex = (am->mousex > 127.f) ? 127.f : (am->mousex < -128.f) ? -128.f : am->mousex;
+						am->mousey = (am->mousey > 127.f) ? 127.f : (am->mousey < -128.f) ? -128.f : am->mousey;
+					}
+					newstickx += (s32)am->mousex;
+					newsticky -= (s32)am->mousey;
+				}
+				cstickx = (newstickx < -128) ? -128 : (newstickx > 127) ? 127 : newstickx;
+				csticky = (newsticky < -128) ? -128 : (newsticky > 127) ? 127 : newsticky;
+#endif
+
 				if (g_Vars.currentplayer->activemenumode == AMMODE_EDIT) {
-					buttonsstate = buttonsstate & A_BUTTON;
+					buttonsstate = buttonsstate & amask;
 					cstickx = 0;
 					csticky = 0;
 					buttonspressed = 0;
 				}
 
-				// JPN fixes the bug that's documented in am_change_screen
+				// JPN fixes the bug that's documented in amChangeScreen
 				if (controlmode == CONTROLMODE_13 || controlmode == CONTROLMODE_14) {
-					if ((buttonsstate & R_TRIG) || (buttonsstate & L_TRIG)) {
+					if (buttonsstate & (L_TRIG | R_TRIG)) {
 						stayopen = true;
 					}
 
 					if (buttonsstate & A_BUTTON) {
-#if VERSION >= VERSION_JPN_FINAL
+#if VERSION >= VERSION_JPN_FINAL || !defined(PLATFORM_N64)
 						if (g_Vars.currentplayer->numaibuddies > 0) {
 							g_AmMenus[g_AmIndex].allbots = true;
 						}
@@ -86,12 +133,12 @@ void am_tick(void)
 #endif
 					}
 				} else {
-					if (buttonsstate & A_BUTTON) {
+					if (buttonsstate & amask) {
 						stayopen = true;
 					}
 
-					if ((buttonsstate & R_TRIG) || (buttonsstate & L_TRIG)) {
-#if VERSION >= VERSION_JPN_FINAL
+					if (buttonsstate & lrtmask) {
+#if VERSION >= VERSION_JPN_FINAL || !defined(PLATFORM_N64)
 						if (g_Vars.currentplayer->numaibuddies > 0) {
 							g_AmMenus[g_AmIndex].allbots = true;
 						}
@@ -107,7 +154,7 @@ void am_tick(void)
 						&& g_AmMenus[g_AmIndex].origscreennum == 0) {
 					g_AmMenus[g_AmIndex].origscreennum = g_AmMenus[g_AmIndex].screenindex;
 					g_AmMenus[g_AmIndex].screenindex = 2;
-					am_change_screen(0);
+					amChangeScreen(0);
 				}
 
 				// If exiting allbots mode, return to original screen
@@ -115,38 +162,22 @@ void am_tick(void)
 						&& g_AmMenus[g_AmIndex].origscreennum) {
 					g_AmMenus[g_AmIndex].screenindex = g_AmMenus[g_AmIndex].origscreennum;
 					g_AmMenus[g_AmIndex].origscreennum = 0;
-					am_change_screen(0);
+					amChangeScreen(0);
 				}
 
-				if (buttonsstate & U_CBUTTONS) {
+				if (buttonsstate & umask) {
 					row = 0;
 				}
 
-				if (buttonsstate & D_CBUTTONS) {
+				if (buttonsstate & dmask) {
 					row = 2;
 				}
 
-				if (buttonsstate & L_CBUTTONS) {
+				if (buttonsstate & lmask) {
 					column = 0;
 				}
 
-				if (buttonsstate & R_CBUTTONS) {
-					column = 2;
-				}
-
-				if (buttonsstate & U_JPAD) {
-					row = 0;
-				}
-
-				if (buttonsstate & D_JPAD) {
-					row = 2;
-				}
-
-				if (buttonsstate & L_JPAD) {
-					column = 0;
-				}
-
-				if (buttonsstate & R_JPAD) {
+				if (buttonsstate & rmask) {
 					column = 2;
 				}
 
@@ -154,11 +185,11 @@ void am_tick(void)
 						|| controlmode == CONTROLMODE_24
 						|| controlmode == CONTROLMODE_22
 						|| controlmode == CONTROLMODE_21) {
-					s8 contpadnum2 = options_get_contpad_num2(g_Vars.currentplayerstats->mpindex);
-					s8 cstickx2 = joy_get_stick_x_on_sample(j, contpadnum2);
-					s8 csticky2 = joy_get_stick_y_on_sample(j, contpadnum2);
-					u16 buttonsstate2 = joy_get_buttons_on_sample(j, contpadnum2, 0xffff);
-					u16 buttonspressed2 = joy_get_buttons_pressed_on_sample(j, contpadnum2, 0xffff);
+					s8 contpadnum2 = optionsGetContpadNum2(g_Vars.currentplayerstats->mpindex);
+					s8 cstickx2 = joyGetStickXOnSample(j, contpadnum2);
+					s8 csticky2 = joyGetStickYOnSample(j, contpadnum2);
+					u32 buttonsstate2 = joyGetButtonsOnSample(j, contpadnum2, 0xffffffff);
+					u32 buttonspressed2 = joyGetButtonsPressedOnSample(j, contpadnum2, 0xffffffff);
 
 					if (g_Vars.currentplayer->activemenumode == AMMODE_EDIT) {
 						buttonsstate2 = buttonsstate2 & A_BUTTON;
@@ -175,35 +206,19 @@ void am_tick(void)
 						toggle = true;
 					}
 
-					if (buttonsstate2 & U_CBUTTONS) {
+					if (buttonsstate2 & umask) {
 						row = 0;
 					}
 
-					if (buttonsstate2 & D_CBUTTONS) {
+					if (buttonsstate2 & dmask) {
 						row = 2;
 					}
 
-					if (buttonsstate2 & L_CBUTTONS) {
+					if (buttonsstate2 & lmask) {
 						column = 0;
 					}
 
-					if (buttonsstate2 & R_CBUTTONS) {
-						column = 2;
-					}
-
-					if (buttonsstate2 & U_JPAD) {
-						row = 0;
-					}
-
-					if (buttonsstate2 & D_JPAD) {
-						row = 2;
-					}
-
-					if (buttonsstate2 & L_JPAD) {
-						column = 0;
-					}
-
-					if (buttonsstate2 & R_JPAD) {
+					if (buttonsstate2 & rmask) {
 						column = 2;
 					}
 
@@ -248,7 +263,7 @@ void am_tick(void)
 					stayopen = false;
 				}
 
-#if VERSION >= VERSION_NTSC_1_0
+#if (VERSION >= VERSION_NTSC_1_0) && defined(PLATFORM_N64)
 				if (g_Vars.lvupdate240 == 0) {
 					stayopen = false;
 				}
@@ -256,7 +271,7 @@ void am_tick(void)
 
 				if (!stayopen &&
 						(g_Vars.currentplayer->activemenumode != AMMODE_EDIT || g_Menus[g_MpPlayerNum].curdialog == NULL)) {
-					am_close();
+					amClose();
 					break;
 				}
 
@@ -271,24 +286,24 @@ void am_tick(void)
 							if (g_AmMenus[g_AmIndex].slotnum == 4) {
 								gotonextscreen = true;
 							} else {
-								am_apply(g_AmMenus[g_AmIndex].slotnum);
+								amApply(g_AmMenus[g_AmIndex].slotnum);
 							}
 						} else {
 							// Bot command screen, in multiplayer
 							if (g_AmBotCommands[g_AmMenus[g_AmIndex].slotnum] == AIBOTCMD_ATTACK) {
-								am_open_pick_target();
+								amOpenPickTarget();
 							} else if (g_AmMenus[g_AmIndex].allbots == false) {
 								gotonextscreen = true;
 #if VERSION < VERSION_NTSC_1_0
 								if (g_AmMenus[g_AmIndex].slotnum != 4) {
-									am_apply(g_AmMenus[g_AmIndex].slotnum);
+									amApply(g_AmMenus[g_AmIndex].slotnum);
 								}
 #endif
 							}
 
 #if VERSION >= VERSION_NTSC_1_0
 							if (g_AmMenus[g_AmIndex].slotnum != 4) {
-								am_apply(g_AmMenus[g_AmIndex].slotnum);
+								amApply(g_AmMenus[g_AmIndex].slotnum);
 							}
 #endif
 						}
@@ -297,21 +312,21 @@ void am_tick(void)
 						if (g_AmMenus[g_AmIndex].slotnum == 4) {
 							gotonextscreen = true;
 						} else {
-							am_apply(g_AmMenus[g_AmIndex].slotnum);
+							amApply(g_AmMenus[g_AmIndex].slotnum);
 						}
 					}
 				}
 
 				if (gotonextscreen) {
-					am_change_screen(gotonextscreen);
+					amChangeScreen(gotonextscreen);
 
 					// If weapon has no functions, skip past function screen
 					if (g_AmMenus[g_AmIndex].screenindex == 1) {
-						struct funcdef *pri = gset_get_funcdef_by_gset_funcnum(&g_Vars.currentplayer->hands[0].gset, FUNC_PRIMARY);
-						struct funcdef *sec = gset_get_funcdef_by_gset_funcnum(&g_Vars.currentplayer->hands[0].gset, FUNC_SECONDARY);
+						struct weaponfunc *pri = weaponGetFunction(&g_Vars.currentplayer->hands[0].gset, FUNC_PRIMARY);
+						struct weaponfunc *sec = weaponGetFunction(&g_Vars.currentplayer->hands[0].gset, FUNC_SECONDARY);
 
 						if (!pri && !sec) {
-							am_change_screen(gotonextscreen);
+							amChangeScreen(gotonextscreen);
 						}
 					}
 				}
@@ -331,7 +346,7 @@ void am_tick(void)
 						char text[28];
 						u32 flags;
 
-						am_get_slot_details(slotnum, &flags, text);
+						amGetSlotDetails(slotnum, &flags, text);
 
 						if (strcmp(text, "") == 0) {
 							gotoslot = false;
@@ -369,6 +384,12 @@ void am_tick(void)
 				}
 			}
 		}
+#ifndef PLATFORM_N64
+		else {
+			g_AmMenus[g_AmIndex].mousex = 0.f;
+			g_AmMenus[g_AmIndex].mousey = 0.f;
+		}
+#endif
 
 		if (g_Vars.currentplayer->activemenumode != AMMODE_EDIT) {
 			s16 dist;
@@ -407,7 +428,7 @@ void am_tick(void)
 
 			// Update alpha of slots so they fade in
 			if (g_AmMenus[g_AmIndex].alphafrac < 1) {
-				g_AmMenus[g_AmIndex].alphafrac += LVUPDATE60FREAL() / 30.0f;
+				g_AmMenus[g_AmIndex].alphafrac += (f32)g_Vars.lvupdate240 / (4.f * 30.0f);
 			}
 
 			if (g_AmMenus[g_AmIndex].alphafrac > 1) {
@@ -415,7 +436,7 @@ void am_tick(void)
 			}
 
 			// Make selection border pulsate
-			g_AmMenus[g_AmIndex].selpulse += LVUPDATE60FREAL() / 5.0f;
+			g_AmMenus[g_AmIndex].selpulse += (f32)g_Vars.lvupdate240 / (4.f * 5.0f);
 
 			if (g_AmMenus[g_AmIndex].selpulse > 18.849555969238f) {
 				g_AmMenus[g_AmIndex].selpulse -= 18.849555969238f;
@@ -423,5 +444,5 @@ void am_tick(void)
 		}
 	}
 
-	set_current_player_num(prevplayernum);
+	setCurrentPlayerNum(prevplayernum);
 }

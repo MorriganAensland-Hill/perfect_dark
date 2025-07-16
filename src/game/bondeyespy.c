@@ -24,6 +24,9 @@
 #include "lib/collision.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "input.h"
+#endif
 
 u8 g_EyespyPickup = false;
 u8 g_EyespyHit = EYESPYHIT_NONE;
@@ -39,7 +42,7 @@ u32 g_EyespyMaxFallSpeed = 3000;
  * position 50 units above the current position, or less if the eyespy is near
  * the top of its height range.
  */
-f32 eyespy_find_ground(RoomNum *floorroom)
+f32 eyespyFindGround(RoomNum *floorroom)
 {
 	struct prop *prop = g_Vars.currentplayer->eyespy->prop;
 	s32 inlift;
@@ -60,7 +63,7 @@ f32 eyespy_find_ground(RoomNum *floorroom)
 	pos.y = prop->pos.y + yoffset;
 	pos.z = prop->pos.z;
 
-	ground = cd_find_ground_at_cyl_ctfril(&pos, 26, prop->rooms, NULL, NULL, NULL, floorroom, &inlift, &lift);
+	ground = cdFindGroundInfoAtCyl(&pos, 26, prop->rooms, NULL, NULL, NULL, floorroom, &inlift, &lift);
 
 	if (ground < -30000) {
 		ground = -30000;
@@ -69,7 +72,7 @@ f32 eyespy_find_ground(RoomNum *floorroom)
 	return ground;
 }
 
-s32 eyespy_try_move_upwards(f32 yvel)
+s32 eyespyTryMoveUpwards(f32 yvel)
 {
 	s32 result;
 	struct prop *prop = g_Vars.currentplayer->eyespy->prop;
@@ -94,27 +97,27 @@ s32 eyespy_try_move_upwards(f32 yvel)
 		f0 = g_Vars.currentplayer->eyespy->oldground - prop->pos.y;
 	}
 
-	los_find_final_room_exhaustive(&prop->pos, prop->rooms, &dstpos, dstrooms);
-	chr_find_entered_rooms_at_pos(prop->chr, &dstpos, dstrooms);
-	prop_set_perim_enabled(prop, false);
+	func0f065e74(&prop->pos, prop->rooms, &dstpos, dstrooms);
+	chr0f021fa8(prop->chr, &dstpos, dstrooms);
+	propSetPerimEnabled(prop, false);
 
 	f0 -= 0.1f;
 
-	result = cd_test_volume_simple(&dstpos, 26, dstrooms, types, CHECKVERTICAL_YES, 15, f0);
-	prop_set_perim_enabled(prop, true);
+	result = cdTestVolume(&dstpos, 26, dstrooms, types, CHECKVERTICAL_YES, 15, f0);
+	propSetPerimEnabled(prop, true);
 
 	if (result == CDRESULT_NOCOLLISION) {
 		prop->pos.y = dstpos.y;
-		prop_deregister_rooms(prop);
-		rooms_copy(dstrooms, prop->rooms);
+		propDeregisterRooms(prop);
+		roomsCopy(dstrooms, prop->rooms);
 	}
 
 	return result;
 }
 
-s32 eyespy_try_delta_nopush(struct coord *vel)
+s32 eyespyCalculateNewPosition(struct coord *vel)
 {
-	bool cdresult = CDRESULT_NOCOLLISION;
+	bool result = true;
 	struct prop *eyespyprop = g_Vars.currentplayer->eyespy->prop;
 	struct chrdata *chr = eyespyprop->chr;
 	struct coord dstpos;
@@ -133,10 +136,10 @@ s32 eyespy_try_delta_nopush(struct coord *vel)
 	s32 playernum;
 	u32 stack2;
 
-	eyespy_find_ground(&floorroom);
+	eyespyFindGround(&floorroom);
 
 	if (vel->x || vel->y || vel->z) {
-		prop_set_perim_enabled(eyespyprop, false);
+		propSetPerimEnabled(eyespyprop, false);
 
 		dstpos.x = vel->x + eyespyprop->pos.x;
 		dstpos.y = vel->y + eyespyprop->pos.y;
@@ -152,7 +155,7 @@ s32 eyespy_try_delta_nopush(struct coord *vel)
 		}
 
 		// This must be populating dstrooms at least
-		los_find_intersecting_rooms_exhaustive(&eyespyprop->pos, eyespyprop->rooms, &dstpos, dstrooms, sp74, 20);
+		func0f065dfc(&eyespyprop->pos, eyespyprop->rooms, &dstpos, dstrooms, sp74, 20);
 
 		// Check if dstrooms contains the eyespy's old room.
 		// If so, simplify dstrooms so it only contains that room.
@@ -164,7 +167,7 @@ s32 eyespy_try_delta_nopush(struct coord *vel)
 			}
 		}
 
-		chr_find_entered_rooms_at_pos(eyespyprop->chr, &dstpos, dstrooms);
+		chr0f021fa8(eyespyprop->chr, &dstpos, dstrooms);
 
 		// Check if the eyespy is moving 13cm or more along either the X or Z
 		// axis in a single frame. If less, only do a collision check for the
@@ -176,53 +179,53 @@ s32 eyespy_try_delta_nopush(struct coord *vel)
 		halfradius = radius * 0.5f;
 
 		if (xdiff > halfradius || zdiff > halfradius || xdiff < -halfradius || zdiff < -halfradius) {
-			cdresult = cd_test_cylmove_oobfail_findclosest_finddist(&eyespyprop->pos, eyespyprop->rooms, &dstpos, dstrooms, radius, types, CHECKVERTICAL_YES, 15, ymin);
+			result = cdExamCylMove06(&eyespyprop->pos, eyespyprop->rooms, &dstpos, dstrooms, radius, types, 1, 15, ymin);
 
-			if (cdresult == CDRESULT_NOCOLLISION) {
-				cdresult = cd_test_volume_fromdir(&eyespyprop->pos, &dstpos, radius, dstrooms, types, CHECKVERTICAL_YES, 15, ymin);
+			if (result == CDRESULT_NOCOLLISION) {
+				result = cdExamCylMove02(&eyespyprop->pos, &dstpos, radius, dstrooms, types, true, 15, ymin);
 			}
 		} else {
-			cdresult = cd_test_volume_fromdir(&eyespyprop->pos, &dstpos, radius, sp74, types, CHECKVERTICAL_YES, 15, ymin);
+			result = cdExamCylMove02(&eyespyprop->pos, &dstpos, radius, sp74, types, true, 15, ymin);
 		}
 
-		if (cdresult == CDRESULT_COLLISION) {
-			prop = cd_get_obstacle_prop();
+		if (result == CDRESULT_COLLISION) {
+			prop = cdGetObstacleProp();
 
 			if (prop && prop->type == PROPTYPE_PLAYER) {
 				playernum = g_Vars.currentplayernum;
 
-				if (playernum == playermgr_get_player_num_by_prop(prop)) {
+				if (playernum == playermgrGetPlayerNumByProp(prop)) {
 					g_EyespyPickup = true;
 				}
 			}
 		}
 
-		prop_set_perim_enabled(eyespyprop, true);
+		propSetPerimEnabled(eyespyprop, true);
 
-		if (cdresult == CDRESULT_NOCOLLISION) {
+		if (result == CDRESULT_NOCOLLISION) {
 			// Apply the destination
 			eyespyprop->pos.x = dstpos.x;
 			eyespyprop->pos.y = dstpos.y;
 			eyespyprop->pos.z = dstpos.z;
 
-			prop_deregister_rooms(eyespyprop);
+			propDeregisterRooms(eyespyprop);
 
-			rooms_copy(dstrooms, eyespyprop->rooms);
+			roomsCopy(dstrooms, eyespyprop->rooms);
 		}
 	}
 
-	return cdresult;
+	return result;
 }
 
-bool eyespy_try_delta(struct coord *vel)
+bool eyespyCalculateNewPositionWithPush(struct coord *vel)
 {
-	s32 cdresult = eyespy_try_delta_nopush(vel);
+	s32 result = eyespyCalculateNewPosition(vel);
 	struct prop *prop;
 
-	if (cdresult != CDRESULT_NOCOLLISION) {
+	if (result != CDRESULT_NOCOLLISION) {
 		g_EyespyHit = EYESPYHIT_BG;
 
-		prop = cd_get_obstacle_prop();
+		prop = cdGetObstacleProp();
 
 		if (prop && g_Vars.lvupdate240 > 0) {
 			if (prop->type == PROPTYPE_DOOR) {
@@ -235,7 +238,7 @@ bool eyespy_try_delta(struct coord *vel)
 					struct coord sp2c;
 					struct coord sp20;
 
-					cd_get_edge(&sp2c, &sp20, 286, "bondeyespy.c");
+					cdGetEdge(&sp2c, &sp20, 286, "bondeyespy.c");
 
 					// Nothing is actually done with these coordinates...
 					// This code was likely copied from bondwalk then the bounce
@@ -266,158 +269,157 @@ bool eyespy_try_delta(struct coord *vel)
 		}
 	}
 
-	return cdresult;
+	return result;
 }
 
-s32 eyespy_try_quarterdelta(struct coord *vel, struct coord *prevedge1, struct coord *prevedge2, struct coord *newedge1, struct coord *newedge2)
+s32 eyespy0f0cf890(struct coord *arg0, struct coord *arg1, struct coord *arg2, struct coord *arg3, struct coord *arg4)
 {
-	if (cd_has_distance()) {
-		struct coord tryvel;
-		s32 cdresult;
-		f32 distance = cd_get_distance();
+	if (cd00024ea4()) {
+		struct coord sp24;
+		s32 someint;
+		f32 somefloat = cd00024e98();
+		sp24.x = arg0->x * somefloat * 0.25f;
+		sp24.y = arg0->y * somefloat * 0.25f;
+		sp24.z = arg0->z * somefloat * 0.25f;
 
-		tryvel.x = vel->x * distance * 0.25f;
-		tryvel.y = vel->y * distance * 0.25f;
-		tryvel.z = vel->z * distance * 0.25f;
+		someint = eyespyCalculateNewPositionWithPush(&sp24);
 
-		cdresult = eyespy_try_delta(&tryvel);
-
-		if (cdresult == CDRESULT_NOCOLLISION) {
-			return CDRESULT_NOCOLLISION;
+		if (someint == 1) {
+			return 1;
 		}
 
-		if (cdresult == CDRESULT_COLLISION) {
-			cd_get_edge(newedge1, newedge2, 350, "bondeyespy.c");
+		if (someint == 0) {
+			cdGetEdge(arg3, arg4, 350, "bondeyespy.c");
 
-			if (newedge1->f[0] != prevedge1->f[0]
-					|| newedge1->f[1] != prevedge1->f[1]
-					|| newedge1->f[2] != prevedge1->f[2]
-					|| newedge2->f[0] != prevedge2->f[0]
-					|| newedge2->f[1] != prevedge2->f[1]
-					|| newedge2->f[2] != prevedge2->f[2]) {
-				return CDRESULT_COLLISION;
+			if (arg3->f[0] != arg1->f[0]
+					|| arg3->f[1] != arg1->f[1]
+					|| arg3->f[2] != arg1->f[2]
+					|| arg4->f[0] != arg2->f[0]
+					|| arg4->f[1] != arg2->f[1]
+					|| arg4->f[2] != arg2->f[2]) {
+				return 0;
 			}
 		}
 	}
 
-	return CDRESULT_ERROR;
+	return -1;
 }
 
-s32 eyespy_try_slide_along_edge(struct coord *vel, struct coord *edge1, struct coord *edge2)
+s32 eyespy0f0cf9f8(struct coord *arg0, struct coord *arg1, struct coord *arg2)
 {
-	f32 frac;
-	struct coord tri;
-	struct coord tryvel;
-	f32 edgelen;
+	f32 tmp;
+	struct coord sp30;
+	struct coord sp24;
+	f32 dist;
 
-	if (edge1->f[0] != edge2->f[0] || edge1->f[2] != edge2->f[2]) {
-		tri.x = edge2->x - edge1->x;
-		tri.y = 0;
-		tri.z = edge2->z - edge1->z;
+	if (arg1->f[0] != arg2->f[0] || arg1->f[2] != arg2->f[2]) {
+		sp30.x = arg2->x - arg1->x;
+		sp30.y = 0;
+		sp30.z = arg2->z - arg1->z;
 
-		edgelen = sqrtf(tri.f[0] * tri.f[0] + tri.f[2] * tri.f[2]);
+		dist = sqrtf(sp30.f[0] * sp30.f[0] + sp30.f[2] * sp30.f[2]);
 
-		tri.x *= 1.0f / edgelen;
-		tri.z *= 1.0f / edgelen;
+		sp30.x *= 1.0f / dist;
+		sp30.z *= 1.0f / dist;
 
-		frac = vel->f[0] * tri.f[0] + vel->f[2] * tri.f[2];
+		tmp = arg0->f[0] * sp30.f[0] + arg0->f[2] * sp30.f[2];
 
-		tryvel.x = tri.x * frac;
-		tryvel.y = 0;
-		tryvel.z = tri.z * frac;
+		sp24.x = sp30.x * tmp;
+		sp24.y = 0;
+		sp24.z = sp30.z * tmp;
 
-		return eyespy_try_delta(&tryvel);
+		return eyespyCalculateNewPositionWithPush(&sp24);
 	}
 
-	return CDRESULT_ERROR;
+	return -1;
 }
 
-s32 eyespy_try_slide_along_corner(struct coord *vel, struct coord *edge1, struct coord *edge2)
+s32 eyespy0f0cfafc(struct coord *arg0, struct coord *arg1, struct coord *arg2)
 {
-	struct coord tri;
-	struct coord tryvel;
+	struct coord sp34;
+	struct coord sp28;
 	f32 width = 26;
 	struct prop *prop = g_Vars.currentplayer->eyespy->prop;
 	f32 tmp;
 
-	tri.x = edge1->x - (prop->pos.x + vel->f[0]);
-	tri.z = edge1->z - (prop->pos.z + vel->f[2]);
+	sp34.x = arg1->x - (prop->pos.x + arg0->f[0]);
+	sp34.z = arg1->z - (prop->pos.z + arg0->f[2]);
 
-	if (tri.f[0] * tri.f[0] + tri.f[2] * tri.f[2] <= width * width) {
-		if (edge1->f[0] != prop->pos.f[0] || edge1->f[2] != prop->pos.f[2]) {
-			tri.x = -(edge1->z - prop->pos.z);
-			tri.y = 0;
-			tri.z = edge1->x - prop->pos.x;
+	if (sp34.f[0] * sp34.f[0] + sp34.f[2] * sp34.f[2] <= width * width) {
+		if (arg1->f[0] != prop->pos.f[0] || arg1->f[2] != prop->pos.f[2]) {
+			sp34.x = -(arg1->z - prop->pos.z);
+			sp34.y = 0;
+			sp34.z = arg1->x - prop->pos.x;
 
-			tmp = sqrtf(tri.f[0] * tri.f[0] + tri.f[2] * tri.f[2]);
+			tmp = sqrtf(sp34.f[0] * sp34.f[0] + sp34.f[2] * sp34.f[2]);
 
-			tri.x = tri.f[0] * (1.0f / tmp);
-			tri.z = tri.f[2] * (1.0f / tmp);
+			sp34.x = sp34.f[0] * (1.0f / tmp);
+			sp34.z = sp34.f[2] * (1.0f / tmp);
 
-			tmp = vel->f[0] * tri.f[0] + vel->f[2] * tri.f[2];
+			tmp = arg0->f[0] * sp34.f[0] + arg0->f[2] * sp34.f[2];
 
-			tri.x = tri.x * tmp;
-			tri.z = tri.z * tmp;
+			sp34.x = sp34.x * tmp;
+			sp34.z = sp34.z * tmp;
 
-			tryvel.x = tri.x;
-			tryvel.y = 0;
-			tryvel.z = tri.z;
+			sp28.x = sp34.x;
+			sp28.y = 0;
+			sp28.z = sp34.z;
 
-			if (eyespy_try_delta(&tryvel) == CDRESULT_NOCOLLISION) {
-				return CDRESULT_NOCOLLISION;
+			if (eyespyCalculateNewPositionWithPush(&sp28) == 1) {
+				return true;
 			}
 		}
 	} else {
-		tri.x = edge2->x - (prop->pos.x + vel->f[0]);
-		tri.z = edge2->z - (prop->pos.z + vel->f[2]);
+		sp34.x = arg2->x - (prop->pos.x + arg0->f[0]);
+		sp34.z = arg2->z - (prop->pos.z + arg0->f[2]);
 
-		if (tri.f[0] * tri.f[0] + tri.f[2] * tri.f[2] <= width * width) {
-			if (edge2->f[0] != prop->pos.f[0] || edge2->f[2] != prop->pos.f[2]) {
-				tri.x = -(edge2->z - prop->pos.z);
-				tri.y = 0;
-				tri.z = edge2->x - prop->pos.x;
+		if (sp34.f[0] * sp34.f[0] + sp34.f[2] * sp34.f[2] <= width * width) {
+			if (arg2->f[0] != prop->pos.f[0] || arg2->f[2] != prop->pos.f[2]) {
+				sp34.x = -(arg2->z - prop->pos.z);
+				sp34.y = 0;
+				sp34.z = arg2->x - prop->pos.x;
 
-				tmp = sqrtf(tri.f[0] * tri.f[0] + tri.f[2] * tri.f[2]);
+				tmp = sqrtf(sp34.f[0] * sp34.f[0] + sp34.f[2] * sp34.f[2]);
 
-				tri.x = tri.f[0] * (1.0f / tmp);
-				tri.z = tri.f[2] * (1.0f / tmp);
+				sp34.x = sp34.f[0] * (1.0f / tmp);
+				sp34.z = sp34.f[2] * (1.0f / tmp);
 
-				tmp = vel->f[0] * tri.f[0] + vel->f[2] * tri.f[2];
+				tmp = arg0->f[0] * sp34.f[0] + arg0->f[2] * sp34.f[2];
 
-				tri.x = tri.x * tmp;
-				tri.z = tri.z * tmp;
+				sp34.x = sp34.x * tmp;
+				sp34.z = sp34.z * tmp;
 
-				tryvel.x = tri.x;
-				tryvel.y = 0;
-				tryvel.z = tri.z;
+				sp28.x = sp34.x;
+				sp28.y = 0;
+				sp28.z = sp34.z;
 
-				if (eyespy_try_delta(&tryvel) == CDRESULT_NOCOLLISION) {
-					return CDRESULT_NOCOLLISION;
+				if (eyespyCalculateNewPositionWithPush(&sp28) == 1) {
+					return true;
 				}
 			}
 		}
 	}
 
-	return CDRESULT_COLLISION;
+	return false;
 }
 
-s32 eyespy_try_fulldelta(struct coord *vel, struct coord *edge1, struct coord *edge2)
+s32 eyespy0f0cfdd0(struct coord *vel, struct coord *arg1, struct coord *arg2)
 {
-	bool cdresult = eyespy_try_delta(vel);
+	bool result = eyespyCalculateNewPositionWithPush(vel);
 
-	if (cdresult != CDRESULT_NOCOLLISION) {
-		cd_get_edge(edge1, edge2, 473, "bondeyespy.c");
+	if (result != CDRESULT_NOCOLLISION) {
+		cdGetEdge(arg1, arg2, 473, "bondeyespy.c");
 	}
 
-	return cdresult;
+	return result;
 }
 
-void eyespy_update_position(void)
+void eyespyUpdateVertical(void)
 {
-	struct coord edgea_vtx1;
-	struct coord edgea_vtx2;
+	struct coord spac;
+	struct coord spa0;
 	struct prop *prop = g_Vars.currentplayer->eyespy->prop;
-	struct coord vel;
+	struct coord dist;
 	f32 newground;
 	struct chrdata *chr = prop->chr;
 	struct coord origpos;
@@ -425,46 +427,45 @@ void eyespy_update_position(void)
 	f32 maxfallspeed;
 	u8 hit = EYESPYHIT_NONE;
 	f32 newy;
-	struct coord edgeb_vtx1;
-	struct coord edgeb_vtx2;
+	struct coord sp60;
+	struct coord sp54;
 	u32 stack;
-	struct coord edgec_vtx1;
-	struct coord edgec_vtx2;
+	struct coord sp44;
+	struct coord sp38;
 
 	origpos.f[0] = prop->pos.x;
 	origpos.f[1] = prop->pos.y;
 	origpos.f[2] = prop->pos.z;
 
-	// Handle lateral movement
-	vel.x = g_Vars.currentplayer->eyespy->vel.x;
-	vel.y = 0;
-	vel.z = g_Vars.currentplayer->eyespy->vel.z;
+	dist.x = g_Vars.currentplayer->eyespy->vel.x;
+	dist.y = 0;
+	dist.z = g_Vars.currentplayer->eyespy->vel.z;
 
-	if (eyespy_try_fulldelta(&vel, &edgea_vtx1, &edgea_vtx2) == CDRESULT_COLLISION) {
-		if (eyespy_try_quarterdelta(&vel, &edgea_vtx1, &edgea_vtx2, &edgeb_vtx1, &edgeb_vtx2) != CDRESULT_COLLISION) {
-			if (eyespy_try_slide_along_edge(&vel, &edgea_vtx1, &edgea_vtx2) <= CDRESULT_COLLISION) {
-				eyespy_try_slide_along_corner(&vel, &edgea_vtx1, &edgea_vtx2);
+	if (eyespy0f0cfdd0(&dist, &spac, &spa0) == CDRESULT_COLLISION) {
+		if (eyespy0f0cf890(&dist, &spac, &spa0, &sp60, &sp54)) {
+			if (eyespy0f0cf9f8(&dist, &spac, &spa0) <= 0) {
+				eyespy0f0cfafc(&dist, &spac, &spa0);
 			}
 		} else {
-			eyespy_try_quarterdelta(&vel, &edgeb_vtx1, &edgeb_vtx2, &edgec_vtx1, &edgec_vtx2);
+			eyespy0f0cf890(&dist, &sp60, &sp54, &sp44, &sp38);
 
-			if (eyespy_try_slide_along_edge(&vel, &edgeb_vtx1, &edgeb_vtx2) <= CDRESULT_COLLISION
-					&& eyespy_try_slide_along_edge(&vel, &edgea_vtx1, &edgea_vtx2) <= CDRESULT_COLLISION
-					&& eyespy_try_slide_along_corner(&vel, &edgeb_vtx1, &edgeb_vtx2) <= CDRESULT_COLLISION) {
-				eyespy_try_slide_along_corner(&vel, &edgea_vtx1, &edgea_vtx2);
+			if (eyespy0f0cf9f8(&dist, &sp60, &sp54) <= 0
+					&& eyespy0f0cf9f8(&dist, &spac, &spa0) <= 0
+					&& eyespy0f0cfafc(&dist, &sp60, &sp54) <= 0) {
+				eyespy0f0cfafc(&dist, &spac, &spa0);
 			}
 		}
 	}
 
 	// Handle gravity
-	main_override_variable("g", &g_EyespyFallAccel);
-	main_override_variable("l", &g_EyespyMaxFallSpeed);
+	mainOverrideVariable("g", &g_EyespyFallAccel);
+	mainOverrideVariable("l", &g_EyespyMaxFallSpeed);
 
 	accel = g_EyespyFallAccel * 0.01; // always 1
 	maxfallspeed = g_EyespyMaxFallSpeed * 0.01f; // always 30
 
 	newy = chr->manground;
-	newground = eyespy_find_ground(NULL);
+	newground = eyespyFindGround(NULL);
 
 	if (newground != chr->manground) {
 		if (newground < chr->manground) {
@@ -502,7 +503,7 @@ void eyespy_update_position(void)
 		}
 	}
 
-	if (eyespy_try_move_upwards(newy - chr->manground)) {
+	if (eyespyTryMoveUpwards(newy - chr->manground)) {
 		chr->manground = newy;
 	} else {
 		g_Vars.currentplayer->eyespy->gravity = 0;
@@ -525,7 +526,7 @@ void eyespy_update_position(void)
 			rebound = true;
 		}
 
-		if (eyespy_try_move_upwards(newheight - g_Vars.currentplayer->eyespy->height)) {
+		if (eyespyTryMoveUpwards(newheight - g_Vars.currentplayer->eyespy->height)) {
 			g_Vars.currentplayer->eyespy->height = newheight;
 		} else {
 			rebound = true;
@@ -541,16 +542,19 @@ void eyespy_update_position(void)
 		g_EyespyHit = hit;
 	}
 
-	chr_detect_rooms(chr);
+	chr0f0220ac(chr);
 
-	vel.x = prop->pos.x - origpos.x;
-	vel.y = prop->pos.y - origpos.y;
-	vel.z = prop->pos.z - origpos.z;
+	dist.x = prop->pos.x - origpos.x;
+	dist.y = prop->pos.y - origpos.y;
+	dist.z = prop->pos.z - origpos.z;
 
-	g_Vars.currentplayer->eyespy->speed = vel.f[0] * vel.f[0] + vel.f[1] * vel.f[1] + vel.f[2] * vel.f[2];
+	g_Vars.currentplayer->eyespy->speed =
+		dist.f[0] * dist.f[0] +
+		dist.f[1] * dist.f[1] +
+		dist.f[2] * dist.f[2];
 }
 
-bool eyespy_try_launch(void)
+bool eyespyTryLaunch(void)
 {
 	struct coord playerpos;
 	struct coord testfrompos;
@@ -559,7 +563,7 @@ bool eyespy_try_launch(void)
 	bool insafe;
 	char text[48];
 
-	insafe = stage_get_index(g_Vars.stagenum) == STAGEINDEX_G5BUILDING
+	insafe = stageGetIndex(g_Vars.stagenum) == STAGEINDEX_G5BUILDING
 		&& g_Vars.currentplayer->prop->rooms[0] == 0x53;
 
 	playerpos.x = g_Vars.currentplayer->prop->pos.x;
@@ -574,8 +578,8 @@ bool eyespy_try_launch(void)
 	g_Vars.currentplayer->eyespy->up.z = 0;
 	g_Vars.currentplayer->eyespy->startuptimer60 = 0;
 
-	if (stage_get_index(g_Vars.stagenum) == STAGEINDEX_G5BUILDING
-			|| stage_get_index(g_Vars.stagenum) == STAGEINDEX_CITRAINING) {
+	if (stageGetIndex(g_Vars.stagenum) == STAGEINDEX_G5BUILDING
+			|| stageGetIndex(g_Vars.stagenum) == STAGEINDEX_CITRAINING) {
 		g_EyespyMinHeight = 30;
 	} else {
 		g_EyespyMinHeight = 80;
@@ -632,9 +636,9 @@ bool eyespy_try_launch(void)
 	g_Vars.currentplayer->eyespy->vels[1] = 0;
 	g_Vars.currentplayer->eyespy->pitch = 0;
 
-	player_set_perim_enabled(g_Vars.currentplayer->prop, false);
+	playerSetPerimEnabled(g_Vars.currentplayer->prop, false);
 
-	if (insafe || !cd_test_los_oobok_findclosest(&testfrompos, g_Vars.currentplayer->prop->rooms,
+	if (insafe || !cdExamLos08(&testfrompos, g_Vars.currentplayer->prop->rooms,
 				&g_Vars.currentplayer->eyespy->prop->pos,
 				CDTYPE_ALL,
 				GEOFLAG_FLOOR1 | GEOFLAG_FLOOR2 | GEOFLAG_WALL | GEOFLAG_BLOCK_SIGHT)) {
@@ -645,17 +649,17 @@ bool eyespy_try_launch(void)
 		chr->prevpos.y = g_Vars.currentplayer->eyespy->prop->pos.y = g_Vars.currentplayer->eyespy->oldground + g_Vars.currentplayer->eyespy->height;
 		chr->prevpos.z = g_Vars.currentplayer->eyespy->prop->pos.z = playerpos.f[2];
 
-		prop_set_perim_enabled(g_Vars.currentplayer->eyespy->prop, false);
+		propSetPerimEnabled(g_Vars.currentplayer->eyespy->prop, false);
 
 		// "Not enough room to launch "
-		sprintf(text, "%s%s", lang_get(L_MISC_218), bgun_get_name(WEAPON_EYESPY));
-		hudmsg_create(text, HUDMSGTYPE_DEFAULT);
+		sprintf(text, "%s%s", langGet(L_MISC_218), bgunGetName(WEAPON_EYESPY));
+		hudmsgCreate(text, HUDMSGTYPE_DEFAULT);
 		launched = false;
 	} else {
 		// Launch successful
 		g_Vars.currentplayer->eyespy->deployed = true;
 
-		snd_start(var80095200, SFXMAP_80AB_DETONATE, 0, -1, -1, -1, -1, -1);
+		sndStart(var80095200, SFX_DETONATE, 0, -1, -1, -1, -1, -1);
 
 		launched = true;
 
@@ -663,25 +667,25 @@ bool eyespy_try_launch(void)
 		chr->chrflags &= ~CHRCFLAG_INVINCIBLE;
 
 #if VERSION >= VERSION_NTSC_1_0
-		ps_create(NULL, g_Vars.currentplayer->eyespy->prop, SFXNUM_01BD_EYESPY_RUNNING, -1,
+		psCreate(NULL, g_Vars.currentplayer->eyespy->prop, SFX_EYESPY_RUNNING, -1,
 				-1, PSFLAG_REPEATING, 0, PSTYPE_NONE, 0, -1, 0, -1, -1, -1, -1);
 #else
-		ps_create(NULL, g_Vars.currentplayer->eyespy->prop, SFXNUM_01BD_EYESPY_RUNNING, -1,
+		psCreate(NULL, g_Vars.currentplayer->eyespy->prop, SFX_EYESPY_RUNNING, -1,
 				-1, 0, 0, PSTYPE_NONE, 0, -1, 0, -1, -1, -1, -1);
 #endif
 	}
 
-	player_set_perim_enabled(g_Vars.currentplayer->prop, true);
-	prop_deregister_rooms(g_Vars.currentplayer->eyespy->prop);
-	los_find_final_room_exhaustive(&g_Vars.currentplayer->prop->pos, g_Vars.currentplayer->prop->rooms,
+	playerSetPerimEnabled(g_Vars.currentplayer->prop, true);
+	propDeregisterRooms(g_Vars.currentplayer->eyespy->prop);
+	func0f065e74(&g_Vars.currentplayer->prop->pos, g_Vars.currentplayer->prop->rooms,
 			&g_Vars.currentplayer->eyespy->prop->pos, g_Vars.currentplayer->eyespy->prop->rooms);
 
-	chr_detect_rooms(chr);
+	chr0f0220ac(chr);
 
 	return launched;
 }
 
-void eyespy_process_input(bool allowbuttons)
+void eyespyProcessInput(bool allowbuttons)
 {
 	struct chrdata *chr = g_Vars.currentplayer->eyespy->prop->chr;
 	f32 spe0 = PAL ? 0.952f : 0.96f;
@@ -692,15 +696,15 @@ void eyespy_process_input(bool allowbuttons)
 	f32 spcc;
 	f32 spc8;
 	f32 spc4;
-	s8 contpad1 = options_get_contpad_num1(g_Vars.currentplayerstats->mpindex);
-	s8 c1stickx = joy_get_stick_x(contpad1);
+	s8 contpad1 = optionsGetContpadNum1(g_Vars.currentplayerstats->mpindex);
+	s8 c1stickx = joyGetStickX(contpad1);
 	s8 c2stickx;
-	s8 c1sticky = joy_get_stick_y(contpad1);
+	s8 c1sticky = joyGetStickY(contpad1);
 	s8 c2sticky;
-	u16 c1buttons = allowbuttons ? joy_get_buttons(contpad1, 0xffff) : 0;
-	u16 c2buttons;
+	u32 c1buttons = allowbuttons ? joyGetButtons(contpad1, 0xffffffff) : 0;
+	u32 c2buttons;
 	bool domovecentre = true;
-	s32 controlmode = options_get_control_mode(g_Vars.currentplayerstats->mpindex);
+	s32 controlmode = optionsGetControlMode(g_Vars.currentplayerstats->mpindex);
 
 	bool aimpressed;
 	bool shootpressed;
@@ -716,16 +720,38 @@ void eyespy_process_input(bool allowbuttons)
 	s32 contpad2;
 	u32 stack[5];
 	f32 tmp;
+	u32 umask, dmask, lmask, rmask;
 
-	if (controlmode >= CONTROLMODE_21) {
-		contpad2 = (s8) options_get_contpad_num2(g_Vars.currentplayerstats->mpindex);
-		c2stickx = joy_get_stick_x(contpad2);
-		c2sticky = joy_get_stick_y(contpad2);
-
-		c2buttons = allowbuttons ? joy_get_buttons(contpad2, 0xffff) : 0;
+	if (controlmode == CONTROLMODE_PC) {
+		umask = U_CBUTTONS;
+		dmask = D_CBUTTONS;
+		lmask = L_CBUTTONS;
+		rmask = R_CBUTTONS;
 	} else {
-		c2stickx = c1stickx;
-		c2sticky = c1sticky;
+		umask = U_JPAD | U_CBUTTONS;
+		dmask = D_JPAD | D_CBUTTONS;
+		lmask = L_JPAD | L_CBUTTONS;
+		rmask = R_JPAD | R_CBUTTONS;
+	}
+
+	if (controlmode >= CONTROLMODE_21 && controlmode < CONTROLMODE_PC) {
+		contpad2 = (s8) optionsGetContpadNum2(g_Vars.currentplayerstats->mpindex);
+		c2stickx = joyGetStickX(contpad2);
+		c2sticky = joyGetStickY(contpad2);
+
+		c2buttons = allowbuttons ? joyGetButtons(contpad2, 0xffffffff) : 0;
+	} else {
+#ifndef PLATFORM_N64
+		if (controlmode == CONTROLMODE_PC) {
+			c2stickx = joyGetRStickX(contpad1);
+			c2sticky = joyGetRStickY(contpad1);
+		} else
+#else
+		{
+			c2stickx = c1stickx;
+			c2sticky = c1sticky;
+		}
+#endif
 		c2buttons = c1buttons;
 	}
 
@@ -734,11 +760,19 @@ void eyespy_process_input(bool allowbuttons)
 		shootpressed = c1buttons & A_BUTTON;
 		exitpressed = c1buttons & R_TRIG;
 		activatepressed = c1buttons & B_BUTTON;
-	} else if (controlmode <= CONTROLMODE_14) {
-		aimpressed = c1buttons & (L_TRIG | R_TRIG);
+	} else if (controlmode <= CONTROLMODE_14 || controlmode == CONTROLMODE_PC) {
+		aimpressed = c1buttons & (R_TRIG);
 		shootpressed = c1buttons & Z_TRIG;
-		exitpressed = c1buttons & A_BUTTON;
-		activatepressed = c1buttons & B_BUTTON;
+#ifndef PLATFORM_N64
+		if (controlmode == CONTROLMODE_PC) {
+			exitpressed = c1buttons & (BUTTON_WPNBACK | BUTTON_RADIAL);
+			activatepressed = c1buttons & (BUTTON_CANCEL_USE | BUTTON_ACCEPT_USE);
+		} else
+#endif
+		{
+			exitpressed = (c1buttons | c2buttons) & A_BUTTON;
+			activatepressed = (c1buttons | c2buttons) & B_BUTTON;
+		}
 	} else {
 		if (controlmode >= CONTROLMODE_23) {
 			aimpressed = c1buttons & Z_TRIG;
@@ -817,16 +851,24 @@ void eyespy_process_input(bool allowbuttons)
 
 		ascendspeed = (c1buttons & (U_CBUTTONS | U_JPAD) ? 1 : 0) - (c1buttons & (D_CBUTTONS | D_JPAD) ? 1 : 0);
 		sidespeed = (c1buttons & (R_CBUTTONS | R_JPAD) ? 1 : 0) - (c1buttons & (L_CBUTTONS | L_JPAD) ? 1 : 0);
-	} else if (controlmode <= CONTROLMODE_14) {
+	} else if (controlmode <= CONTROLMODE_14 || controlmode == CONTROLMODE_PC) {
 		if (aimpressed) {
 			domovecentre = false;
 			pitchspeed = c1sticky;
 		} else {
 			ascendspeed = c1sticky * 0.25f;
-			forwardspeed = (c1buttons & (U_CBUTTONS | U_JPAD) ? 24.0f : 0) - (c1buttons & (D_CBUTTONS | D_JPAD) ? 24.0f : 0);
+			forwardspeed = (c1buttons & umask ? 24.0f : 0) - (c1buttons & dmask ? 24.0f : 0);
+#ifndef PLATFORM_N64
+			if (controlmode == CONTROLMODE_PC) {
+				forwardspeed += c2sticky;
+			}
+#endif
 		}
 
-		sidespeed = (c1buttons & (R_CBUTTONS | R_JPAD) ? 1 : 0) - (c1buttons & (L_CBUTTONS | L_JPAD) ? 1 : 0);
+		sidespeed = (c1buttons & rmask ? 1 : 0) - (c1buttons & lmask ? 1 : 0);
+#ifndef PLATFORM_N64
+		if (!sidespeed && controlmode == CONTROLMODE_PC) sidespeed = c2stickx * 0.0125f;
+#endif
 	} else if (controlmode == CONTROLMODE_21 || controlmode == CONTROLMODE_23) {
 		forwardspeed = c1sticky;
 
@@ -870,16 +912,16 @@ void eyespy_process_input(bool allowbuttons)
 	chr->prevpos.y = g_Vars.currentplayer->eyespy->prop->pos.y;
 	chr->prevpos.z = g_Vars.currentplayer->eyespy->prop->pos.z;
 
-	rooms_copy(g_Vars.currentplayer->eyespy->prop->rooms, prevrooms);
+	roomsCopy(g_Vars.currentplayer->eyespy->prop->rooms, prevrooms);
 
-	if (!inv_has_single_weapon_inc_all_guns(WEAPON_EYESPY)) {
+	if (!invHasSingleWeaponIncAllGuns(WEAPON_EYESPY)) {
 		g_Vars.currentplayer->eyespy->deployed = false;
 		g_Vars.currentplayer->eyespy->held = true;
 		g_Vars.currentplayer->eyespy->active = false;
 
 		chr->chrflags |= CHRCFLAG_HIDDEN;
 
-		chr_clear_references(g_Vars.currentplayer->eyespy->prop - g_Vars.props);
+		chrClearReferences(g_Vars.currentplayer->eyespy->prop - g_Vars.props);
 	}
 
 	if (g_Vars.currentplayer->eyespy->active && g_PlayersWithControl[g_Vars.currentplayernum]) {
@@ -890,9 +932,28 @@ void eyespy_process_input(bool allowbuttons)
 				&& g_Vars.currentplayer->pausemode == PAUSEMODE_UNPAUSED
 				&& (c1buttons & START_BUTTON)) {
 			if (!g_Vars.mplayerisrunning) {
-				player_pause(MENUROOT_MAINMENU);
+				playerPause(MENUROOT_MAINMENU);
 			} else {
-				mp_push_pause_dialog();
+				mpPushPauseDialog();
+			}
+		}
+#endif
+
+#ifndef PLATFORM_N64
+		if (g_Vars.currentplayernum == 0) {
+			f32 mdx, mdy;
+			inputMouseGetScaledDelta(&mdx, &mdy);
+			if (mdx || mdy) {
+				if (g_Vars.currentplayerstats && !optionsGetForwardPitch(g_Vars.currentplayerstats->mpindex)) {
+					mdy = -mdy;
+				}
+				g_Vars.currentplayer->eyespy->theta += mdx * 1.5f;
+				// hold aim to move up and down, release to look up and down
+				if (aimpressed) {
+					ascendspeed -= mdy;
+				} else {
+					g_Vars.currentplayer->eyespy->verta -= mdy * 1.5f;
+				}
 			}
 		}
 #endif
@@ -912,9 +973,28 @@ void eyespy_process_input(bool allowbuttons)
 		g_Vars.currentplayer->eyespy->sintheta = sinf(g_Vars.currentplayer->eyespy->theta * 0.017453292384744f);
 
 		// Update verta
+#ifndef PLATFORM_N64
+		// respect the invert pitch setting
+		if (optionsGetForwardPitch(g_Vars.currentplayerstats->mpindex)) {
+			pitchspeed = -pitchspeed;
+		}
+#endif
 		g_Vars.currentplayer->eyespy->verta -= pitchspeed * 0.0625f * g_Vars.lvupdate60freal;
 
 		if (prevverta != g_Vars.currentplayer->eyespy->verta) {
+#ifndef PLATFORM_N64 // limit eyespy range to 75 degrees
+			while (g_Vars.currentplayer->eyespy->verta > 90.0f) {
+				g_Vars.currentplayer->eyespy->verta -= 360.0f;
+			}
+
+			if (g_Vars.currentplayer->eyespy->verta < -75.0f) {
+				g_Vars.currentplayer->eyespy->verta = -75.0f;
+			}
+
+			if (g_Vars.currentplayer->eyespy->verta > 75.0f) {
+				g_Vars.currentplayer->eyespy->verta = 75.0f;
+			}
+#endif
 			while (g_Vars.currentplayer->eyespy->verta < 0.0f) {
 				g_Vars.currentplayer->eyespy->verta += 360.0f;
 			}
@@ -936,19 +1016,21 @@ void eyespy_process_input(bool allowbuttons)
 		// Make eyespy look horizontally
 		if (domovecentre) {
 			if (g_Vars.currentplayer->eyespy->verta > 0.0f && forwardspeed != 0) {
-				if (g_Vars.currentplayer->eyespy->verta < 180.0f) {
-					tmp = g_Vars.currentplayer->eyespy->verta;
+				if (controlmode != CONTROLMODE_PC) {
+					if (g_Vars.currentplayer->eyespy->verta < 180.0f) {
+						tmp = g_Vars.currentplayer->eyespy->verta;
 
-					for (i = 0; i < g_Vars.lvupdate60; i++) {
-						tmp *= 0.04f;
-						g_Vars.currentplayer->eyespy->verta -= tmp;
-					}
-				} else {
-					tmp = 360.0f - g_Vars.currentplayer->eyespy->verta;
+						for (i = 0; i < g_Vars.lvupdate60; i++) {
+							tmp *= 0.04f;
+							g_Vars.currentplayer->eyespy->verta -= tmp;
+						}
+					} else {
+						tmp = 360.0f - g_Vars.currentplayer->eyespy->verta;
 
-					for (i = 0; i < g_Vars.lvupdate60; i++) {
-						tmp *= 0.04f;
-						g_Vars.currentplayer->eyespy->verta += tmp;
+						for (i = 0; i < g_Vars.lvupdate60; i++) {
+							tmp *= 0.04f;
+							g_Vars.currentplayer->eyespy->verta += tmp;
+						}
 					}
 				}
 
@@ -1016,7 +1098,13 @@ void eyespy_process_input(bool allowbuttons)
 		if (g_Vars.currentplayer->eyespy->bobactive || ABS(g_Vars.currentplayer->eyespy->vel.y) < 0.1f) {
 			g_Vars.currentplayer->eyespy->bobactive = true;
 			g_Vars.currentplayer->eyespy->bobtimer += g_Vars.lvupdate60;
+#ifdef PLATFORM_N64
 			g_Vars.currentplayer->eyespy->vel.y += 0.025f * g_Vars.currentplayer->eyespy->bobdir;
+#else
+			// HACK: how do I scale this properly?
+			const f32 scale = (g_Vars.lvupdate60freal <= 1.1f) ? 0.0055f : 0.0125f;
+			g_Vars.currentplayer->eyespy->vel.y += scale * g_Vars.lvupdate60freal * g_Vars.currentplayer->eyespy->bobdir;
+#endif
 
 			if (g_Vars.currentplayer->eyespy->bobtimer > TICKS(120)) {
 				g_Vars.currentplayer->eyespy->bobtimer = 0;
@@ -1047,7 +1135,7 @@ void eyespy_process_input(bool allowbuttons)
 	g_EyespyHit = EYESPYHIT_NONE;
 	var80070ecc = 0;
 
-	eyespy_update_position();
+	eyespyUpdateVertical();
 
 	// Consider playing the tap sound when the eyespy is driven into a wall or object
 	if (g_Vars.currentplayer->eyespy->active
@@ -1058,19 +1146,19 @@ void eyespy_process_input(bool allowbuttons)
 
 		switch (g_EyespyHit) {
 		case EYESPYHIT_BG:
-			snd_start_extra(NULL, false, 16000, AL_PAN_CENTER, SFXMAP_808C_EYESPYHIT, 1, 1, -1, true);
+			snd00010718(NULL, 0, 16000, AL_PAN_CENTER, SFX_EYESPYHIT, 1, 1, -1, 1);
 			break;
 		case EYESPYHIT_OBJ:
-			snd_start_extra(NULL, false, 16000, AL_PAN_CENTER, SFXMAP_808C_EYESPYHIT, 1, 1, -1, true);
+			snd00010718(NULL, 0, 16000, AL_PAN_CENTER, SFX_EYESPYHIT, 1, 1, -1, 1);
 			break;
 		case EYESPYHIT_DOOR:
-			snd_start_extra(NULL, false, 16000, AL_PAN_CENTER, SFXMAP_808C_EYESPYHIT, 1, 1, -1, true);
+			snd00010718(NULL, 0, 16000, AL_PAN_CENTER, SFX_EYESPYHIT, 1, 1, -1, 1);
 			break;
 		case EYESPYHIT_CHR:
-			snd_start_extra(NULL, false, 16000, AL_PAN_CENTER, SFXMAP_808C_EYESPYHIT, 1, 1, -1, true);
+			snd00010718(NULL, 0, 16000, AL_PAN_CENTER, SFX_EYESPYHIT, 1, 1, -1, 1);
 			break;
 		case EYESPYHIT_DAMAGE:
-			snd_start(var80095200, SFXNUM_00F2_PICKUP_LASER, NULL, -1, -1, -1, -1, -1);
+			sndStart(var80095200, SFX_PICKUP_LASER, NULL, -1, -1, -1, -1, -1);
 			break;
 		default:
 			break;
@@ -1083,7 +1171,7 @@ void eyespy_process_input(bool allowbuttons)
 	}
 
 	tmp = g_Vars.currentplayer->eyespy->speed / 1600.0f;
-	ps_set_volume(g_Vars.currentplayer->eyespy->prop, tmp * 400.0f);
+	psSetVolume(g_Vars.currentplayer->eyespy->prop, tmp * 400.0f);
 
 	angle = 180 - g_Vars.currentplayer->eyespy->theta;
 
@@ -1091,9 +1179,9 @@ void eyespy_process_input(bool allowbuttons)
 		angle += 360.0f;
 	}
 
-	angle = BADDTOR4(angle);
+	angle = angle / 360.0f * M_BADTAU;
 
-	chr_set_theta(chr, angle);
+	chrSetLookAngle(chr, angle);
 
 	if (g_Vars.currentplayer->eyespy->startuptimer60 < TICKS(50)) {
 		return;
@@ -1143,7 +1231,7 @@ void eyespy_process_input(bool allowbuttons)
 			g_EyespyPickup = false;
 		}
 
-		cdresult = cd_test_los_oobfail(&g_Vars.currentplayer->prop->pos, g_Vars.currentplayer->prop->rooms,
+		cdresult = cdTestLos05(&g_Vars.currentplayer->prop->pos, g_Vars.currentplayer->prop->rooms,
 				&g_Vars.currentplayer->eyespy->prop->pos, g_Vars.currentplayer->eyespy->prop->rooms,
 				CDTYPE_DOORS | CDTYPE_BG,
 				GEOFLAG_WALL | GEOFLAG_BLOCK_SIGHT | GEOFLAG_BLOCK_SHOOT);
@@ -1168,11 +1256,11 @@ void eyespy_process_input(bool allowbuttons)
 		chr->chrflags |= CHRCFLAG_HIDDEN;
 		chr->chrflags |= CHRCFLAG_INVINCIBLE;
 
-		weapon_play_pickup_sound(WEAPON_EYESPY);
-		current_player_queue_pickup_weapon_hudmsg(WEAPON_EYESPY, false);
-		ps_stop_sound(g_Vars.currentplayer->eyespy->prop, PSTYPE_GENERAL, 0xffff);
-		chr_clear_references(g_Vars.currentplayer->eyespy->prop - g_Vars.props);
+		weaponPlayPickupSound(WEAPON_EYESPY);
+		currentPlayerQueuePickupWeaponHudmsg(WEAPON_EYESPY, false);
+		psStopSound(g_Vars.currentplayer->eyespy->prop, PSTYPE_GENERAL, 0xffff);
+		chrClearReferences(g_Vars.currentplayer->eyespy->prop - g_Vars.props);
 	}
 
-	coord_trigger_proxies(&chr->prop->pos, true);
+	coordTriggerProxies(&chr->prop->pos, true);
 }

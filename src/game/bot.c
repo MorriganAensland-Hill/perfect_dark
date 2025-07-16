@@ -7,7 +7,7 @@
 #include "game/propsnd.h"
 #include "game/atan2f.h"
 #include "game/bondgun.h"
-#include "game/gset.h"
+#include "game/game_0b0fd0.h"
 #include "game/player.h"
 #include "game/playermgr.h"
 #include "game/bg.h"
@@ -42,70 +42,31 @@ struct chrdata *g_MpBotChrPtrs[MAX_BOTS];
 
 u8 g_BotCount = 0;
 
-struct botdifficulty {
-	u8 shootdelay60;
-	f32 minzerospeed;
-	f32 maxzerospeed;
-	u16 zerotime60;
-	f32 turnunzeromult;
-	f32 zerocloakspeed;
-	f32 forcezerominspeed;
-	s32 dizzyamount;
-};
-
-/**
- * shootdelay60:
- *     How long the bot waits between seeing their target and shooting.
- *     It has a cooldown, so a brief break in sight will have little effect.
- *
- * minzerospeed and maxzerospeed:
- *     Controls the speed at which the bot zeroes their target.
- *     These values are scaled linearly based on the bot's current zerotimer60.
- *     A random speed between the scaled min and max is chosen.
- *
- * zerotime60:
- *     How long it takes for the bot to zero their target. A cooldown is used.
- *
- * turnunzeromult:
- *     When a bot is zeroing or has zeroed its target and has to turn naturally,
- *     this controls the rate at which the target is "unzeroed".
- *     The value is a multiplier for the zerotime60 cooldown.
- *
- * zerocloakspeed:
- *     A minimum value for maxzerospeed which is used when the target is cloaked.
- *     It allows the bot to zero faster when they're just starting to zero.
- *
- * forcezerominspeed:
- *     A minimum value for maxzerospeed.
- *     It allows the bot to zero faster when they're just starting to zero.
- *
- * dizzyamount:
- *     How much tranq the bot needs to receive before they start being affected.
- *     (ie. punching/shooting as soon as target is in sight, even if not zeroed)
- */
-
 struct botdifficulty g_BotDifficulties[] = {
-	//           shootdelay60                                       turnunzeromult      forcezerominspeed
-	//           |          minzerospeed   maxzerospeed zerotime60  |   zerocloakspeed  |            dizzyamount
-	/* meat */ { TICKS(90), BADDTOR2(15),   BADDTOR2(30), TICKS(600), 10, BADDTOR2(40),    BADDTOR2(20), TICKS(1000) },
-	/* easy */ { TICKS(60), BADDTOR2(7),    BADDTOR2(14), TICKS(360), 10, BADDTOR2(28.5f), BADDTOR2(8),  TICKS(1000) },
-	/* norm */ { TICKS(30), BADDTOR2(4),    BADDTOR2(8),  TICKS(180), 4,  BADDTOR2(20),    BADDTOR2(5),  TICKS(1500) },
-	/* hard */ { TICKS(15), BADDTOR2(1.5f), BADDTOR2(4),  TICKS(90),  2,  BADDTOR2(14),    BADDTOR2(2),  TICKS(2500) },
-	/* perf */ { TICKS(0),  BADDTOR2(0),    BADDTOR2(2),  TICKS(45),  1,  BADDTOR2(10),    BADDTOR2(0),  TICKS(4000) },
-	/* dark */ { TICKS(0),  BADDTOR2(0),    BADDTOR2(0),  TICKS(0),   0,  BADDTOR2(8),     BADDTOR2(0),  TICKS(4000) },
+	//           shootdelay
+	//           |            unk04
+	//           |            |                  unk08
+	//           |            |                  |                  unk0c
+	//           |            |                  |                  |             unk10
+	//           |            |                  |                  |             |   unk14
+	//           |            |                  |                  |             |   |                 unk18
+	//           |            |                  |                  |             |   |                 |                  dizzyamount
+	//           |            |                  |                  |             |   |                 |                  |
+	/* meat */ { TICKS(90), 0.26175770163536,  0.52351540327072,  TICKS(600), 10, 0.69802051782608, 0.34901025891304,  TICKS(1000) },
+	/* easy */ { TICKS(60), 0.12215359508991,  0.24430719017982,  TICKS(360), 10, 0.49733963608742, 0.13960410654545,  TICKS(1000) },
+	/* norm */ { TICKS(30), 0.069802053272724, 0.13960410654545,  TICKS(180), 4,  0.34901025891304, 0.08725256472826,  TICKS(1500) },
+	/* hard */ { TICKS(15), 0.026175770908594, 0.069802053272724, TICKS(90),  2,  0.24430719017982, 0.034901026636362, TICKS(2500) },
+	/* perf */ { TICKS(0),  0,                 0.034901026636362, TICKS(45),  1,  0.17450512945652, 0,                 TICKS(4000) },
+	/* dark */ { TICKS(0),  0,                 0,                 TICKS(0),   0,  0.13960410654545, 0,                 TICKS(4000) },
 	{ 0 },
 };
 
-s32 bot_get_num_teammates_defending_hill(struct chrdata *bot);
-s32 bot_get_num_opponents_in_hill(struct chrdata *chr);
-bool bot_should_return_ctc_token(struct chrdata *chr);
-
-bool bot_is_dizzy(struct chrdata *chr)
+bool botIsDizzy(struct chrdata *chr)
 {
 	return chr->blurdrugamount >= g_BotDifficulties[chr->aibot->config->difficulty].dizzyamount;
 }
 
-void bot_reset(struct chrdata *chr, u8 respawning)
+void botReset(struct chrdata *chr, u8 respawning)
 {
 	s32 i;
 	u32 rand;
@@ -124,13 +85,17 @@ void bot_reset(struct chrdata *chr, u8 respawning)
 			chr->target = -1;
 			chr->chrpreset1 = -1;
 			chr->cover = -1;
-			chr_set_shield(chr, 0);
+			chrSetShield(chr, 0);
 			chr->cmnum = 0;
 			chr->cmnum2 = 0;
+#ifndef PLATFORM_N64
+			chr->blurdrugamount = 0;
+			chr->poisoncounter = 0;
+#endif
 
 #if VERSION >= VERSION_NTSC_1_0
-			bgun_free_fireslot(chr->fireslots[0]);
-			bgun_free_fireslot(chr->fireslots[1]);
+			bgunFreeFireslot(chr->fireslots[0]);
+			bgunFreeFireslot(chr->fireslots[1]);
 #endif
 
 			chr->unk32c_12 = 0;
@@ -150,7 +115,7 @@ void bot_reset(struct chrdata *chr, u8 respawning)
 				aibot->ammoheld[i] = 0;
 			}
 
-			botinv_clear(chr);
+			botinvClear(chr);
 
 			aibot->weaponnum = WEAPON_UNARMED;
 			aibot->gunfunc = FUNC_PRIMARY;
@@ -220,13 +185,13 @@ void bot_reset(struct chrdata *chr, u8 respawning)
 
 			aibot->waypoints[0] = NULL;
 			aibot->numwaystepstotarget = 0;
-			aibot->random1 = random();
+			aibot->random1 = rngRandom();
 			aibot->random1ttl60 = 0;
 			aibot->targetcloaktimer60 = 0;
 			aibot->canseecloaked = 0;
 			aibot->rcpcloaktimer60 = 0;
 			aibot->random2ttl60 = 0;
-			aibot->random2 = random();
+			aibot->random2 = rngRandom();
 			aibot->randomfrac = RANDOMFRAC();
 			aibot->cheap = 0;
 
@@ -249,7 +214,7 @@ void bot_reset(struct chrdata *chr, u8 respawning)
 			// rather than invert it.
 			aibot->flags &= ~BOTFLAG_UNLIMITEDAMMO;
 
-			if (mp_has_shield()) {
+			if (mpHasShield()) {
 				chr->cshield = 8;
 			}
 		}
@@ -259,7 +224,7 @@ void bot_reset(struct chrdata *chr, u8 respawning)
 	}
 }
 
-void bot_spawn(struct chrdata *chr, u8 respawning)
+void botSpawn(struct chrdata *chr, u8 respawning)
 {
 	f32 thing;
 	struct prop *prop;
@@ -283,29 +248,46 @@ void bot_spawn(struct chrdata *chr, u8 respawning)
 	}
 
 	if (aibot) {
-		bot_reset(chr, respawning);
-		splat_reset_chr(chr);
-		thing = scenario_choose_spawn_location(chr->radius, &pos, rooms, chr->prop);
+		botReset(chr, respawning);
+		splatResetChr(chr);
+		thing = scenarioChooseSpawnLocation(chr->radius, &pos, rooms, chr->prop);
 		chr->hidden |= CHRHFLAG_WARPONSCREEN;
-		chr_move_to_pos(chr, &pos, rooms, thing, true);
-
-		chr->aibot->roty = model_get_chr_rot_y(chr->model);
+		chrMoveToPos(chr, &pos, rooms, thing, true);
+		chr->aibot->roty = modelGetChrRotY(chr->model);
 		chr->aibot->angleoffset = 0;
 		chr->aibot->speedtheta = 0;
-		chr->aibot->lookangle = model_get_chr_rot_y(chr->model);
+		chr->aibot->lookangle = modelGetChrRotY(chr->model);
 		chr->aibot->moveratex = 0;
 		chr->aibot->moveratey = 0;
+		func0f02e9a0(chr, 0);
 
-		chr_stand_immediate(chr, 0);
+#ifndef PLATFORM_N64
+		if ((g_MpSetup.options & MPOPTION_SPAWNWITHWEAPON)
+				&& g_MpSetup.weapons[0] != MPWEAPON_NONE
+				&& g_MpSetup.weapons[0] != MPWEAPON_DISABLED
+				&& g_MpSetup.weapons[0] != MPWEAPON_SHIELD) {
+			struct mpweapon *mpweapon = &g_MpWeapons[g_MpSetup.weapons[0]];
+			botinvGiveSingleWeapon(chr, mpweapon->weaponnum);
+			const s32 ammotype = (g_MpSetup.weapons[0] == MPWEAPON_COMBATBOOST) ? AMMOTYPE_BOOST : mpweapon->priammotype;
+			if (ammotype) {
+				s32 startammo = mpweapon->priammoqty / 2;
+				if (startammo == 0) {
+					startammo = 1;
+				}
+				botactGiveAmmoByType(aibot, ammotype, startammo);
+			}
+			botinvSwitchToWeapon(chr, mpweapon->weaponnum, FUNC_PRIMARY);
+		}
+#endif
 	}
 }
 
-void bot_spawn_all(void)
+void botSpawnAll(void)
 {
 	s32 i;
 
 	for (i = 0; i < g_BotCount; i++) {
-		bot_spawn(g_MpBotChrPtrs[i], false);
+		botSpawn(g_MpBotChrPtrs[i], false);
 	}
 }
 
@@ -316,7 +298,7 @@ u32 add87654321(u32 value)
 }
 #endif
 
-u32 bot_pickup_prop(struct prop *prop, struct chrdata *chr)
+u32 botPickupProp(struct prop *prop, struct chrdata *chr)
 {
 	struct defaultobj *obj = prop->obj;
 
@@ -339,18 +321,18 @@ u32 bot_pickup_prop(struct prop *prop, struct chrdata *chr)
 			s32 qty;
 
 			if (1);
-			qty = ammocrate_get_pickup_ammo_qty(crate);
+			qty = ammocrateGetPickupAmmoQty(crate);
 			dprint();
 
 			if (qty) {
-				botact_give_ammo_by_type(chr->aibot, crate->ammotype, qty);
+				botactGiveAmmoByType(chr->aibot, crate->ammotype, qty);
 			}
 
 			// Pickup sound
-			ps_create(NULL, prop, SFXNUM_00EA_PICKUP_AMMO, -1,
-				-1, PSFLAG_AMBIENT, 0, PSTYPE_NONE, 0, -1, 0, -1, -1, -1, -1);
+			psCreate(NULL, prop, SFX_PICKUP_AMMO, -1,
+				-1, PSFLAG_0400, 0, PSTYPE_NONE, 0, -1, 0, -1, -1, -1, -1);
 
-			obj_free(obj, false, obj->hidden2 & OBJH2FLAG_CANREGEN);
+			objFree(obj, false, obj->hidden2 & OBJH2FLAG_CANREGEN);
 
 			if (qty) {
 				dprint();
@@ -365,8 +347,8 @@ u32 bot_pickup_prop(struct prop *prop, struct chrdata *chr)
 			s32 i;
 #if PIRACYCHECKS
 			{
-				u32 *ptr = (u32 *)&door_finish_close;
-				u32 *end = (u32 *)&door_set_mode;
+				u32 *ptr = (u32 *)&doorFinishClose;
+				u32 *end = (u32 *)&doorSetMode;
 				u32 checksum = 0;
 
 				while (ptr < end) {
@@ -376,7 +358,7 @@ u32 bot_pickup_prop(struct prop *prop, struct chrdata *chr)
 				}
 
 				if (checksum != CHECKSUM_PLACEHOLDER) {
-					u32 *ptr = (u32 *)chr_check_can_see_target;
+					u32 *ptr = (u32 *)chrCheckCanSeeTarget;
 					ptr[0] = add87654321(0x24020001 - 0x87654321); // li v0, 1
 					ptr[1] = add87654321(0x03e00008 - 0x87654321); // jr ra
 					ptr[2] = add87654321(0x00000000 - 0x87654321); // nop
@@ -393,56 +375,56 @@ u32 bot_pickup_prop(struct prop *prop, struct chrdata *chr)
 				}
 
 				if (qty) {
-					botact_give_ammo_by_type(chr->aibot, i + 1, qty);
+					botactGiveAmmoByType(chr->aibot, i + 1, qty);
 				}
 			}
 
 			// Pickup sound
-			ps_create(NULL, prop, SFXNUM_00EA_PICKUP_AMMO, -1,
-				-1, PSFLAG_AMBIENT, 0, PSTYPE_NONE, 0, -1, 0, -1, -1, -1, -1);
+			psCreate(NULL, prop, SFX_PICKUP_AMMO, -1,
+				-1, PSFLAG_0400, 0, PSTYPE_NONE, 0, -1, 0, -1, -1, -1, -1);
 
-			obj_free(obj, false, obj->hidden2 & OBJH2FLAG_CANREGEN);
+			objFree(obj, false, obj->hidden2 & OBJH2FLAG_CANREGEN);
 		}
 		return 2;
 	case OBJTYPE_WEAPON:
 		{
 			struct weaponobj *weapon = prop->weapon;
-			s32 itemtype = botinv_get_item_type(chr, weapon->weaponnum);
+			s32 itemtype = botinvGetItemType(chr, weapon->weaponnum);
 			s32 result;
 			s32 qty;
 
 			if (weapon->weaponnum == WEAPON_BRIEFCASE2) {
-				result = scenario_pick_up_briefcase(chr, prop);
+				result = scenarioPickUpBriefcase(chr, prop);
 			} else if (weapon->weaponnum == WEAPON_DATAUPLINK) {
-				result = scenario_pick_up_uplink(chr, prop);
+				result = scenarioPickUpUplink(chr, prop);
 			} else {
-				prop_play_pickup_sound(prop, weapon->weaponnum);
-				qty = weapon_get_pickup_ammo_qty(weapon);
+				propPlayPickupSound(prop, weapon->weaponnum);
+				qty = weaponGetPickupAmmoQty(weapon);
 
 				if (qty) {
-					botact_give_ammo_by_weapon(chr->aibot, weapon->weaponnum, weapon->gunfunc, qty);
+					botactGiveAmmoByWeapon(chr->aibot, weapon->weaponnum, weapon->gunfunc, qty);
 				}
 
 				if (itemtype) {
-					struct weapondef *weapondef = gset_get_weapondef(weapon->weaponnum);
-					s32 originalpad = botinv_get_weapon_pad(chr, weapon->weaponnum);
+					struct weapon *weapondef = weaponFindById(weapon->weaponnum);
+					s32 originalpad = botinvGetWeaponPad(chr, weapon->weaponnum);
 					s32 currentpad = obj->pad;
 
 					if (itemtype == INVITEMTYPE_WEAP
 							&& weapondef
 							&& (weapondef->flags & WEAPONFLAG_DUALWIELD)
 							&& originalpad != currentpad) {
-						botinv_give_dual_weapon(chr, weapon->weaponnum);
+						botinvGiveDualWeapon(chr, weapon->weaponnum);
 						result = 1;
 					} else {
 						result = 2;
 					}
 				} else {
-					botinv_give_prop(chr, prop);
+					botinvGiveProp(chr, prop);
 					result = 1;
 				}
 
-				obj_free(obj, false, obj->hidden2 & OBJH2FLAG_CANREGEN);
+				objFree(obj, false, obj->hidden2 & OBJH2FLAG_CANREGEN);
 			}
 
 			return result;
@@ -451,11 +433,11 @@ u32 bot_pickup_prop(struct prop *prop, struct chrdata *chr)
 		{
 			struct shieldobj *shield = (struct shieldobj *)prop->obj;
 
-			ps_create(NULL, prop, SFXNUM_01CD_PICKUP_SHIELD, -1,
-				-1, PSFLAG_AMBIENT, 0, PSTYPE_NONE, 0, -1, 0, -1, -1, -1, -1);
+			psCreate(NULL, prop, SFX_PICKUP_SHIELD, -1,
+				-1, PSFLAG_0400, 0, PSTYPE_NONE, 0, -1, 0, -1, -1, -1, -1);
 
-			chr_set_shield(chr, shield->amount * 8);
-			obj_free(obj, false, obj->hidden2 & OBJH2FLAG_CANREGEN);
+			chrSetShield(chr, shield->amount * 8);
+			objFree(obj, false, obj->hidden2 & OBJH2FLAG_CANREGEN);
 		}
 		return 3;
 	case OBJTYPE_BASIC:
@@ -468,13 +450,13 @@ u32 bot_pickup_prop(struct prop *prop, struct chrdata *chr)
 	return 0;
 }
 
-bool bot_test_prop_for_pickup(struct prop *prop, struct chrdata *chr)
+bool botTestPropForPickup(struct prop *prop, struct chrdata *chr)
 {
 	struct defaultobj *obj = prop->obj;
 
 	struct weaponobj *weaponobj;
 	s32 itemtype;
-	struct weapondef *weapon;
+	struct weapon *weapon;
 	bool singleonly;
 	s32 i;
 
@@ -498,7 +480,7 @@ bool bot_test_prop_for_pickup(struct prop *prop, struct chrdata *chr)
 	bool sp3c;
 	u32 stack2;
 
-	if (!chr || !chr->aibot || !g_Vars.lvmpbotlevel || chr_is_dead(chr)) {
+	if (!chr || !chr->aibot || !g_Vars.lvmpbotlevel || chrIsDead(chr)) {
 		return false;
 	}
 
@@ -508,7 +490,7 @@ bool bot_test_prop_for_pickup(struct prop *prop, struct chrdata *chr)
 		return false;
 	}
 
-	if (obj_defaults_to_bounceable_invincible_pickupable(obj) && obj->type != OBJTYPE_HAT) {
+	if (func0f085194(obj) && obj->type != OBJTYPE_HAT) {
 		if (obj->flags & OBJFLAG_UNCOLLECTABLE) {
 			return false;
 		}
@@ -543,7 +525,7 @@ bool bot_test_prop_for_pickup(struct prop *prop, struct chrdata *chr)
 
 	dprint();
 
-	if (!obj_can_pickup_from_safe(obj)) {
+	if (!objCanPickupFromSafe(obj)) {
 		return false;
 	}
 
@@ -553,15 +535,15 @@ bool bot_test_prop_for_pickup(struct prop *prop, struct chrdata *chr)
 
 	if (obj->type == OBJTYPE_WEAPON) {
 		weaponobj = prop->weapon;
-		itemtype = botinv_get_item_type(chr, weaponobj->weaponnum);
-		weapon = gset_get_weapondef(weaponobj->weaponnum);
+		itemtype = botinvGetItemType(chr, weaponobj->weaponnum);
+		weapon = weaponFindById(weaponobj->weaponnum);
 		singleonly = weapon && (weapon->flags & WEAPONFLAG_DUALWIELD) == 0;
 
 		if (weaponobj->weaponnum != WEAPON_BRIEFCASE2) {
 			// If aibot is dual wielding, or single wielding and weapon doesn't support dual,
 			// ignore the pickup if at max ammo already
 			if (itemtype == INVITEMTYPE_DUAL || (itemtype == INVITEMTYPE_WEAP && singleonly)) {
-				if (botact_get_ammo_quantity_by_weapon(chr->aibot, weaponobj->weaponnum, weaponobj->gunfunc, false) >= bgun_get_capacity_by_ammotype(botact_get_ammo_type_by_function(weaponobj->weaponnum, weaponobj->gunfunc))) {
+				if (botactGetAmmoQuantityByWeapon(chr->aibot, weaponobj->weaponnum, weaponobj->gunfunc, false) >= bgunGetCapacityByAmmotype(botactGetAmmoTypeByFunction(weaponobj->weaponnum, weaponobj->gunfunc))) {
 					return false;
 				}
 			}
@@ -576,28 +558,28 @@ bool bot_test_prop_for_pickup(struct prop *prop, struct chrdata *chr)
 		crate = (struct ammocrateobj *)prop->obj;
 
 		// Ignore ammo crate if at max ammo already
-		if (botact_get_ammo_quantity_by_type(chr->aibot, crate->ammotype, false) >= bgun_get_capacity_by_ammotype(crate->ammotype)) {
+		if (botactGetAmmoQuantityByType(chr->aibot, crate->ammotype, false) >= bgunGetCapacityByAmmotype(crate->ammotype)) {
 			return false;
 		}
 	} else if (obj->type == OBJTYPE_MULTIAMMOCRATE) {
 		crate2 = (struct multiammocrateobj *)prop->obj;
 		ignore1 = true;
 
-		if (obj_get_destroyed_level(obj)) {
+		if (objGetDestroyedLevel(obj)) {
 			dprint();
 			return false;
 		}
 
 		for (i = 0; i < 0x13; i++) {
-			weaponnum = botact_get_weapon_by_ammo_type(i + 1);
+			weaponnum = botactGetWeaponByAmmoType(i + 1);
 
 			if (crate2->slots[i].quantity > 0) {
-				if (botact_get_ammo_quantity_by_type(chr->aibot, i + 1, false) < bgun_get_capacity_by_ammotype(i + 1)) {
+				if (botactGetAmmoQuantityByType(chr->aibot, i + 1, false) < bgunGetCapacityByAmmotype(i + 1)) {
 					ignore1 = false;
 
-					if (weaponnum && !botinv_get_item_type(chr, weaponnum)) {
+					if (weaponnum && !botinvGetItemType(chr, weaponnum)) {
 						dprint();
-						botinv_give_prop(chr, prop);
+						botinvGiveProp(chr, prop);
 					}
 
 					break;
@@ -612,7 +594,7 @@ bool bot_test_prop_for_pickup(struct prop *prop, struct chrdata *chr)
 		shield = (struct shieldobj *)prop->obj;
 		ignore2 = false;
 
-		if (shield->amount <= chr_get_shield(chr) * 0.125f) {
+		if (shield->amount <= chrGetShield(chr) * 0.125f) {
 			ignore2 = true;
 		} else if (g_MpSetup.scenario == MPSCENARIO_HOLDTHEBRIEFCASE && chr->aibot->hasbriefcase) {
 			ignore2 = true;
@@ -648,20 +630,20 @@ bool bot_test_prop_for_pickup(struct prop *prop, struct chrdata *chr)
 		dprint();
 
 		if ((obj->flags2 & OBJFLAG2_PICKUPWITHOUTLOS) == 0
-				&& !cd_test_los_oobtail_autoflags(&chrprop->pos, chrprop->rooms, &prop->pos, prop->rooms, CDTYPE_DOORS | CDTYPE_BG)) {
+				&& !cdTestLos06(&chrprop->pos, chrprop->rooms, &prop->pos, prop->rooms, CDTYPE_DOORS | CDTYPE_BG)) {
 			sp3c = false;
 		}
 	}
 
 	if (sp3c) {
 		dprint();
-		return bot_pickup_prop(prop, chr);
+		return botPickupProp(prop, chr);
 	}
 
 	return false;
 }
 
-s32 bot_is_obj_collectable(struct defaultobj *obj)
+s32 botIsObjCollectable(struct defaultobj *obj)
 {
 	if (!obj) {
 		return false;
@@ -696,7 +678,7 @@ s32 bot_is_obj_collectable(struct defaultobj *obj)
 /**
  * Check nearby props to see if the chr is picking them up on this frame.
  */
-void bot_check_pickups(struct chrdata *chr)
+void botCheckPickups(struct chrdata *chr)
 {
 	s32 i;
 	s16 *propnumptr;
@@ -704,14 +686,14 @@ void bot_check_pickups(struct chrdata *chr)
 	RoomNum allrooms[22];
 	RoomNum neighbours[12];
 
-	rooms_copy(chr->prop->rooms, allrooms);
+	roomsCopy(chr->prop->rooms, allrooms);
 
 	for (i = 0; chr->prop->rooms[i] != -1; i++) {
-		bg_room_get_neighbours(chr->prop->rooms[i], neighbours, 10);
-		rooms_append(neighbours, allrooms, 20);
+		bgRoomGetNeighbours(chr->prop->rooms[i], neighbours, 10);
+		roomsAppend(neighbours, allrooms, 20);
 	}
 
-	room_get_props(allrooms, propnums, 256);
+	roomGetProps(allrooms, propnums, 256);
 	propnumptr = propnums;
 
 	while (*propnumptr >= 0) {
@@ -729,9 +711,9 @@ void bot_check_pickups(struct chrdata *chr)
 							|| obj->projectile == NULL
 							|| obj->projectile->pickuptimer240 <= 0
 							|| obj->projectile->bouncecount != 0) {
-						if (bot_is_obj_collectable(obj)) {
-							if (bot_test_prop_for_pickup(prop, chr)) {
-								prop_execute_tick_operation(prop, TICKOP_FREE);
+						if (botIsObjCollectable(obj)) {
+							if (botTestPropForPickup(prop, chr)) {
+								propExecuteTickOperation(prop, TICKOP_FREE);
 							} else {
 								dprint();
 							}
@@ -745,7 +727,7 @@ void bot_check_pickups(struct chrdata *chr)
 	}
 }
 
-s32 bot_guess_crouch_pos(struct chrdata *chr)
+s32 botGuessCrouchPos(struct chrdata *chr)
 {
 	s32 crouchpos;
 
@@ -760,7 +742,7 @@ s32 bot_guess_crouch_pos(struct chrdata *chr)
 	return crouchpos;
 }
 
-bool bot_apply_movement(struct chrdata *chr)
+bool botApplyMovement(struct chrdata *chr)
 {
 	struct aibot *aibot;
 	u32 stack;
@@ -775,128 +757,115 @@ bool bot_apply_movement(struct chrdata *chr)
 
 	aibot = chr->aibot;
 
-	angle = chr_get_theta(chr) - chr_get_rot_y(chr);
+	angle = chrGetInverseTheta(chr) - chrGetRotY(chr);
 
 	if (angle < 0) {
-		angle += BADDTOR(360);
+		angle += M_BADTAU;
 	}
 
 	speedforwards = aibot->speedmultforwards * cosf(angle) - sinf(angle) * aibot->speedmultsideways;
 	speedsideways = aibot->speedmultforwards * sinf(angle) + cosf(angle) * aibot->speedmultsideways;
 
-	player_choose_third_person_animation(chr, bot_guess_crouch_pos(chr), speedsideways, speedforwards, aibot->speedtheta, &aibot->angleoffset, &aibot->attackanimconfig);
+	playerChooseThirdPersonAnimation(chr, botGuessCrouchPos(chr), speedsideways, speedforwards, aibot->speedtheta, &aibot->angleoffset, &aibot->attackanimconfig);
 
-	angle2 = chr_get_theta(chr) - aibot->angleoffset;
+	angle2 = chrGetInverseTheta(chr) - aibot->angleoffset;
 
 	if (angle2 < 0) {
-		angle2 += BADDTOR(360);
+		angle2 += M_BADTAU;
 	}
 
-	if (angle2 >= BADDTOR(360)) {
-		angle2 -= BADDTOR(360);
+	if (angle2 >= M_BADTAU) {
+		angle2 -= M_BADTAU;
 	}
 
-	model_set_chr_rot_y(chr->model, angle2);
+	modelSetChrRotY(chr->model, angle2);
 
 	return true;
 }
 
-s32 bot_get_weapon_num(struct chrdata *chr)
+s32 botGetWeaponNum(struct chrdata *chr)
 {
 	if (chr->aibot) {
 		return chr->aibot->weaponnum;
 	}
 
-	return g_Vars.players[playermgr_get_player_num_by_prop(chr->prop)]->hands[HAND_RIGHT].gset.weaponnum;
+	return g_Vars.players[playermgrGetPlayerNumByProp(chr->prop)]->hands[HAND_RIGHT].gset.weaponnum;
 }
 
-u8 bot_get_targets_weapon_num(struct chrdata *chr)
+u8 botGetTargetsWeaponNum(struct chrdata *chr)
 {
-	struct prop *target = chr_get_target_prop(chr);
+	struct prop *target = chrGetTargetProp(chr);
 	u8 weaponnum = WEAPON_NONE;
 
 	if (target) {
-		weaponnum = bot_get_weapon_num(target->chr);
+		weaponnum = botGetWeaponNum(target->chr);
 	}
 
 	return weaponnum;
 }
 
-/**
- * Return true if the bot is in sight of their target, or is about to be.
- *
- * The function is used to make the bot start turning to zero their target.
- * It's also used to trigger cloak.
- */
-bool bot_is_about_to_attack(struct chrdata *chr, bool forcloak)
+bool botIsAboutToAttack(struct chrdata *chr, bool arg1)
 {
 	bool result = false;
+	struct prop *target;
+	u32 stack;
+	s32 mpindex;
 
 	if (chr->target != -1) {
-		struct prop *target;
-		s32 stack;
-		s32 mpindex;
-		target = chr_get_target_prop(chr);
-		mpindex = mp_chr_to_chrindex(target->chr);
+		target = chrGetTargetProp(chr);
+		mpindex = mpPlayerGetIndex(target->chr);
+		result = false;
 
 		if (chr->aibot->chrsinsight[mpindex]) {
 			result = true;
 		}
 
-		if (chr->aibot->config->difficulty >= BOTDIFF_EASY) {
-			// If seen within the last 4 seconds or in the same room
+		if (chr->aibot->config->difficulty > BOTDIFF_MEAT) {
 			if (chr->aibot->chrslastseen60[mpindex] >= g_Vars.lvframe60 - TICKS(240)
-					|| (array_intersects(chr->prop->rooms, target->rooms))) {
+					|| (arrayIntersects(chr->prop->rooms, target->rooms))) {
 				result = true;
 			}
 
 			if (chr->aibot->config->difficulty >= BOTDIFF_NORMAL) {
-				// If bot's room and target's room are neighbours
-				// or target is in their last seen room or a neighbour of it
-				if (bg_rooms_are_neighbours(chr->prop->rooms[0], target->rooms[0])
+				if (bgRoomsAreNeighbours(chr->prop->rooms[0], target->rooms[0])
 						|| chr->aibot->chrrooms[mpindex] == target->rooms[0]
-						|| bg_rooms_are_neighbours(chr->aibot->chrrooms[mpindex], target->rooms[0])) {
+						|| bgRoomsAreNeighbours(chr->aibot->chrrooms[mpindex], target->rooms[0])) {
 					result = true;
 				}
 
 				if (chr->aibot->config->difficulty == BOTDIFF_NORMAL) {
-					if (chr->aibot->numwaystepstotarget >= 1 && chr->aibot->numwaystepstotarget <= 3) {
+					if (chr->aibot->numwaystepstotarget > 0 && chr->aibot->numwaystepstotarget < 4) {
 						result = true;
 					}
 				} else {
-					// >= BOTDIFF_HARD
-					if (chr->aibot->numwaystepstotarget >= 1 && chr->aibot->numwaystepstotarget <= 4) {
+					// Higher than BOTDIFF_NORMAL
+					if (chr->aibot->numwaystepstotarget > 0 && chr->aibot->numwaystepstotarget < 5) {
 						result = true;
 					}
 				}
 			}
 		}
 
-		/**
-		 * Meat: Angle to player must be within 25 degrees.
-		 * Easy: Angle to player must be within 90 degrees.
-		 * Normal and higher: Angle to player doesn't matter.
-		 */
-		if (!forcloak
+		if (!arg1
 				&& (chr->aibot->config->difficulty == BOTDIFF_MEAT || chr->aibot->config->difficulty == BOTDIFF_EASY)
-				&& !chr_gopos_is_waiting(chr)) {
-			f32 roty = chr_get_rot_y(chr);
-			f32 angletotarget = atan2f(target->pos.x - chr->prop->pos.x, target->pos.z - chr->prop->pos.z) - roty;
+				&& !chrGoPosIsWaiting(chr)) {
+			f32 tmp = chrGetRotY(chr);
+			f32 angle = atan2f(target->pos.x - chr->prop->pos.x, target->pos.z - chr->prop->pos.z) - tmp;
 
-			if (angletotarget < 0) {
-				angletotarget += BADDTOR(360);
+			if (angle < 0) {
+				angle += M_BADTAU;
 			}
 
-			if (angletotarget > DTOR(180)) {
-				angletotarget = BADDTOR(360) - angletotarget;
+			if (angle > M_PI) {
+				angle = M_BADTAU - angle;
 			}
 
 			if (chr->aibot->config->difficulty == BOTDIFF_MEAT) {
-				if (angletotarget > BADDTOR(25)) {
+				if (angle > 0.43626284599304f) {
 					result = false;
 				}
-			} else if (chr->aibot->config->difficulty == BOTDIFF_EASY) {
-				if (angletotarget > BADDTOR2(90)) {
+			} else {
+				if (chr->aibot->config->difficulty == BOTDIFF_EASY && angle > 1.5705461502075f) {
 					result = false;
 				}
 			}
@@ -906,7 +875,7 @@ bool bot_is_about_to_attack(struct chrdata *chr, bool forcloak)
 	return result;
 }
 
-s32 bot_tick(struct prop *prop)
+s32 botTick(struct prop *prop)
 {
 	struct chrdata *chr = prop->chr;
 	struct aibot *aibot = chr->aibot;
@@ -923,13 +892,13 @@ s32 bot_tick(struct prop *prop)
 
 	if (aibot) {
 		if (updateable && g_Vars.lvframe60 >= 145) {
-			bot_tick_unpaused(chr);
+			botTickUnpaused(chr);
 
 			// Calculate cheap
 			aibot->cheap = true;
 
 			for (i = 0; prop->rooms[i] != -1; i++) {
-				if (bg_room_is_onscreen(prop->rooms[i]) || bg_room_is_standby(prop->rooms[i])) {
+				if (bgRoomIsOnscreen(prop->rooms[i]) || bgRoomIsStandby(prop->rooms[i])) {
 					aibot->cheap = false;
 					break;
 				}
@@ -950,58 +919,58 @@ s32 bot_tick(struct prop *prop)
 			}
 
 			// Calculate target angle
-			oldangle = chr_get_theta(chr);
+			oldangle = chrGetInverseTheta(chr);
 
-			if (chr_is_dead(chr)) {
-				targetangle = chr_get_theta(chr);
+			if (chrIsDead(chr)) {
+				targetangle = chrGetInverseTheta(chr);
 			} else if (aibot->skrocket) {
-				targetangle = chr_get_theta(chr);
-			} else if (bot_is_about_to_attack(chr, false)) {
-				struct prop *target = chr_get_target_prop(chr);
-				targetangle = chr_get_angle_to_pos(chr, &target->pos);
-				targetangle = oldangle + targetangle + aibot->zeroangle;
+				targetangle = chrGetInverseTheta(chr);
+			} else if (botIsAboutToAttack(chr, false)) {
+				struct prop *target = chrGetTargetProp(chr);
+				targetangle = chrGetAngleToPos(chr, &target->pos);
+				targetangle = oldangle + targetangle + aibot->extraangle;
 			} else if (chr->myaction == MA_AIBOTDOWNLOAD && g_ScenarioData.htm.dlterminalnum != -1) {
-				targetangle = chr_get_angle_to_pos(chr, &g_ScenarioData.htm.terminals[g_ScenarioData.htm.dlterminalnum].prop->pos);
+				targetangle = chrGetAngleToPos(chr, &g_ScenarioData.htm.terminals[g_ScenarioData.htm.dlterminalnum].prop->pos);
 				targetangle = oldangle + targetangle;
 			} else if (chr->myaction == MA_AIBOTFOLLOW
 					&& aibot->followingplayernum >= 0
 					&& aibot->chrdistances[aibot->followingplayernum] < 300
 					&& aibot->realignangleframe >= g_Vars.lvframe60 - TICKS(60)
 					&& aibot->config->difficulty != BOTDIFF_MEAT) {
-				targetangle = chr_get_theta(g_MpAllChrPtrs[aibot->followingplayernum]);
+				targetangle = chrGetInverseTheta(g_MpAllChrPtrs[aibot->followingplayernum]);
 			} else if (chr->myaction == MA_AIBOTDEFEND
 					&& aibot->realignangleframe >= g_Vars.lvframe60 - TICKS(60)
 					&& aibot->config->difficulty != BOTDIFF_MEAT) {
 				targetangle = aibot->defendholdrot;
 			} else {
-				targetangle = chr_get_rot_y(chr);
+				targetangle = chrGetRotY(chr);
 			}
 
-			while (targetangle >= BADDTOR(360)) {
-				targetangle -= BADDTOR(360);
+			while (targetangle >= M_BADTAU) {
+				targetangle -= M_BADTAU;
 			}
 
 			while (targetangle < 0) {
-				targetangle += BADDTOR(360);
+				targetangle += M_BADTAU;
 			}
 
-			if (chr->blurdrugamount > 0 && !chr_is_dead(chr) && aibot->skrocket == NULL) {
+			if (chr->blurdrugamount > 0 && !chrIsDead(chr) && aibot->skrocket == NULL) {
 				targetangle += chr->blurdrugamount * PALUPF(0.00031410926021636f) * sinf((g_Vars.lvframe60 % TICKS(120)) * PALUPF(0.052351541817188f));
 
-				if (targetangle >= BADDTOR(360)) {
-					targetangle -= BADDTOR(360);
+				if (targetangle >= M_BADTAU) {
+					targetangle -= M_BADTAU;
 				}
 
-				targetangle += BADDTOR(360);
+				targetangle += M_BADTAU;
 			}
 
 			tweenangle = g_Vars.lvupdate60freal * 0.061590049415827f;
 			diffangle = targetangle - oldangle;
 
-			if (diffangle < DTOR(-180)) {
-				diffangle += BADDTOR(360);
-			} else if (diffangle >= DTOR(180)) {
-				diffangle -= BADDTOR(360);
+			if (diffangle < -M_PI) {
+				diffangle += M_BADTAU;
+			} else if (diffangle >= M_PI) {
+				diffangle -= M_BADTAU;
 			}
 
 			if (diffangle >= 0) {
@@ -1010,8 +979,8 @@ s32 bot_tick(struct prop *prop)
 				} else {
 					newangle = oldangle + tweenangle;
 
-					if (newangle >= BADDTOR(360)) {
-						newangle -= BADDTOR(360);
+					if (newangle >= M_BADTAU) {
+						newangle -= M_BADTAU;
 					}
 				}
 			} else {
@@ -1021,7 +990,7 @@ s32 bot_tick(struct prop *prop)
 					newangle = oldangle - tweenangle;
 
 					if (newangle < 0) {
-						newangle += BADDTOR(360);
+						newangle += M_BADTAU;
 					}
 				}
 			}
@@ -1029,33 +998,33 @@ s32 bot_tick(struct prop *prop)
 			aibot->speedtheta = newangle - oldangle;
 
 			if (aibot->speedtheta < 0) {
-				aibot->speedtheta += BADDTOR(360);
+				aibot->speedtheta += M_BADTAU;
 			}
 
-			if (aibot->speedtheta >= DTOR(180)) {
-				aibot->speedtheta -= BADDTOR(360);
+			if (aibot->speedtheta >= M_PI) {
+				aibot->speedtheta -= M_BADTAU;
 			}
 
 			aibot->speedtheta /= g_Vars.lvupdate60freal;
 			aibot->speedtheta *= 16.236389160156f;
 
-			while (newangle >= BADDTOR(360)) {
-				newangle -= BADDTOR(360);
+			while (newangle >= M_BADTAU) {
+				newangle -= M_BADTAU;
 			}
 
 			while (newangle < 0) {
-				newangle += BADDTOR(360);
+				newangle += M_BADTAU;
 			}
 
-			chr_set_theta(chr, newangle);
+			chrSetLookAngle(chr, newangle);
 
 			if (chr->target != -1 && !aibot->ismeleeweapon) {
 				bool left = chr->weapons_held[HAND_LEFT] ? true : false;
 				bool right = (0, chr->weapons_held[HAND_RIGHT] ? true : false);
 
-				chr_calculate_aimend(chr, aibot->attackanimconfig, left, right, 0);
+				func0f03e9f4(chr, aibot->attackanimconfig, left, right, 0);
 			} else {
-				chr_reset_aimend(chr);
+				chrResetAimEndProperties(chr);
 			}
 
 			if (chr->actiontype == ACT_DIE || chr->actiontype == ACT_DEAD) {
@@ -1075,17 +1044,17 @@ s32 bot_tick(struct prop *prop)
 			}
 		}
 
-		bot_apply_movement(chr);
+		botApplyMovement(chr);
 
-		result = chr_tick(prop);
+		result = chrTick(prop);
 
 		if (g_Vars.lvframe60 >= 145) {
 			if (updateable) {
-				scenario_tick_chr(chr);
+				scenarioTickChr(chr);
 			}
 
-			if (updateable && !chr_is_dead(chr)) {
-				bot_check_pickups(chr);
+			if (updateable && !chrIsDead(chr)) {
+				botCheckPickups(chr);
 			}
 		}
 	}
@@ -1093,7 +1062,7 @@ s32 bot_tick(struct prop *prop)
 	return result;
 }
 
-f32 bot_calculate_max_speed(struct chrdata *chr)
+f32 botCalculateMaxSpeed(struct chrdata *chr)
 {
 	f32 speed;
 
@@ -1133,13 +1102,13 @@ f32 bot_calculate_max_speed(struct chrdata *chr)
 		}
 	}
 
-	if (bot_guess_crouch_pos(chr) == CROUCHPOS_SQUAT) {
+	if (botGuessCrouchPos(chr) == CROUCHPOS_SQUAT) {
 		speed *= 0.35f;
-	} else if (bot_guess_crouch_pos(chr) == CROUCHPOS_DUCK) {
+	} else if (botGuessCrouchPos(chr) == CROUCHPOS_DUCK) {
 		speed *= 0.5f;
 	} else if (chr->actiontype == ACT_GOPOS
 			&& chr->act_gopos.waypoints[chr->act_gopos.curindex] == NULL
-			&& chr_get_lateral_distance_to_coord(chr, &chr->act_gopos.endpos) < 200) {
+			&& chrGetLateralDistanceToCoord(chr, &chr->act_gopos.endpos) < 200) {
 		speed *= 0.5f;
 	}
 
@@ -1147,9 +1116,9 @@ f32 bot_calculate_max_speed(struct chrdata *chr)
 }
 
 #if VERSION >= VERSION_NTSC_1_0
-void bot_update_lateral(struct chrdata *chr, f32 *move, s32 numupdates, f32 arg3)
+void bot0f1921f8(struct chrdata *chr, f32 *move, s32 numupdates, f32 arg3)
 #else
-void bot_update_lateral(struct chrdata *chr, f32 *move)
+void bot0f1921f8(struct chrdata *chr, f32 *move)
 #endif
 {
 	s32 i;
@@ -1176,12 +1145,12 @@ void bot_update_lateral(struct chrdata *chr, f32 *move)
 	speedsideways = chr->aibot->speedmultsideways;
 	speedforwards = chr->aibot->speedmultforwards;
 
-	speed = bot_calculate_max_speed(chr);
+	speed = botCalculateMaxSpeed(chr);
 
 	speedsideways *= speed;
 	speedforwards *= speed;
 
-	sp50 = chr_get_rot_y(chr);
+	sp50 = chrGetRotY(chr);
 
 	cosine = cosf(sp50);
 	sine = sinf(sp50);
@@ -1215,7 +1184,7 @@ void bot_update_lateral(struct chrdata *chr, f32 *move)
 #endif
 }
 
-char *bot_get_command_name(s32 command)
+char *botGetCommandName(s32 command)
 {
 	static u32 names[] = {
 		L_MISC_175, // "Follow"
@@ -1235,62 +1204,62 @@ char *bot_get_command_name(s32 command)
 	};
 
 	if (command < 0 || command >= ARRAYCOUNT(names)) {
-		return lang_get(L_MISC_179); // "Normal"
+		return langGet(L_MISC_179); // "Normal"
 	}
 
-	return lang_get(names[command]);
+	return langGet(names[command]);
 }
 
-void bot_apply_attack(struct chrdata *chr, struct prop *prop)
+void botApplyAttack(struct chrdata *chr, struct prop *prop)
 {
 	chr->aibot->command = AIBOTCMD_ATTACK;
 	chr->aibot->attackpropnum = prop - g_Vars.props;
 	chr->aibot->forcemainloop = true;
 }
 
-void bot_apply_follow(struct chrdata *chr, struct prop *prop)
+void botApplyFollow(struct chrdata *chr, struct prop *prop)
 {
 	chr->aibot->command = AIBOTCMD_FOLLOW;
 	chr->aibot->followprotectpropnum = prop - g_Vars.props;
 	chr->aibot->forcemainloop = true;
 }
 
-void bot_apply_protect(struct chrdata *chr, struct prop *prop)
+void botApplyProtect(struct chrdata *chr, struct prop *prop)
 {
 	chr->aibot->command = AIBOTCMD_PROTECT;
 	chr->aibot->followprotectpropnum = prop - g_Vars.props;
 	chr->aibot->forcemainloop = true;
 }
 
-void bot_apply_defend(struct chrdata *chr, struct coord *pos, RoomNum *room, f32 angle)
+void botApplyDefend(struct chrdata *chr, struct coord *pos, RoomNum *room, f32 angle)
 {
 	chr->aibot->command = AIBOTCMD_DEFEND;
 	chr->aibot->defendholdpos.x = pos->x;
 	chr->aibot->defendholdpos.y = pos->y;
 	chr->aibot->defendholdpos.z = pos->z;
-	rooms_copy(room, chr->aibot->defendholdrooms);
+	roomsCopy(room, chr->aibot->defendholdrooms);
 	chr->aibot->defendholdrot = angle;
 	chr->aibot->forcemainloop = true;
 }
 
-void bot_apply_hold(struct chrdata *chr, struct coord *pos, RoomNum *room, f32 angle)
+void botApplyHold(struct chrdata *chr, struct coord *pos, RoomNum *room, f32 angle)
 {
 	chr->aibot->command = AIBOTCMD_HOLD;
 	chr->aibot->defendholdpos.x = pos->x;
 	chr->aibot->defendholdpos.y = pos->y;
 	chr->aibot->defendholdpos.z = pos->z;
-	rooms_copy(room, chr->aibot->defendholdrooms);
+	roomsCopy(room, chr->aibot->defendholdrooms);
 	chr->aibot->defendholdrot = angle;
 	chr->aibot->forcemainloop = true;
 }
 
-void bot_apply_scenario_command(struct chrdata *chr, u32 command)
+void botApplyScenarioCommand(struct chrdata *chr, u32 command)
 {
 	chr->aibot->command = command;
 	chr->aibot->forcemainloop = true;
 }
 
-void bot_disarm(struct chrdata *chr, struct prop *attackerprop)
+void botDisarm(struct chrdata *chr, struct prop *attackerprop)
 {
 	if (chr->aibot->weaponnum >= WEAPON_FALCON2 && chr->aibot->weaponnum != WEAPON_BRIEFCASE2) {
 		struct prop *prop = NULL;
@@ -1305,19 +1274,19 @@ void bot_disarm(struct chrdata *chr, struct prop *attackerprop)
 
 		if (chr->weapons_held[HAND_RIGHT]) {
 			prop = chr->weapons_held[HAND_RIGHT];
-			weapon_set_gunfire_visible(prop, false, -1);
+			weaponSetGunfireVisible(prop, false, -1);
 			chr->weapons_held[HAND_RIGHT] = NULL;
 		} else {
-			s32 modelnum = playermgr_get_model_of_weapon(chr->aibot->weaponnum);
+			s32 modelnum = playermgrGetModelOfWeapon(chr->aibot->weaponnum);
 
 			if (modelnum >= 0) {
-				prop = weapon_create_for_chr(chr, modelnum, chr->aibot->weaponnum, OBJFLAG_WEAPON_AICANNOTUSE, NULL, NULL);
+				prop = weaponCreateForChr(chr, modelnum, chr->aibot->weaponnum, OBJFLAG_WEAPON_AICANNOTUSE, NULL, NULL);
 			}
 		}
 
 		if (prop && prop->obj) {
 			obj = prop->obj;
-			obj_set_dropped(prop, DROPTYPE_DEFAULT);
+			objSetDropped(prop, DROPTYPE_DEFAULT);
 			chr->hidden |= CHRHFLAG_DROPPINGITEM;
 
 			if (obj->hidden & OBJHFLAG_PROJECTILE) {
@@ -1326,12 +1295,12 @@ void bot_disarm(struct chrdata *chr, struct prop *attackerprop)
 			}
 		}
 
-		botinv_remove_item(chr, chr->aibot->weaponnum);
+		botinvRemoveItem(chr, chr->aibot->weaponnum);
 
 		chr->aibot->loadedammo[0] = 0;
 		chr->aibot->loadedammo[1] = 0;
 
-		botinv_switch_to_weapon(chr, WEAPON_UNARMED, FUNC_PRIMARY);
+		botinvSwitchToWeapon(chr, WEAPON_UNARMED, FUNC_PRIMARY);
 	}
 }
 
@@ -1341,7 +1310,7 @@ void bot_disarm(struct chrdata *chr, struct prop *attackerprop)
  * This should be called on each tick even if the target hasn't changed
  * because the tracking figures need to be constantly updated.
  */
-void bot_set_target(struct chrdata *botchr, s32 propnum)
+void botSetTarget(struct chrdata *botchr, s32 propnum)
 {
 	struct chrdata *otherchr = NULL;
 	s32 index;
@@ -1349,7 +1318,7 @@ void bot_set_target(struct chrdata *botchr, s32 propnum)
 	if (propnum >= 0) {
 		otherchr = (g_Vars.props + propnum)->chr;
 
-		index = mp_chr_to_chrindex(otherchr);
+		index = mpPlayerGetIndex(otherchr);
 
 		botchr->aibot->targetinsight = botchr->aibot->chrsinsight[index];
 		botchr->aibot->targetlastseen60 = botchr->aibot->chrslastseen60[index];
@@ -1402,7 +1371,7 @@ void bot_set_target(struct chrdata *botchr, s32 propnum)
 	}
 }
 
-bool bot_is_target_invisible(struct chrdata *botchr, struct chrdata *otherchr)
+bool botIsTargetInvisible(struct chrdata *botchr, struct chrdata *otherchr)
 {
 	if (otherchr->prop->type == PROPTYPE_PLAYER && !g_Vars.bondvisible) {
 		return true;
@@ -1414,8 +1383,8 @@ bool bot_is_target_invisible(struct chrdata *botchr, struct chrdata *otherchr)
 
 	if ((otherchr->hidden & CHRHFLAG_CLOAKED)) {
 		if (botchr && botchr->aibot
-				&& ((botchr->target != -1 && chr_get_target_prop(botchr) == otherchr->prop && botchr->aibot->targetcloaktimer60 > 0)
-				|| (botchr->aibot->canseecloaked && chr_is_looking_at_pos(botchr, &otherchr->prop->pos, 32)))) {
+				&& ((botchr->target != -1 && chrGetTargetProp(botchr) == otherchr->prop && botchr->aibot->targetcloaktimer60 > 0)
+				|| (botchr->aibot->canseecloaked && chrIsLookingAtPos(botchr, &otherchr->prop->pos, 32)))) {
 			return false;
 		}
 
@@ -1431,116 +1400,99 @@ bool bot_is_target_invisible(struct chrdata *botchr, struct chrdata *otherchr)
  * The death barrier is at -30000.
  * It's assumed that no walkable ground exists below -20000.
  */
-bool bot_has_ground(struct chrdata *chr)
+bool botHasGround(struct chrdata *chr)
 {
 	return chr->ground >= -20000;
 }
 
-/**
- * The zero angle is the additional angle that's needed for the bot to zero in
- * on its target from its natural facing angle.
- */
-void bot_update_zero_angle(struct chrdata *chr)
+void bot0f192a74(struct chrdata *chr)
 {
 	struct aibot *aibot = chr->aibot;
 	s32 diff = aibot->config->difficulty;
 	s32 i;
-	f32 minspeed;
-	f32 maxspeed;
+	f32 fVar12;
+	f32 fVar11;
 	f32 tmp;
-	f32 frac;
 
-	// Consider recalculating random values
 	aibot->random3ttl60 -= g_Vars.lvupdate60;
 
 	if (aibot->random3ttl60 <= 0) {
-		aibot->random3 = random();
-		aibot->random3ttl60 = TICKS(20) + random() % TICKS(20);
+		aibot->random3 = rngRandom();
+		aibot->random3ttl60 = TICKS(20) + rngRandom() % TICKS(20);
 	}
 
-	// Increase or decrease curzerotimer60 depending on whether the target is in sight or not
 	if (g_Vars.lvupdate240 > 0) {
 		if (aibot->targetinsight) {
-			aibot->curzerotimer60 += g_Vars.diffframe60;
+			aibot->targetinsighttemperature += g_Vars.diffframe60;
 		} else {
-			aibot->curzerotimer60 -= g_Vars.diffframe60;
+			aibot->targetinsighttemperature -= g_Vars.diffframe60;
 		}
 
-		// If the bot is naturally turning, decrease the zero timer
-		tmp = g_BotDifficulties[diff].turnunzeromult * (aibot->speedtheta * g_Vars.lvupdate60f);
+		tmp = g_BotDifficulties[diff].unk10 * (aibot->speedtheta * g_Vars.lvupdate60f);
 
 		if (tmp < 0) {
 			tmp = -tmp;
 		}
 
-		aibot->curzerotimer60 -= tmp;
+		aibot->targetinsighttemperature -= tmp;
 	}
 
-	// Don't allow the bot to zero faster than its shoot delay timer.
-	// ie. The bot should not zero its target then have to wait before it can shoot.
-	if (aibot->curzerotimer60 > aibot->shootdelaytimer60) {
-		aibot->curzerotimer60 = aibot->shootdelaytimer60;
+	if (aibot->targetinsighttemperature > aibot->shootdelaytimer60) {
+		aibot->targetinsighttemperature = aibot->shootdelaytimer60;
 	}
 
-	if (aibot->curzerotimer60 < 0) {
-		aibot->curzerotimer60 = 0;
+	if (aibot->targetinsighttemperature < 0) {
+		aibot->targetinsighttemperature = 0;
 	}
 
-	// Figure out the turn speed that will be used.
-	// The actual speed will be somewhere between minspeed and maxspeed using randomness.
-	if (aibot->curzerotimer60 >= g_BotDifficulties[diff].zerotime60) {
-		aibot->curzerotimer60 = g_BotDifficulties[diff].zerotime60;
-		minspeed = 0;
-		maxspeed = 0;
+	if (aibot->targetinsighttemperature >= g_BotDifficulties[diff].unk0c) {
+		aibot->targetinsighttemperature = g_BotDifficulties[diff].unk0c;
+		fVar12 = 0;
+		fVar11 = 0;
 	} else {
-		frac = (g_BotDifficulties[diff].zerotime60 - aibot->curzerotimer60) / g_BotDifficulties[diff].zerotime60;
-		minspeed = g_BotDifficulties[diff].minzerospeed * frac;
-		maxspeed = g_BotDifficulties[diff].maxzerospeed * frac;
+		tmp = (g_BotDifficulties[diff].unk0c - aibot->targetinsighttemperature) / g_BotDifficulties[diff].unk0c;
+		fVar12 = g_BotDifficulties[diff].unk04 * tmp;
+		fVar11 = g_BotDifficulties[diff].unk08 * tmp;
 	}
 
-	// If the bot's target is cloaked, make sure the max speed is at least a
-	// certain value. So the bot can zero faster when their target is cloaked?
-	// Rare might have intended for this to apply to zeroinc instead.
 	if (chr->target != -1) {
-		if (chr_get_target_prop(chr)->chr->hidden & CHRHFLAG_CLOAKED) {
-			if (maxspeed < g_BotDifficulties[diff].zerocloakspeed) {
-				maxspeed = g_BotDifficulties[diff].zerocloakspeed;
+		struct prop *target = chrGetTargetProp(chr);
+
+		if (target->chr->hidden & CHRHFLAG_CLOAKED) {
+			if (fVar11 < g_BotDifficulties[diff].unk14) {
+				fVar11 = g_BotDifficulties[diff].unk14;
 			}
 		}
 	}
 
-	// Force a minimum max speed (applies if the bot is just starting to zero).
-	// As above, Rare might have intended for this to apply to zeroinc instead.
-	if (maxspeed < g_BotDifficulties[diff].forcezerominspeed) {
-		maxspeed = g_BotDifficulties[diff].forcezerominspeed;
+	if (fVar11 < g_BotDifficulties[diff].unk18) {
+		fVar11 = g_BotDifficulties[diff].unk18;
 	}
 
-	// Calculate the actual speed increment to use
-	aibot->zeroinc = (maxspeed - minspeed) * (aibot->random3 % 0x10000) * (1.0f / 65535.0f) + minspeed;
+	aibot->extraanglebase = (fVar11 - fVar12) * (aibot->random3 & 0xffff) * 0.000015259021893144f + fVar12;
 
-	// Negating this seems like a weird choice... unsure what effect this has
 	if (aibot->random3 & 0x10000) {
-		aibot->zeroinc = -aibot->zeroinc;
+		aibot->extraanglebase = -aibot->extraanglebase;
 	}
 
 	for (i = 0; i < g_Vars.lvupdate240; i++) {
-		aibot->zerospeed = aibot->zerospeed * (PAL ? 0.97f : 0.97500002384186f) + aibot->zeroinc;
+		aibot->extraanglerate = aibot->extraanglerate * (PAL ? 0.97f : 0.97500002384186f) + aibot->extraanglebase;
 	}
 
-	aibot->zeroangle = aibot->zerospeed * (PAL ? 0.029999971389771f : 0.024999976158142f);
+	aibot->extraangle = aibot->extraanglerate * (PAL ? 0.029999971389771f : 0.024999976158142f);
 }
 
 /**
  * Return true if the bot is a peacesim and is happy to fight the given chr,
  * or if the bot is not a peacesim.
  */
-bool bot_passes_peace_check(struct chrdata *botchr, struct chrdata *otherchr)
+bool botPassesPeaceCheck(struct chrdata *botchr, struct chrdata *otherchr)
 {
 	struct aibot *aibot = botchr->aibot;
 	bool pass = true;
 
 	if (aibot->config->type == BOTTYPE_PEACE) {
-		s32 otherweaponnum = bot_get_weapon_num(otherchr);
+		s32 otherweaponnum = botGetWeaponNum(otherchr);
 
 		if (otherweaponnum == WEAPON_NONE || otherweaponnum == WEAPON_UNARMED) {
 			pass = false;
@@ -1554,7 +1506,7 @@ bool bot_passes_peace_check(struct chrdata *botchr, struct chrdata *otherchr)
  * Return true if the bot is a cowardsim and is happy to fight the given chr,
  * or if the bot is not a cowardsim.
  */
-bool bot_passes_coward_check(struct chrdata *botchr, struct chrdata *otherchr)
+bool botPassesCowardCheck(struct chrdata *botchr, struct chrdata *otherchr)
 {
 	struct aibot *aibot = botchr->aibot;
 	bool pass = true;
@@ -1565,10 +1517,10 @@ bool bot_passes_coward_check(struct chrdata *botchr, struct chrdata *otherchr)
 	s32 theirscore2;
 
 	if (aibot->config->type == BOTTYPE_COWARD) {
-		otherweaponnum = bot_get_weapon_num(otherchr);
+		otherweaponnum = botGetWeaponNum(otherchr);
 
-		botinv_score_weapon(botchr, aibot->weaponnum, FUNC_PRIMARY, 1, false, &myscore1, &myscore2, false, false);
-		botinv_score_weapon(botchr, otherweaponnum, FUNC_PRIMARY, 1, false, &theirscore1, &theirscore2, false, false);
+		botinvScoreWeapon(botchr, aibot->weaponnum, FUNC_PRIMARY, 1, false, &myscore1, &myscore2, false, false);
+		botinvScoreWeapon(botchr, otherweaponnum, FUNC_PRIMARY, 1, false, &theirscore1, &theirscore2, false, false);
 
 		if (theirscore1 >= myscore1 - 30) {
 			pass = false;
@@ -1586,7 +1538,7 @@ bool bot_passes_coward_check(struct chrdata *botchr, struct chrdata *otherchr)
  * The function does not compare weapons with the target, nor ammo counts,
  * and does not factor in the bot types (eg. VengeSim).
  */
-void bot_choose_general_target(struct chrdata *botchr)
+void botChooseGeneralTarget(struct chrdata *botchr)
 {
 	struct aibot *aibot = botchr->aibot;
 	s32 i;
@@ -1600,19 +1552,19 @@ void bot_choose_general_target(struct chrdata *botchr)
 	// and update stats about that chr
 	aibot->queryplayernum = (aibot->queryplayernum + 1) % g_MpNumChrs;
 
-	trychr = mp_chrindex_to_chr(aibot->queryplayernum);
+	trychr = mpGetChrFromPlayerIndex(aibot->queryplayernum);
 
 	if (trychr != botchr) {
 		// This condition passes on average once every 4 minutes per player.
 		// However, the usage of canseecloaked appears to be botched.
-		// It is implemented in bot_is_target_invisible, but that function is not
+		// It is implemented in botIsTargetInvisible, but that function is not
 		// called here while canseecloaked is true.
-		if (random() % TICKS(4 * 60 * 60) < g_MpNumChrs * g_Vars.lvupdate60) {
+		if (rngRandom() % TICKS(4 * 60 * 60) < g_MpNumChrs * g_Vars.lvupdate60) {
 			aibot->canseecloaked = true;
 		}
 
-		aibot->chrdistances[aibot->queryplayernum] = chr_get_distance_to_coord(botchr, &trychr->prop->pos);
-		aibot->chrsinsight[aibot->queryplayernum] = chr_has_los_to_chr(botchr, trychr, &room);
+		aibot->chrdistances[aibot->queryplayernum] = chrGetDistanceToCoord(botchr, &trychr->prop->pos);
+		aibot->chrsinsight[aibot->queryplayernum] = chrHasLosToChr(botchr, trychr, &room);
 		aibot->chrrooms[aibot->queryplayernum] = room;
 
 		aibot->canseecloaked = false;
@@ -1647,11 +1599,11 @@ void bot_choose_general_target(struct chrdata *botchr)
 		}
 	}
 
-	bot_update_zero_angle(botchr);
+	bot0f192a74(botchr);
 
 	// If the bot is data uplinking, clear the target
 	if (botchr->myaction == MA_AIBOTDOWNLOAD) {
-		bot_set_target(botchr, -1);
+		botSetTarget(botchr, -1);
 		return;
 	}
 
@@ -1659,32 +1611,32 @@ void bot_choose_general_target(struct chrdata *botchr)
 	if (botchr->myaction == MA_AIBOTATTACK
 			&& aibot->attackingplayernum >= 0
 			&& aibot->chrsinsight[aibot->attackingplayernum]
-			&& !chr_is_dead(g_MpAllChrPtrs[aibot->attackingplayernum])) {
-		bot_set_target(botchr, g_MpAllChrPtrs[aibot->attackingplayernum]->prop - g_Vars.props);
+			&& !chrIsDead(g_MpAllChrPtrs[aibot->attackingplayernum])) {
+		botSetTarget(botchr, g_MpAllChrPtrs[aibot->attackingplayernum]->prop - g_Vars.props);
 		return;
 	}
 
 	// Check if existing target needs to be invalidated
 	if (botchr->target != -1) {
-		struct prop *targetprop = chr_get_target_prop(botchr);
+		struct prop *targetprop = chrGetTargetProp(botchr);
 
-		if (chr_is_dead(targetprop->chr)) {
+		if (chrIsDead(targetprop->chr)) {
 			botchr->target = -1;
 		}
 
-		if (!botchr->aibot->targetinsight && bot_is_target_invisible(botchr, targetprop->chr)) {
+		if (!botchr->aibot->targetinsight && botIsTargetInvisible(botchr, targetprop->chr)) {
 			botchr->target = -1;
 		}
 
-		if (chr_compare_teams(botchr, targetprop->chr, COMPARE_FRIENDS)) {
+		if (chrCompareTeams(botchr, targetprop->chr, COMPARE_FRIENDS)) {
 			botchr->target = -1;
 		}
 
-		if (!bot_passes_peace_check(botchr, targetprop->chr)) {
+		if (!botPassesPeaceCheck(botchr, targetprop->chr)) {
 			botchr->target = -1;
 		}
 
-		if (!botchr->aibot->targetinsight && !bot_passes_coward_check(botchr, targetprop->chr)) {
+		if (!botchr->aibot->targetinsight && !botPassesCowardCheck(botchr, targetprop->chr)) {
 			botchr->target = -1;
 		}
 	}
@@ -1697,30 +1649,30 @@ void bot_choose_general_target(struct chrdata *botchr)
 
 		for (tmp = 0; tmp < g_MpNumChrs; tmp++) {
 			s32 i = aibot->chrnumsbydistanceasc[tmp];
-			trychr = mp_chrindex_to_chr(i);
+			trychr = mpGetChrFromPlayerIndex(i);
 
 			if (trychr != botchr
-					&& !chr_is_dead(trychr)
-					&& chr_compare_teams(botchr, trychr, COMPARE_ENEMIES)
-					&& bot_passes_peace_check(botchr, trychr)) {
+					&& !chrIsDead(trychr)
+					&& chrCompareTeams(botchr, trychr, COMPARE_ENEMIES)
+					&& botPassesPeaceCheck(botchr, trychr)) {
 				// If the chr is in sight, that's it
 				if (aibot->chrsinsight[i]) {
-					bot_set_target(botchr, trychr->prop - g_Vars.props);
+					botSetTarget(botchr, trychr->prop - g_Vars.props);
 					return;
 				}
 
 				// Meat and easy sims will target the closest chr, even if that
 				// chr isn't in sight and when there are other chrs in sight who
 				// are further away
-				if (!bot_is_target_invisible(botchr, trychr)
+				if (!botIsTargetInvisible(botchr, trychr)
 						&& (aibot->config->difficulty == BOTDIFF_MEAT || aibot->config->difficulty == BOTDIFF_EASY)) {
-					bot_set_target(botchr, trychr->prop - g_Vars.props);
+					botSetTarget(botchr, trychr->prop - g_Vars.props);
 					return;
 				}
 
 				// Other sim types will prioritise chrs in sight, which means
 				// the closest out of sight chrnum must be stored for later
-				if (!bot_is_target_invisible(botchr, trychr) && closestavailablechrnum < 0) {
+				if (!botIsTargetInvisible(botchr, trychr) && closestavailablechrnum < 0) {
 					closestavailablechrnum = i;
 				}
 			}
@@ -1728,22 +1680,22 @@ void bot_choose_general_target(struct chrdata *botchr)
 
 		// Use closest out of sight chr
 		if (closestavailablechrnum >= 0) {
-			trychr = mp_chrindex_to_chr(closestavailablechrnum);
-			bot_set_target(botchr, trychr->prop - g_Vars.props);
+			trychr = mpGetChrFromPlayerIndex(closestavailablechrnum);
+			botSetTarget(botchr, trychr->prop - g_Vars.props);
 			return;
 		}
 
 		// No one available - maybe everyone else is dead or cloaked
-		bot_set_target(botchr, -1);
+		botSetTarget(botchr, -1);
 		return;
 	}
 
 	// Bot has an existing target
 	// If they're still in sight, keep the target
-	playernum = mp_chr_to_chrindex((g_Vars.props + botchr->target)->chr);
+	playernum = mpPlayerGetIndex((g_Vars.props + botchr->target)->chr);
 
 	if (aibot->chrsinsight[playernum]) {
-		bot_set_target(botchr, botchr->target);
+		botSetTarget(botchr, botchr->target);
 		return;
 	}
 
@@ -1751,20 +1703,20 @@ void bot_choose_general_target(struct chrdata *botchr)
 	// Check for other chrs who are in sight, by distance
 	for (i = 0; i < g_MpNumChrs; i++) {
 		if (aibot->chrsinsight[aibot->chrnumsbydistanceasc[i]]) {
-			trychr = mp_chrindex_to_chr(aibot->chrnumsbydistanceasc[i]);
+			trychr = mpGetChrFromPlayerIndex(aibot->chrnumsbydistanceasc[i]);
 
 			if (trychr != botchr
-					&& !chr_is_dead(trychr)
-					&& chr_compare_teams(botchr, trychr, COMPARE_ENEMIES)
-					&& bot_passes_peace_check(botchr, trychr)) {
-				bot_set_target(botchr, trychr->prop - g_Vars.props);
+					&& !chrIsDead(trychr)
+					&& chrCompareTeams(botchr, trychr, COMPARE_ENEMIES)
+					&& botPassesPeaceCheck(botchr, trychr)) {
+				botSetTarget(botchr, trychr->prop - g_Vars.props);
 				return;
 			}
 		}
 	}
 
 	// No one else in sight - maintain original target
-	bot_set_target(botchr, botchr->target);
+	botSetTarget(botchr, botchr->target);
 }
 
 /**
@@ -1772,7 +1724,7 @@ void bot_choose_general_target(struct chrdata *botchr)
  *
  * They are not capable if it would create a circular follow loop.
  */
-bool bot_can_follow(struct chrdata *botchr, struct chrdata *leader)
+bool botCanFollow(struct chrdata *botchr, struct chrdata *leader)
 {
 	bool canfollow = true;
 
@@ -1796,22 +1748,22 @@ bool bot_can_follow(struct chrdata *botchr, struct chrdata *leader)
 	return canfollow;
 }
 
-s32 bot_find_teammate_to_follow(struct chrdata *chr, f32 range)
+s32 botFindTeammateToFollow(struct chrdata *chr, f32 range)
 {
 	s32 result = -1;
 
 	if ((g_MpSetup.options & MPOPTION_TEAMSENABLED)
 			&& chr->myaction != MA_AIBOTFOLLOW
-			&& (random() % 100) < chr->aibot->followchance) {
+			&& (rngRandom() % 100) < chr->aibot->followchance) {
 		f32 closestdistance = 0;
 		s32 closestplayernum = -1;
 		s32 i;
 
 		for (i = 0; i < g_MpNumChrs; i++) {
 			if (chr != g_MpAllChrPtrs[i]
-					&& !chr_is_dead(g_MpAllChrPtrs[i])
+					&& !chrIsDead(g_MpAllChrPtrs[i])
 					&& chr->team == g_MpAllChrPtrs[i]->team
-					&& bot_can_follow(chr, g_MpAllChrPtrs[i])) {
+					&& botCanFollow(chr, g_MpAllChrPtrs[i])) {
 				f32 distance = chr->aibot->chrdistances[i];
 
 				if (closestplayernum < 0 || distance < closestdistance) {
@@ -1829,20 +1781,20 @@ s32 bot_find_teammate_to_follow(struct chrdata *chr, f32 range)
 	return result;
 }
 
-void bot_schedule_reload(struct chrdata *chr, s32 handnum)
+void botScheduleReload(struct chrdata *chr, s32 handnum)
 {
-	chr->aibot->timeuntilreload60[handnum] = g_BotWeaponConfigs[chr->aibot->weaponnum].reloaddelay * (PAL ? 50 : 60);
+	chr->aibot->timeuntilreload60[handnum] = g_AibotWeaponPreferences[chr->aibot->weaponnum].reloaddelay * (PAL ? 50 : 60);
 
-	if (g_BotWeaponConfigs[chr->aibot->weaponnum].allowpartialreloaddelay) {
-		s32 capacity = botact_get_clip_capacity_by_function(chr->aibot->weaponnum, chr->aibot->gunfunc);
+	if (g_AibotWeaponPreferences[chr->aibot->weaponnum].allowpartialreloaddelay) {
+		s32 capacity = botactGetClipCapacityByFunction(chr->aibot->weaponnum, chr->aibot->gunfunc);
 
 		chr->aibot->timeuntilreload60[handnum] *= capacity - chr->aibot->loadedammo[handnum];
 		chr->aibot->timeuntilreload60[handnum] /= capacity;
 	}
 }
 
-#define HASENOUGHPRI(aibot, weaponnum, goal) (g_BotWeaponConfigs[weaponnum].haspriammogoal && botact_get_ammo_quantity_by_weapon(aibot, weaponnum, FUNC_PRIMARY, true) >= (goal))
-#define HASENOUGHSEC(aibot, weaponnum, goal) (g_BotWeaponConfigs[weaponnum].hassecammogoal && botact_get_ammo_quantity_by_weapon(aibot, weaponnum, FUNC_SECONDARY, true) >= (goal))
+#define HASENOUGHPRI(aibot, weaponnum, goal) (g_AibotWeaponPreferences[weaponnum].haspriammogoal && botactGetAmmoQuantityByWeapon(aibot, weaponnum, FUNC_PRIMARY, true) >= (goal))
+#define HASENOUGHSEC(aibot, weaponnum, goal) (g_AibotWeaponPreferences[weaponnum].hassecammogoal && botactGetAmmoQuantityByWeapon(aibot, weaponnum, FUNC_SECONDARY, true) >= (goal))
 
 /**
  * Find a prop for the bot to pick up.
@@ -1862,7 +1814,7 @@ void bot_schedule_reload(struct chrdata *chr, s32 handnum)
  *     Find pretty much any prop. This is used when the bot has nothing else to
  *     do (eg. if all opponents are cloaked) and may as well stock up on ammo.
  */
-struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
+struct prop *botFindPickup(struct chrdata *chr, s32 criteria)
 {
 	struct aibot *aibot = chr->aibot;
 	s32 weaponnums[NUM_MPWEAPONSLOTS];
@@ -1900,17 +1852,17 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 	if (aibot->teamisonlyai
 			&& g_MpSetup.scenario == MPSCENARIO_KINGOFTHEHILL
 			&& chr->prop->rooms[0] == g_ScenarioData.koh.hillrooms[0]) {
-		numteam = bot_get_num_teammates_defending_hill(chr);
-		numopponents = bot_get_num_opponents_in_hill(chr);
+		numteam = botGetNumTeammatesDefendingHill(chr);
+		numopponents = botGetNumOpponentsInHill(chr);
 
 		if (numteam >= numopponents && numteam <= numopponents + 2) {
 			barelydominatinghill = true;
 		}
 	}
 
-	// botinv_score_all_weapons populates weaponnums, scores1 and scores2
+	// botinvScoreAllWeapons populates weaponnums, scores1 and scores2
 	// and sorts them by score1 descending
-	botinv_score_all_weapons(chr, weaponnums, scores1, scores2);
+	botinvScoreAllWeapons(chr, weaponnums, scores1, scores2);
 
 	for (i = 0; i < ARRAYCOUNT(weapproplist); i++) {
 		weapproplist[i] = NULL;
@@ -1921,7 +1873,7 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 	}
 
 	for (i = 0; i < ARRAYCOUNT(weaponnums); i++) {
-		invitems[i] = botinv_get_item(chr, weaponnums[i]);
+		invitems[i] = botinvGetItem(chr, weaponnums[i]);
 	}
 
 	// Iterate all active props and populate the proplist and distlist arrays.
@@ -1936,12 +1888,12 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 				weapon = prop->weapon;
 
 				if ((weapon->base.flags3 & OBJFLAG3_ISFETCHTARGET) == 0) {
-					sqdist1 = chr_get_squared_distance_to_coord(chr, &prop->pos);
+					sqdist1 = chrGetSquaredDistanceToCoord(chr, &prop->pos);
 
 					for (i = 0; i < ARRAYCOUNT(weaponnums); i++) {
 						if (weaponnums[i] > WEAPON_UNARMED && weaponnums[i] == weapon->weaponnum) {
-							if (random() % 16) {
-								if (weapproplist[i] == NULL || sqdist1 < weapdistlist[i] || random() % 16 == 0) {
+							if (rngRandom() % 16) {
+								if (weapproplist[i] == NULL || sqdist1 < weapdistlist[i] || rngRandom() % 16 == 0) {
 									weapproplist[i] = prop;
 									weapdistlist[i] = sqdist1;
 								}
@@ -1950,10 +1902,10 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 						}
 					}
 
-					ammotype = botact_get_ammo_type_by_function(weapon->weaponnum, FUNC_PRIMARY);
+					ammotype = botactGetAmmoTypeByFunction(weapon->weaponnum, FUNC_PRIMARY);
 
-					if (ammotype > 0 && random() % 16) {
-						if (ammoproplist[ammotype] == NULL || sqdist1 < ammodistlist[ammotype] || random() % 16 == 0) {
+					if (ammotype > 0 && rngRandom() % 16) {
+						if (ammoproplist[ammotype] == NULL || sqdist1 < ammodistlist[ammotype] || rngRandom() % 16 == 0) {
 							ammoproplist[ammotype] = prop;
 							ammodistlist[ammotype] = sqdist1;
 						}
@@ -1965,19 +1917,19 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 				if ((obj->flags3 & OBJFLAG3_ISFETCHTARGET) == 0) {
 					if (obj->type == OBJTYPE_MULTIAMMOCRATE) {
 						crate = (struct multiammocrateobj *)prop->obj;
-						sqdist2 = chr_get_squared_distance_to_coord(chr, &prop->pos);
+						sqdist2 = chrGetSquaredDistanceToCoord(chr, &prop->pos);
 
 						for (i = 0; i < 19; i++) {
 							s32 ammotype = i + 1;
 
 							if (crate->slots[i].quantity > 0) {
-								weaponnum = botact_get_weapon_by_ammo_type(ammotype);
+								weaponnum = botactGetWeaponByAmmoType(ammotype);
 
 								if (weaponnum > 0) {
 									for (j = 0; j < ARRAYCOUNT(weaponnums); j++) {
 										if (weaponnums[j] > WEAPON_UNARMED && weaponnum == weaponnums[j]) {
-											if (random() % 16) {
-												if (weapproplist[j] == NULL || sqdist2 < weapdistlist[j] || random() % 16 == 0) {
+											if (rngRandom() % 16) {
+												if (weapproplist[j] == NULL || sqdist2 < weapdistlist[j] || rngRandom() % 16 == 0) {
 													weapproplist[j] = prop;
 													weapdistlist[j] = sqdist2;
 												}
@@ -1987,8 +1939,8 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 									}
 								}
 
-								if (random() % 16) {
-									if (ammoproplist[ammotype] == NULL || sqdist2 < ammodistlist[ammotype] || random() % 16 == 0) {
+								if (rngRandom() % 16) {
+									if (ammoproplist[ammotype] == NULL || sqdist2 < ammodistlist[ammotype] || rngRandom() % 16 == 0) {
 										ammoproplist[ammotype] = prop;
 										ammodistlist[ammotype] = sqdist2;
 									}
@@ -1998,13 +1950,13 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 					} else if (obj->type == OBJTYPE_SHIELD) {
 						for (i = 0; i < ARRAYCOUNT(weaponnums); i++) {
 							if (weaponnums[i] == WEAPON_MPSHIELD) {
-								sqdist2 = chr_get_squared_distance_to_coord(chr, &prop->pos);
+								sqdist2 = chrGetSquaredDistanceToCoord(chr, &prop->pos);
 
-								if (random() % 16 == 0) {
+								if (rngRandom() % 16 == 0) {
 									break;
 								}
 
-								if (weapproplist[i] == NULL || sqdist2 < weapdistlist[i] || random() % 16 == 0) {
+								if (weapproplist[i] == NULL || sqdist2 < weapdistlist[i] || rngRandom() % 16 == 0) {
 									weapproplist[i] = prop;
 									weapdistlist[i] = sqdist2;
 								}
@@ -2027,15 +1979,16 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 
 	for (i = 0; i < ARRAYCOUNT(weaponnums); i++) {
 		if (1);
-		if ((botinv_allows_weapon(chr, weaponnums[i], FUNC_PRIMARY) || botinv_allows_weapon(chr, weaponnums[i], FUNC_SECONDARY))
-				&& (g_BotWeaponConfigs[weaponnums[i]].haspriammogoal || g_BotWeaponConfigs[weaponnums[i]].hassecammogoal)
+		if ((botinvAllowsWeapon(chr, weaponnums[i], FUNC_PRIMARY) || botinvAllowsWeapon(chr, weaponnums[i], FUNC_SECONDARY))
+				&& (g_AibotWeaponPreferences[weaponnums[i]].haspriammogoal || g_AibotWeaponPreferences[weaponnums[i]].hassecammogoal)
 				&& scores1[i] > bestscore1) {
 			bestscore1 = scores1[i];
 		}
 	}
 
 	// Decide if the bot wants to find a shield, based on the amount of health
-	// and shield the bot currently has.
+	// and shield the bot currently has. This shield logic is done prior to
+	// weapons and ammo, so a shield takes precedence.
 	// Note that max health and shield is 8 each, and that the bot must be under
 	// BOTH the limits for a shield to be fetched.
 	for (i = 0; i < ARRAYCOUNT(weaponnums) && !done; i++) {
@@ -2058,7 +2011,7 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 				// Bots will be less likely to fetch shields while defending the hill
 				triggerathealth = 4 - (aibot->randomfrac + aibot->randomfrac);
 				desiredshield = 1 - aibot->randomfrac;
-			} else if (g_MpSetup.scenario == MPSCENARIO_CAPTURETHECASE && bot_should_return_ctc_token(chr)) {
+			} else if (g_MpSetup.scenario == MPSCENARIO_CAPTURETHECASE && botShouldReturnCtcToken(chr)) {
 				// Bots will be less likely to fetch shields while returning a CTC case
 				triggerathealth = 3 - (aibot->randomfrac + aibot->randomfrac);
 			} else if (chr->myaction == MA_AIBOTDOWNLOAD) {
@@ -2138,8 +2091,8 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 	for (i = 0; i < ARRAYCOUNT(weaponnums) && !done; i++) {
 		if (weaponnums[i] != WEAPON_MPSHIELD
 				&& invitems[i] != NULL
-				&& (g_BotWeaponConfigs[weaponnums[i]].haspriammogoal
-					|| g_BotWeaponConfigs[weaponnums[i]].hassecammogoal)
+				&& (g_AibotWeaponPreferences[weaponnums[i]].haspriammogoal
+					|| g_AibotWeaponPreferences[weaponnums[i]].hassecammogoal)
 				&& scores2[i] >= bestscore1) {
 			s32 desiredpriammo;
 			s32 desiredsecammo;
@@ -2148,7 +2101,7 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 			s32 stack;
 
 			// Don't go after ammo when returning a CTC token
-			if (g_MpSetup.scenario == MPSCENARIO_CAPTURETHECASE && bot_should_return_ctc_token(chr)) {
+			if (g_MpSetup.scenario == MPSCENARIO_CAPTURETHECASE && botShouldReturnCtcToken(chr)) {
 				done = true;
 				break;
 			}
@@ -2163,13 +2116,13 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 				// If the bot's team is only barely controlling the hill,
 				// don't leave it unless the bot is out of ammo, and even then
 				// just get one ammo pickup
-				desiredpriammo = g_BotWeaponConfigs[weaponnums[i]].criticalammopri;
+				desiredpriammo = g_AibotWeaponPreferences[weaponnums[i]].criticalammopri;
 
 				if (desiredpriammo > 1) {
 					desiredpriammo = 1;
 				}
 
-				desiredsecammo = g_BotWeaponConfigs[weaponnums[i]].criticalammosec;
+				desiredsecammo = g_AibotWeaponPreferences[weaponnums[i]].criticalammosec;
 
 				if (desiredsecammo > 1) {
 					desiredsecammo = 1;
@@ -2182,14 +2135,14 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 			} else if (criteria == PICKUPCRITERIA_ANY) {
 				// If looking for any pickups at all, use the weapon's ammo
 				// capacities as the goal ammo
-				desiredpriammo = bgun_get_capacity_by_ammotype(botact_get_ammo_type_by_function(weaponnums[i], FUNC_PRIMARY));
-				desiredsecammo = bgun_get_capacity_by_ammotype(botact_get_ammo_type_by_function(weaponnums[i], FUNC_SECONDARY));
+				desiredpriammo = bgunGetCapacityByAmmotype(botactGetAmmoTypeByFunction(weaponnums[i], FUNC_PRIMARY));
+				desiredsecammo = bgunGetCapacityByAmmotype(botactGetAmmoTypeByFunction(weaponnums[i], FUNC_SECONDARY));
 
 				// If bot has max ammo for both weapon's functions
-				if ((g_BotWeaponConfigs[weaponnums[i]].haspriammogoal == false
-							|| botact_get_ammo_quantity_by_weapon(aibot, weaponnums[i], FUNC_PRIMARY, false) >= desiredpriammo)
-						&& (g_BotWeaponConfigs[weaponnums[i]].hassecammogoal == false
-							|| botact_get_ammo_quantity_by_weapon(aibot, weaponnums[i], FUNC_SECONDARY, false) >= desiredsecammo)) {
+				if ((g_AibotWeaponPreferences[weaponnums[i]].haspriammogoal == false
+							|| botactGetAmmoQuantityByWeapon(aibot, weaponnums[i], FUNC_PRIMARY, false) >= desiredpriammo)
+						&& (g_AibotWeaponPreferences[weaponnums[i]].hassecammogoal == false
+							|| botactGetAmmoQuantityByWeapon(aibot, weaponnums[i], FUNC_SECONDARY, false) >= desiredsecammo)) {
 					// Consider next weapon
 					continue;
 				}
@@ -2197,8 +2150,8 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 				include_equipped = false;
 			} else if (criteria == PICKUPCRITERIA_DEFAULT) {
 				// Default - use the target ammo amount
-				desiredpriammo = g_BotWeaponConfigs[weaponnums[i]].targetammopri;
-				desiredsecammo = g_BotWeaponConfigs[weaponnums[i]].targetammosec;
+				desiredpriammo = g_AibotWeaponPreferences[weaponnums[i]].targetammopri;
+				desiredsecammo = g_AibotWeaponPreferences[weaponnums[i]].targetammosec;
 
 				if (HASENOUGHPRI(aibot, weaponnums[i], desiredpriammo) || HASENOUGHSEC(aibot, weaponnums[i], desiredsecammo)) {
 					done = true;
@@ -2206,8 +2159,8 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 				}
 			} else if (criteria == PICKUPCRITERIA_CRITICAL) {
 				// Critical - use the critical ammo amount
-				desiredpriammo = g_BotWeaponConfigs[weaponnums[i]].criticalammopri;
-				desiredsecammo = g_BotWeaponConfigs[weaponnums[i]].criticalammosec;
+				desiredpriammo = g_AibotWeaponPreferences[weaponnums[i]].criticalammopri;
+				desiredsecammo = g_AibotWeaponPreferences[weaponnums[i]].criticalammosec;
 
 				if (HASENOUGHPRI(aibot, weaponnums[i], desiredpriammo) || HASENOUGHSEC(aibot, weaponnums[i], desiredsecammo)) {
 					done = true;
@@ -2218,12 +2171,12 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 			// Iterate both weapon functions and check
 			// if the bot has enough ammo for that function
 			for (funcnum = 0; funcnum < 2; funcnum++) {
-				if (botinv_allows_weapon(chr, weaponnums[i], funcnum)) {
-					s32 ammotype = botact_get_ammo_type_by_function(weaponnums[i], funcnum);
+				if (botinvAllowsWeapon(chr, weaponnums[i], funcnum)) {
+					s32 ammotype = botactGetAmmoTypeByFunction(weaponnums[i], funcnum);
 
 					if (ammotype > 0) {
 						s32 goal = funcnum ? desiredsecammo : desiredpriammo;
-						s32 qty = botact_get_ammo_quantity_by_type(aibot, ammotype, include_equipped);
+						s32 qty = botactGetAmmoQuantityByType(aibot, ammotype, include_equipped);
 
 						if (qty < goal && ammoproplist[ammotype]) {
 							chosenprop = ammoproplist[ammotype];
@@ -2241,7 +2194,7 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 	// Fetch the highest scoring weapon if there are any pickups for it.
 	for (i = 0; i < ARRAYCOUNT(weaponnums) && !done; i++) {
 		if (weaponnums[i] != WEAPON_MPSHIELD) {
-			if (g_MpSetup.scenario == MPSCENARIO_CAPTURETHECASE && bot_should_return_ctc_token(chr)) {
+			if (g_MpSetup.scenario == MPSCENARIO_CAPTURETHECASE && botShouldReturnCtcToken(chr)) {
 				done = true;
 				break;
 			}
@@ -2252,7 +2205,7 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 			}
 
 			if (!barelydominatinghill
-					&& (botinv_allows_weapon(chr, weaponnums[i], FUNC_PRIMARY) || botinv_allows_weapon(chr, weaponnums[i], FUNC_SECONDARY))
+					&& (botinvAllowsWeapon(chr, weaponnums[i], FUNC_PRIMARY) || botinvAllowsWeapon(chr, weaponnums[i], FUNC_SECONDARY))
 					&& invitems[i] == NULL
 					&& weapproplist[i] != NULL) {
 				chosenprop = weapproplist[i];
@@ -2267,11 +2220,11 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
 		for (i = 0; i < ARRAYCOUNT(weaponnums) && !done; i++) {
 			if (weaponnums[i] != WEAPON_MPSHIELD) {
 				for (j = 0; j < 2; j++) {
-					if (botinv_allows_weapon(chr, weaponnums[i], j)) {
-						s32 ammotype = botact_get_ammo_type_by_function(weaponnums[i], j);
+					if (botinvAllowsWeapon(chr, weaponnums[i], j)) {
+						s32 ammotype = botactGetAmmoTypeByFunction(weaponnums[i], j);
 
 						if (ammotype > 0
-								&& botact_get_ammo_quantity_by_type(aibot, ammotype, false) < bgun_get_capacity_by_ammotype(ammotype)
+								&& botactGetAmmoQuantityByType(aibot, ammotype, false) < bgunGetCapacityByAmmotype(ammotype)
 								&& ammoproplist[ammotype] != NULL) {
 							chosenprop = ammoproplist[ammotype];
 							done = true;
@@ -2292,30 +2245,30 @@ struct prop *bot_find_pickup(struct chrdata *chr, s32 criteria)
  * This returns true when the bot is low on health or ammo and there are pickups
  * available.
  */
-bool bot_can_do_critical_pickup(struct chrdata *chr)
+bool botCanDoCriticalPickup(struct chrdata *chr)
 {
-	return bot_find_pickup(chr, PICKUPCRITERIA_CRITICAL) != NULL;
+	return botFindPickup(chr, PICKUPCRITERIA_CRITICAL) != NULL;
 }
 
 /**
  * Find a pickup to fetch based on default criteria. Default criteria basically
  * means a good amount of ammo - not lacking but not excessive either.
  */
-struct prop *bot_find_default_pickup(struct chrdata *chr)
+struct prop *botFindDefaultPickup(struct chrdata *chr)
 {
-	return bot_find_pickup(chr, PICKUPCRITERIA_DEFAULT);
+	return botFindPickup(chr, PICKUPCRITERIA_DEFAULT);
 }
 
 /**
  * Find any pickup to fetch. This is used when the bot has nothing else to do
  * (eg. if all opponents are cloaked).
  */
-struct prop *bot_find_any_pickup(struct chrdata *chr)
+struct prop *botFindAnyPickup(struct chrdata *chr)
 {
-	return bot_find_pickup(chr, PICKUPCRITERIA_ANY);
+	return botFindPickup(chr, PICKUPCRITERIA_ANY);
 }
 
-s32 bot_get_team_size(struct chrdata *chr)
+s32 botGetTeamSize(struct chrdata *chr)
 {
 	s32 count = 0;
 	s32 i;
@@ -2329,7 +2282,7 @@ s32 bot_get_team_size(struct chrdata *chr)
 	return count;
 }
 
-s32 bot_get_count_in_team_doing_command(struct chrdata *self, u32 command, bool includeself)
+s32 botGetCountInTeamDoingCommand(struct chrdata *self, u32 command, bool includeself)
 {
 	s32 count = 0;
 	s32 i;
@@ -2347,9 +2300,9 @@ s32 bot_get_count_in_team_doing_command(struct chrdata *self, u32 command, bool 
 	return count;
 }
 
-s32 bot_is_chrs_ctc_token_held(struct chrdata *chr)
+s32 botIsChrsCtcTokenHeld(struct chrdata *chr)
 {
-	struct mpchrconfig *mpchr = g_MpAllChrConfigPtrs[mp_chr_to_chrindex(chr)];
+	struct mpchrconfig *mpchr = g_MpAllChrConfigPtrs[mpPlayerGetIndex(chr)];
 	struct prop *prop = g_ScenarioData.ctc.tokens[mpchr->team];
 
 	return prop && (prop->type == PROPTYPE_CHR || prop->type == PROPTYPE_PLAYER);
@@ -2361,10 +2314,10 @@ s32 bot_is_chrs_ctc_token_held(struct chrdata *chr)
  *     If chr is on a team by themself and their token is stolen, return false
  *     Otherwise, return true
  */
-bool bot_should_return_ctc_token(struct chrdata *chr)
+bool botShouldReturnCtcToken(struct chrdata *chr)
 {
 	if (chr->aibot->hascase) {
-		if (!chr->aibot->teamisonlyai || bot_get_team_size(chr) >= 2 || !bot_is_chrs_ctc_token_held(chr)) {
+		if (!chr->aibot->teamisonlyai || botGetTeamSize(chr) >= 2 || !botIsChrsCtcTokenHeld(chr)) {
 			return true;
 		}
 	}
@@ -2372,7 +2325,7 @@ bool bot_should_return_ctc_token(struct chrdata *chr)
 	return false;
 }
 
-s32 bot_get_num_teammates_defending_hill(struct chrdata *bot)
+s32 botGetNumTeammatesDefendingHill(struct chrdata *bot)
 {
 	s32 count = 0;
 	s32 i;
@@ -2396,9 +2349,9 @@ s32 bot_get_num_teammates_defending_hill(struct chrdata *bot)
  *
  * This function is slightly misnamed.
  */
-s32 bot_get_num_opponents_in_hill(struct chrdata *chr)
+s32 botGetNumOpponentsInHill(struct chrdata *chr)
 {
-	struct mpchrconfig *mpchr = g_MpAllChrConfigPtrs[mp_chr_to_chrindex(chr)];
+	struct mpchrconfig *mpchr = g_MpAllChrConfigPtrs[mpPlayerGetIndex(chr)];
 	struct mpchrconfig *loopmpchr;
 	s32 countsperteam[MAX_TEAMS] = {0};
 	s32 max = 0;
@@ -2406,7 +2359,7 @@ s32 bot_get_num_opponents_in_hill(struct chrdata *chr)
 
 	for (i = 0; i < g_MpNumChrs; i++) {
 		if (g_MpAllChrPtrs[i]->prop->rooms[0] == g_ScenarioData.koh.hillrooms[0]) {
-			s32 mpindex = mp_chrindex_to_chrslot(i);
+			s32 mpindex = func0f18d074(i);
 
 			loopmpchr = MPCHR(mpindex);
 
@@ -2439,14 +2392,14 @@ s32 bot_get_num_opponents_in_hill(struct chrdata *chr)
  *     - Apply the new myaction if any
  * - If the existing myaction is no longer valid, force a return to the main
  *   loop on the next tick
- * - Decide whether to switch weapons (via botinv_tick)
+ * - Decide whether to switch weapons (via botinvTick)
  * - Decide whether to discharge a shot on this tick
  */
-void bot_tick_unpaused(struct chrdata *chr)
+void botTickUnpaused(struct chrdata *chr)
 {
 	s32 newaction = -1;
 
-	if (!chr_is_dead(chr)) {
+	if (!chrIsDead(chr)) {
 		struct aibot *aibot = chr->aibot;
 		s32 i;
 
@@ -2454,8 +2407,8 @@ void bot_tick_unpaused(struct chrdata *chr)
 		aibot->random2ttl60 -= g_Vars.lvupdate60;
 
 		if (aibot->random2ttl60 < 0) {
-			aibot->random2ttl60 = TICKS(1800) + random() % TICKS(60 * 240);
-			aibot->random2 = random();
+			aibot->random2ttl60 = TICKS(1800) + rngRandom() % TICKS(60 * 240);
+			aibot->random2 = rngRandom();
 			aibot->randomfrac = RANDOMFRAC();
 		}
 
@@ -2466,19 +2419,19 @@ void bot_tick_unpaused(struct chrdata *chr)
 				aibot->timeuntilreload60[i] -= g_Vars.lvupdate60;
 
 				if (aibot->timeuntilreload60[i] <= 0) {
-					botact_reload(chr, i, true);
+					botactReload(chr, i, true);
 				}
-			} else if (!botact_is_weapon_throwable(aibot->weaponnum, aibot->gunfunc)) {
+			} else if (!botactIsWeaponThrowable(aibot->weaponnum, aibot->gunfunc)) {
 				// If the weapon is reloadable, schedule a reload if bot is out
 				// of ammo or has less than half a clip and last saw their
 				// target 2 seconds ago
 				s32 loadedammo = aibot->loadedammo[i];
-				s32 clipsize = botact_get_clip_capacity_by_function(aibot->weaponnum, aibot->gunfunc);
+				s32 clipsize = botactGetClipCapacityByFunction(aibot->weaponnum, aibot->gunfunc);
 
 				if (loadedammo <= 0 && clipsize > 0) {
-					bot_schedule_reload(chr, i);
+					botScheduleReload(chr, i);
 				} else if (loadedammo < clipsize / 2 && aibot->lastseenanytarget60 < g_Vars.lvframe60 - TICKS(120)) {
-					bot_schedule_reload(chr, i);
+					botScheduleReload(chr, i);
 				}
 			}
 		}
@@ -2488,17 +2441,17 @@ void bot_tick_unpaused(struct chrdata *chr)
 			aibot->changeguntimer60 -= g_Vars.lvupdate60;
 
 			if (aibot->changeguntimer60 <= 0) {
-				struct invitem *item = botinv_get_item(chr, aibot->weaponnum);
-				s32 modelnum = playermgr_get_model_of_weapon(aibot->weaponnum);
+				struct invitem *item = botinvGetItem(chr, aibot->weaponnum);
+				s32 modelnum = playermgrGetModelOfWeapon(aibot->weaponnum);
 				s32 i;
 
 				if (item && modelnum >= 0) {
-					chr_give_weapon(chr, modelnum, aibot->weaponnum, 0);
-					botact_reload(chr, HAND_RIGHT, false);
+					chrGiveWeapon(chr, modelnum, aibot->weaponnum, 0);
+					botactReload(chr, HAND_RIGHT, false);
 
 					if (item->type == INVITEMTYPE_DUAL) {
-						chr_give_weapon(chr, modelnum, aibot->weaponnum, OBJFLAG_WEAPON_LEFTHANDED);
-						botact_reload(chr, HAND_LEFT, false);
+						chrGiveWeapon(chr, modelnum, aibot->weaponnum, OBJFLAG_WEAPON_LEFTHANDED);
+						botactReload(chr, HAND_LEFT, false);
 					}
 				} else {
 					// Bot doesn't have the weapon it was told to switch to
@@ -2526,7 +2479,7 @@ void bot_tick_unpaused(struct chrdata *chr)
 
 		// Consider starting or stopping cloak
 		if (aibot->ammoheld[AMMOTYPE_CLOAK] > 0
-				&& (bot_is_about_to_attack(chr, true) || chr->myaction == MA_AIBOTDOWNLOAD)) {
+				&& (botIsAboutToAttack(chr, true) || chr->myaction == MA_AIBOTDOWNLOAD)) {
 			aibot->cloakdeviceenabled = true;
 		} else {
 #if VERSION >= VERSION_PAL_FINAL
@@ -2546,9 +2499,9 @@ void bot_tick_unpaused(struct chrdata *chr)
 
 		// Consider starting or stopping RC-P120 cloak
 		if (!aibot->cloakdeviceenabled && aibot->weaponnum == WEAPON_RCP120) {
-			s32 qty = botact_get_ammo_quantity_by_weapon(aibot, WEAPON_RCP120, FUNC_PRIMARY, true);
+			s32 qty = botactGetAmmoQuantityByWeapon(aibot, WEAPON_RCP120, FUNC_PRIMARY, true);
 
-			if (bot_is_about_to_attack(chr, true)) {
+			if (botIsAboutToAttack(chr, true)) {
 				if (qty > 200 + (aibot->random1 >> 6) % 200) {
 					aibot->rcp120cloakenabled = true;
 				} else if (qty <= 30 + (aibot->random1 >> 16) % 70) {
@@ -2581,34 +2534,34 @@ void bot_tick_unpaused(struct chrdata *chr)
 			}
 
 			if (aibot->commandtimer60 <= 0) {
-				s32 teamsize = bot_get_team_size(chr);
+				s32 teamsize = botGetTeamSize(chr);
 
 				if (g_MpSetup.scenario == MPSCENARIO_HOLDTHEBRIEFCASE) {
-					s32 numgetting = bot_get_count_in_team_doing_command(chr, AIBOTCMD_GETCASE2, false);
+					s32 numgetting = botGetCountInTeamDoingCommand(chr, AIBOTCMD_GETCASE2, false);
 
-					if (numgetting <= 0 || (numgetting < (teamsize + 1) / 2 || random() % 100 < 66)) {
-						bot_apply_scenario_command(chr, AIBOTCMD_GETCASE2);
+					if (numgetting <= 0 || (numgetting < (teamsize + 1) / 2 || rngRandom() % 100 < 66)) {
+						botApplyScenarioCommand(chr, AIBOTCMD_GETCASE2);
 					} else {
-						bot_apply_scenario_command(chr, AIBOTCMD_NORMAL);
+						botApplyScenarioCommand(chr, AIBOTCMD_NORMAL);
 					}
 				} else if (g_MpSetup.scenario == MPSCENARIO_HACKERCENTRAL) {
-					s32 numbots = bot_get_count_in_team_doing_command(chr, AIBOTCMD_DOWNLOAD, false);
+					s32 numbots = botGetCountInTeamDoingCommand(chr, AIBOTCMD_DOWNLOAD, false);
 
-					if (aibot->hasuplink || numbots <= 0 || (numbots < (teamsize + 1) / 2 || random() % 100 < 50)) {
-						bot_apply_scenario_command(chr, AIBOTCMD_DOWNLOAD);
+					if (aibot->hasuplink || numbots <= 0 || (numbots < (teamsize + 1) / 2 || rngRandom() % 100 < 50)) {
+						botApplyScenarioCommand(chr, AIBOTCMD_DOWNLOAD);
 					} else {
-						bot_apply_scenario_command(chr, AIBOTCMD_NORMAL);
+						botApplyScenarioCommand(chr, AIBOTCMD_NORMAL);
 					}
 				} else if (g_MpSetup.scenario == MPSCENARIO_POPACAP) {
-					s32 numchasing = bot_get_count_in_team_doing_command(chr, AIBOTCMD_POPCAP, false);
+					s32 numchasing = botGetCountInTeamDoingCommand(chr, AIBOTCMD_POPCAP, false);
 
-					if (numchasing <= 0 || numchasing < (teamsize + 1) / 2 || random() % 100 < 50) {
-						bot_apply_scenario_command(chr, AIBOTCMD_POPCAP);
+					if (numchasing <= 0 || numchasing < (teamsize + 1) / 2 || rngRandom() % 100 < 50) {
+						botApplyScenarioCommand(chr, AIBOTCMD_POPCAP);
 					} else {
-						bot_apply_scenario_command(chr, AIBOTCMD_NORMAL);
+						botApplyScenarioCommand(chr, AIBOTCMD_NORMAL);
 					}
 				} else if (g_MpSetup.scenario == MPSCENARIO_KINGOFTHEHILL) {
-					s32 numinhill = bot_get_num_teammates_defending_hill(chr);
+					s32 numinhill = botGetNumTeammatesDefendingHill(chr);
 
 					// Don't count ourselves
 					if (chr->prop->rooms[0] == g_ScenarioData.koh.hillrooms[0]) {
@@ -2616,65 +2569,65 @@ void bot_tick_unpaused(struct chrdata *chr)
 					}
 
 					if (numinhill <= 0 || numinhill < teamsize / 2) {
-						bot_apply_scenario_command(chr, AIBOTCMD_HOLDHILL);
-					} else if (numinhill > bot_get_num_opponents_in_hill(chr)) {
-						if (random() % 100 < 50) {
-							bot_apply_scenario_command(chr, AIBOTCMD_DEFHILL);
+						botApplyScenarioCommand(chr, AIBOTCMD_HOLDHILL);
+					} else if (numinhill > botGetNumOpponentsInHill(chr)) {
+						if (rngRandom() % 100 < 50) {
+							botApplyScenarioCommand(chr, AIBOTCMD_DEFHILL);
 						} else {
-							bot_apply_scenario_command(chr, AIBOTCMD_NORMAL);
+							botApplyScenarioCommand(chr, AIBOTCMD_NORMAL);
 						}
 					} else {
-						bot_apply_scenario_command(chr, AIBOTCMD_HOLDHILL);
+						botApplyScenarioCommand(chr, AIBOTCMD_HOLDHILL);
 					}
 				} else if (g_MpSetup.scenario == MPSCENARIO_CAPTURETHECASE) {
 					if (teamsize == 1) {
 						// One man team
-						s32 numgetting = bot_get_count_in_team_doing_command(chr, AIBOTCMD_GETCASE, true);
+						s32 numgetting = botGetCountInTeamDoingCommand(chr, AIBOTCMD_GETCASE, true);
 
-						if (bot_should_return_ctc_token(chr)) {
-							bot_apply_scenario_command(chr, AIBOTCMD_GETCASE);
-						} else if (bot_is_chrs_ctc_token_held(chr)) {
-							if (random() % 100 < 30) {
-								bot_apply_scenario_command(chr, AIBOTCMD_GETCASE);
+						if (botShouldReturnCtcToken(chr)) {
+							botApplyScenarioCommand(chr, AIBOTCMD_GETCASE);
+						} else if (botIsChrsCtcTokenHeld(chr)) {
+							if (rngRandom() % 100 < 30) {
+								botApplyScenarioCommand(chr, AIBOTCMD_GETCASE);
 							} else {
-								bot_apply_scenario_command(chr, AIBOTCMD_SAVECASE);
+								botApplyScenarioCommand(chr, AIBOTCMD_SAVECASE);
 							}
 						} else {
-							if (random() % 100 < 70 || numgetting <= 0) {
-								bot_apply_scenario_command(chr, AIBOTCMD_GETCASE);
+							if (rngRandom() % 100 < 70 || numgetting <= 0) {
+								botApplyScenarioCommand(chr, AIBOTCMD_GETCASE);
 							} else {
-								bot_apply_scenario_command(chr, AIBOTCMD_SAVECASE);
+								botApplyScenarioCommand(chr, AIBOTCMD_SAVECASE);
 							}
 						}
 					} else {
 						// Not a one man team
-						s32 numgetting = bot_get_count_in_team_doing_command(chr, AIBOTCMD_GETCASE, false);
-						s32 numsaving = bot_get_count_in_team_doing_command(chr, AIBOTCMD_SAVECASE, false);
+						s32 numgetting = botGetCountInTeamDoingCommand(chr, AIBOTCMD_GETCASE, false);
+						s32 numsaving = botGetCountInTeamDoingCommand(chr, AIBOTCMD_SAVECASE, false);
 
-						if (bot_should_return_ctc_token(chr)) {
-							bot_apply_scenario_command(chr, AIBOTCMD_GETCASE);
-						} else if (bot_is_chrs_ctc_token_held(chr)) {
-							if (numsaving <= 0 || random() % 100 < 70) {
-								bot_apply_scenario_command(chr, AIBOTCMD_SAVECASE);
+						if (botShouldReturnCtcToken(chr)) {
+							botApplyScenarioCommand(chr, AIBOTCMD_GETCASE);
+						} else if (botIsChrsCtcTokenHeld(chr)) {
+							if (numsaving <= 0 || rngRandom() % 100 < 70) {
+								botApplyScenarioCommand(chr, AIBOTCMD_SAVECASE);
 							} else {
-								bot_apply_scenario_command(chr, AIBOTCMD_GETCASE);
+								botApplyScenarioCommand(chr, AIBOTCMD_GETCASE);
 							}
 						} else if (numgetting <= 0 || numgetting < teamsize / 3) {
-							bot_apply_scenario_command(chr, AIBOTCMD_GETCASE);
+							botApplyScenarioCommand(chr, AIBOTCMD_GETCASE);
 						} else if (numsaving <= 0 || numsaving < teamsize / 4) {
-							bot_apply_scenario_command(chr, AIBOTCMD_SAVECASE);
-						} else if (random() % 100 < 30) {
-							bot_apply_scenario_command(chr, AIBOTCMD_GETCASE);
-						} else if (random() % 100 < 30) {
-							bot_apply_scenario_command(chr, AIBOTCMD_SAVECASE);
+							botApplyScenarioCommand(chr, AIBOTCMD_SAVECASE);
+						} else if (rngRandom() % 100 < 30) {
+							botApplyScenarioCommand(chr, AIBOTCMD_GETCASE);
+						} else if (rngRandom() % 100 < 30) {
+							botApplyScenarioCommand(chr, AIBOTCMD_SAVECASE);
 						} else {
-							bot_apply_scenario_command(chr, AIBOTCMD_NORMAL);
+							botApplyScenarioCommand(chr, AIBOTCMD_NORMAL);
 						}
 					}
 				}
 
 				// Consider changing command in 20 to 60 seconds
-				aibot->commandtimer60 = TICKS(1200) + random() % TICKS(2400);
+				aibot->commandtimer60 = TICKS(1200) + rngRandom() % TICKS(2400);
 			}
 		}
 
@@ -2688,13 +2641,13 @@ void bot_tick_unpaused(struct chrdata *chr)
 			// KazeSim will attack people on sight regardless of command
 			if (aibot->config->type == BOTTYPE_KAZE && chr->target != -1 && aibot->targetinsight) {
 				newaction = MA_AIBOTATTACK;
-				aibot->attackingplayernum = mp_chr_to_chrindex(chr_get_target_prop(chr)->chr);
+				aibot->attackingplayernum = mpPlayerGetIndex(chrGetTargetProp(chr)->chr);
 				aibot->abortattacktimer60 = -1;
 			}
 
 			// Check if the bot needs to fetch some weapons or ammo
 			if (newaction < 0) {
-				aibot->gotoprop = bot_find_default_pickup(chr);
+				aibot->gotoprop = botFindDefaultPickup(chr);
 
 				if (aibot->gotoprop) {
 					newaction = MA_AIBOTGETITEM;
@@ -2708,11 +2661,11 @@ void bot_tick_unpaused(struct chrdata *chr)
 					// This is a human command only
 					struct chrdata *targetchr = (g_Vars.props + aibot->attackpropnum)->chr;
 
-					if (!chr_is_dead(targetchr)
-							&& !bot_is_target_invisible(chr, targetchr)
-							&& bot_passes_coward_check(chr, targetchr)) {
+					if (!chrIsDead(targetchr)
+							&& !botIsTargetInvisible(chr, targetchr)
+							&& botPassesCowardCheck(chr, targetchr)) {
 						newaction = MA_AIBOTATTACK;
-						aibot->attackingplayernum = mp_chr_to_chrindex(targetchr);
+						aibot->attackingplayernum = mpPlayerGetIndex(targetchr);
 						aibot->abortattacktimer60 = -1;
 					}
 				} else if (aibot->command == AIBOTCMD_FOLLOW) {
@@ -2720,13 +2673,13 @@ void bot_tick_unpaused(struct chrdata *chr)
 					// This is a human command only
 					newaction = MA_AIBOTFOLLOW;
 					aibot->canbreakfollow = true;
-					aibot->followingplayernum = mp_chr_to_chrindex((g_Vars.props + aibot->followprotectpropnum)->chr);
+					aibot->followingplayernum = mpPlayerGetIndex((g_Vars.props + aibot->followprotectpropnum)->chr);
 				} else if (aibot->command == AIBOTCMD_PROTECT) {
 					// Protect the prop (player) given in followprotectpropnum
 					// This is a human command only
 					newaction = MA_AIBOTFOLLOW;
 					aibot->canbreakfollow = false;
-					aibot->followingplayernum = mp_chr_to_chrindex((g_Vars.props + aibot->followprotectpropnum)->chr);
+					aibot->followingplayernum = mpPlayerGetIndex((g_Vars.props + aibot->followprotectpropnum)->chr);
 				} else if (aibot->command == AIBOTCMD_DEFEND) {
 					// Defend the position given in defendholdpos
 					// This is a human command only
@@ -2742,7 +2695,7 @@ void bot_tick_unpaused(struct chrdata *chr)
 					if (g_MpSetup.scenario == MPSCENARIO_CAPTURETHECASE && !aibot->hascase) {
 						// Make an array of pointers to other teams' tokens
 						// but ignore enemy tokens held by other teams
-						s32 botteamindex = radar_get_team_index(chr->team);
+						s32 botteamindex = radarGetTeamIndex(chr->team);
 						s32 i;
 						struct prop *tokens[4];
 						s32 numtokens = 0;
@@ -2771,12 +2724,12 @@ void bot_tick_unpaused(struct chrdata *chr)
 							s32 index;
 							s32 i;
 
-							index = random() % numtokens;
+							index = rngRandom() % numtokens;
 
 							i = (index + 1) % numtokens;
 
 							while (true) {
-								f32 sqdist = chr_get_squared_distance_to_coord(chr, &tokens[i]->pos);
+								f32 sqdist = chrGetSquaredDistanceToCoord(chr, &tokens[i]->pos);
 
 								if (sqdist < 1000 * 1000) {
 									index = i;
@@ -2797,10 +2750,10 @@ void bot_tick_unpaused(struct chrdata *chr)
 							if (tokens[index]->type == PROPTYPE_WEAPON || tokens[index]->type == PROPTYPE_OBJ) {
 								newaction = MA_AIBOTGETITEM;
 								aibot->gotoprop = tokens[index];
-							} else if (bot_can_follow(chr, tokens[index]->chr)) {
+							} else if (botCanFollow(chr, tokens[index]->chr)) {
 								newaction = MA_AIBOTFOLLOW;
-								aibot->canbreakfollow = random() % 4 == 0;
-								aibot->followingplayernum = mp_chr_to_chrindex(tokens[index]->chr);
+								aibot->canbreakfollow = rngRandom() % 4 == 0;
+								aibot->followingplayernum = mpPlayerGetIndex(tokens[index]->chr);
 							}
 						}
 					}
@@ -2808,25 +2761,25 @@ void bot_tick_unpaused(struct chrdata *chr)
 					// Capture the case - recover/protect bot's own token
 					if (g_MpSetup.scenario == MPSCENARIO_CAPTURETHECASE) {
 						// Find out where the bot's token is
-						struct prop *token = g_ScenarioData.ctc.tokens[radar_get_team_index(chr->team)];
+						struct prop *token = g_ScenarioData.ctc.tokens[radarGetTeamIndex(chr->team)];
 
 						if (token->type == PROPTYPE_CHR || token->type == PROPTYPE_PLAYER) {
 							struct chrdata *tokenchr = token->chr;
 
 							if (tokenchr->team == chr->team) {
 								// Held by a teammate - follow/protect them
-								if (bot_can_follow(chr, tokenchr)) {
+								if (botCanFollow(chr, tokenchr)) {
 									newaction = MA_AIBOTFOLLOW;
-									aibot->canbreakfollow = random() % 4 == 0;
-									aibot->followingplayernum = mp_chr_to_chrindex(tokenchr);
+									aibot->canbreakfollow = rngRandom() % 4 == 0;
+									aibot->followingplayernum = mpPlayerGetIndex(tokenchr);
 								}
 							} else {
 								// Held by an opponent - attack them
-								if (!chr_is_dead(tokenchr)
-										&& !bot_is_target_invisible(chr, tokenchr)
-										&& bot_passes_coward_check(chr, tokenchr)) {
+								if (!chrIsDead(tokenchr)
+										&& !botIsTargetInvisible(chr, tokenchr)
+										&& botPassesCowardCheck(chr, tokenchr)) {
 									newaction = MA_AIBOTATTACK;
-									aibot->attackingplayernum = mp_chr_to_chrindex(tokenchr);
+									aibot->attackingplayernum = mpPlayerGetIndex(tokenchr);
 									aibot->abortattacktimer60 = -1;
 								}
 							}
@@ -2836,7 +2789,7 @@ void bot_tick_unpaused(struct chrdata *chr)
 							aibot->gotopos.x = token->pos.x;
 							aibot->gotopos.y = token->pos.y;
 							aibot->gotopos.z = token->pos.z;
-							rooms_copy(token->rooms, aibot->gotorooms);
+							roomsCopy(token->rooms, aibot->gotorooms);
 							aibot->inhill = false;
 						}
 					}
@@ -2846,10 +2799,10 @@ void bot_tick_unpaused(struct chrdata *chr)
 						if (chr->prop->rooms[0] == g_ScenarioData.koh.hillrooms[0]
 								&& chr->target != -1
 								&& aibot->targetinsight
-								&& bot_passes_coward_check(chr, chr_get_target_prop(chr)->chr)) {
+								&& botPassesCowardCheck(chr, chrGetTargetProp(chr)->chr)) {
 							// Bot is in the hill and sees target - attack them
 							newaction = MA_AIBOTATTACK;
-							aibot->attackingplayernum = mp_chr_to_chrindex(chr_get_target_prop(chr)->chr);
+							aibot->attackingplayernum = mpPlayerGetIndex(chrGetTargetProp(chr)->chr);
 							aibot->abortattacktimer60 = TICKS(300);
 						} else {
 							// Go to the hill if not there already
@@ -2859,12 +2812,12 @@ void bot_tick_unpaused(struct chrdata *chr)
 							s32 padnuminhill;
 							s32 covernuminhill;
 
-							if (botroom_find_pos(g_ScenarioData.koh.hillrooms[0], &posinhill, &angle, &padnuminhill, &covernuminhill)) {
+							if (botroomFindPos(g_ScenarioData.koh.hillrooms[0], &posinhill, &angle, &padnuminhill, &covernuminhill)) {
 								newaction = MA_AIBOTGOTOPOS;
 								aibot->gotopos.x = posinhill.x;
 								aibot->gotopos.y = posinhill.y;
 								aibot->gotopos.z = posinhill.z;
-								rooms_copy(g_ScenarioData.koh.hillrooms, aibot->gotorooms);
+								roomsCopy(g_ScenarioData.koh.hillrooms, aibot->gotorooms);
 								aibot->inhill = (chr->prop->rooms[0] == g_ScenarioData.koh.hillrooms[0]) != 0;
 								aibot->hillpadnum = padnuminhill;
 								aibot->hillcovernum = covernuminhill;
@@ -2881,12 +2834,12 @@ void bot_tick_unpaused(struct chrdata *chr)
 						s32 covernuminhill;
 
 						// Go to the hill if not there already
-						if (botroom_find_pos(g_ScenarioData.koh.hillrooms[0], &posinhill, &angle, &padnuminhill, &covernuminhill)) {
+						if (botroomFindPos(g_ScenarioData.koh.hillrooms[0], &posinhill, &angle, &padnuminhill, &covernuminhill)) {
 							newaction = MA_AIBOTGOTOPOS;
 							aibot->gotopos.x = posinhill.x;
 							aibot->gotopos.y = posinhill.y;
 							aibot->gotopos.z = posinhill.z;
-							rooms_copy(g_ScenarioData.koh.hillrooms, aibot->gotorooms);
+							roomsCopy(g_ScenarioData.koh.hillrooms, aibot->gotorooms);
 							aibot->inhill = (chr->prop->rooms[0] == g_ScenarioData.koh.hillrooms[0]) != 0;
 							aibot->hillpadnum = padnuminhill;
 							aibot->hillcovernum = covernuminhill;
@@ -2905,16 +2858,16 @@ void bot_tick_unpaused(struct chrdata *chr)
 
 							if ((g_MpSetup.options & MPOPTION_TEAMSENABLED) && uplinkchr->team == chr->team) {
 								// Uplink is held by teammate - protect them
-								if (bot_can_follow(chr, uplinkchr)) {
+								if (botCanFollow(chr, uplinkchr)) {
 									newaction = MA_AIBOTFOLLOW;
-									aibot->canbreakfollow = random() % 4 == 0;
-									aibot->followingplayernum = mp_chr_to_chrindex(uplinkchr);
+									aibot->canbreakfollow = rngRandom() % 4 == 0;
+									aibot->followingplayernum = mpPlayerGetIndex(uplinkchr);
 								}
 							} else {
 								// Uplink is held by opponent - attack them
-								if (!bot_is_target_invisible(chr, uplinkchr) && bot_passes_coward_check(chr, uplinkchr)) {
+								if (!botIsTargetInvisible(chr, uplinkchr) && botPassesCowardCheck(chr, uplinkchr)) {
 									newaction = MA_AIBOTATTACK;
-									aibot->attackingplayernum = mp_chr_to_chrindex(uplinkchr);
+									aibot->attackingplayernum = mpPlayerGetIndex(uplinkchr);
 									aibot->abortattacktimer60 = -1;
 								}
 							}
@@ -2936,15 +2889,15 @@ void bot_tick_unpaused(struct chrdata *chr)
 
 							if ((g_MpSetup.options & MPOPTION_TEAMSENABLED) && tokenchr->team == chr->team) {
 								// Briefcase is held by teammate - protect them
-								if (bot_can_follow(chr, tokenchr)) {
+								if (botCanFollow(chr, tokenchr)) {
 									newaction = MA_AIBOTFOLLOW;
-									aibot->canbreakfollow = random() % 4 == 0;
-									aibot->followingplayernum = mp_chr_to_chrindex(tokenchr);
+									aibot->canbreakfollow = rngRandom() % 4 == 0;
+									aibot->followingplayernum = mpPlayerGetIndex(tokenchr);
 								}
-							} else if (!bot_is_target_invisible(chr, tokenchr) && bot_passes_coward_check(chr, tokenchr)) {
+							} else if (!botIsTargetInvisible(chr, tokenchr) && botPassesCowardCheck(chr, tokenchr)) {
 								// Briefcase is held by opponent - attack them
 								newaction = MA_AIBOTATTACK;
-								aibot->attackingplayernum = mp_chr_to_chrindex(tokenchr);
+								aibot->attackingplayernum = mpPlayerGetIndex(tokenchr);
 								aibot->abortattacktimer60 = -1;
 							}
 						} else {
@@ -2964,16 +2917,16 @@ void bot_tick_unpaused(struct chrdata *chr)
 
 							if ((g_MpSetup.options & MPOPTION_TEAMSENABLED) && victimchr->team == chr->team) {
 								// Victim is a teammate - protect them
-								if (bot_can_follow(chr, victimchr)) {
+								if (botCanFollow(chr, victimchr)) {
 									newaction = MA_AIBOTFOLLOW;
-									aibot->canbreakfollow = random() % 4 == 0;
-									aibot->followingplayernum = mp_chr_to_chrindex(victimchr);
+									aibot->canbreakfollow = rngRandom() % 4 == 0;
+									aibot->followingplayernum = mpPlayerGetIndex(victimchr);
 								}
 							} else {
 								// Victim is an opponent - attack them
-								if (!bot_is_target_invisible(chr, victimchr) && bot_passes_coward_check(chr, victimchr)) {
+								if (!botIsTargetInvisible(chr, victimchr) && botPassesCowardCheck(chr, victimchr)) {
 									newaction = MA_AIBOTATTACK;
-									aibot->attackingplayernum = mp_chr_to_chrindex(victimchr);
+									aibot->attackingplayernum = mpPlayerGetIndex(victimchr);
 									aibot->abortattacktimer60 = -1;
 								}
 							}
@@ -2991,13 +2944,13 @@ void bot_tick_unpaused(struct chrdata *chr)
 						// Current bot has the briefcase - follow a teammate for protection
 						s32 playernum = -1;
 
-						if (random() % 100 < 66) {
-							playernum = bot_find_teammate_to_follow(chr, 100000);
+						if (rngRandom() % 100 < 66) {
+							playernum = botFindTeammateToFollow(chr, 100000);
 						}
 
 						if (playernum >= 0) {
 							newaction = MA_AIBOTFOLLOW;
-							aibot->canbreakfollow = random() % 4 == 0;
+							aibot->canbreakfollow = rngRandom() % 4 == 0;
 							aibot->followingplayernum = playernum;
 						}
 					}
@@ -3009,24 +2962,24 @@ void bot_tick_unpaused(struct chrdata *chr)
 							// Current bot is the victim - follow a teammate for protection
 							s32 playernum = -1;
 
-							if (random() % 100 < 66) {
-								playernum = bot_find_teammate_to_follow(chr, 100000);
+							if (rngRandom() % 100 < 66) {
+								playernum = botFindTeammateToFollow(chr, 100000);
 							}
 
 							if (playernum >= 0) {
 								newaction = MA_AIBOTFOLLOW;
-								aibot->canbreakfollow = random() % 4 == 0;
+								aibot->canbreakfollow = rngRandom() % 4 == 0;
 								aibot->followingplayernum = playernum;
 							}
 						}
 					}
 				} else if (g_MpSetup.scenario == MPSCENARIO_CAPTURETHECASE) {
 					// If the bot is holding an opponent's token, take it home
-					if (bot_should_return_ctc_token(chr)) {
+					if (botShouldReturnCtcToken(chr)) {
 						struct pad pad;
-						s32 teamindex = g_ScenarioData.ctc.teamindexes[radar_get_team_index(chr->team)];
+						s32 teamindex = g_ScenarioData.ctc.teamindexes[radarGetTeamIndex(chr->team)];
 						newaction = MA_AIBOTGOTOPOS;
-						pad_unpack(g_ScenarioData.ctc.spawnpadsperteam[teamindex].homepad, PADFIELD_POS | PADFIELD_ROOM, &pad);
+						padUnpack(g_ScenarioData.ctc.spawnpadsperteam[teamindex].homepad, PADFIELD_POS | PADFIELD_ROOM, &pad);
 						aibot->gotopos.x = pad.pos.x;
 						aibot->gotopos.y = pad.pos.y;
 						aibot->gotopos.z = pad.pos.z;
@@ -3037,7 +2990,7 @@ void bot_tick_unpaused(struct chrdata *chr)
 				} else if (g_MpSetup.scenario == MPSCENARIO_HACKERCENTRAL) {
 					// If the bot has the uplink, go to the terminal
 					if (g_ScenarioData.htm.uplink == chr->prop) {
-						if (g_ScenarioData.htm.playernuminrange != mp_chr_to_chrindex(chr)) {
+						if (g_ScenarioData.htm.playernuminrange != mpPlayerGetIndex(chr)) {
 							newaction = MA_AIBOTGOTOPROP;
 							aibot->gotoprop = g_ScenarioData.htm.terminals[0].prop;
 						} else {
@@ -3052,7 +3005,7 @@ void bot_tick_unpaused(struct chrdata *chr)
 				if (aibot->config->type == BOTTYPE_VENGE) {
 					// Attack the last player who killed the bot
 					if (aibot->lastkilledbyplayernum >= 0
-							&& !bot_is_target_invisible(chr, g_MpAllChrPtrs[aibot->lastkilledbyplayernum])) {
+							&& !botIsTargetInvisible(chr, g_MpAllChrPtrs[aibot->lastkilledbyplayernum])) {
 						newaction = MA_AIBOTATTACK;
 						aibot->attackingplayernum = aibot->lastkilledbyplayernum;
 						aibot->abortattacktimer60 = -1;
@@ -3061,11 +3014,11 @@ void bot_tick_unpaused(struct chrdata *chr)
 					// Attack a single player the whole match
 					if (aibot->feudplayernum < 0
 							&& aibot->lastkilledbyplayernum >= 0
-							&& !chr_compare_teams(chr, g_MpAllChrPtrs[aibot->lastkilledbyplayernum], COMPARE_FRIENDS)) {
+							&& !chrCompareTeams(chr, g_MpAllChrPtrs[aibot->lastkilledbyplayernum], COMPARE_FRIENDS)) {
 						aibot->feudplayernum = aibot->lastkilledbyplayernum;
 					}
 
-					if (aibot->feudplayernum >= 0 && !bot_is_target_invisible(chr, g_MpAllChrPtrs[aibot->feudplayernum])) {
+					if (aibot->feudplayernum >= 0 && !botIsTargetInvisible(chr, g_MpAllChrPtrs[aibot->feudplayernum])) {
 						newaction = MA_AIBOTATTACK;
 						aibot->abortattacktimer60 = -1;
 						aibot->attackingplayernum = aibot->feudplayernum;
@@ -3073,19 +3026,19 @@ void bot_tick_unpaused(struct chrdata *chr)
 				} else if (aibot->config->type == BOTTYPE_JUDGE) {
 					// Attack the winning player
 					struct ranking rankings[MAX_MPCHRS];
-					s32 count = mp_get_player_rankings(rankings);
+					s32 count = mpGetPlayerRankings(rankings);
 					s32 i;
 
 					for (i = 0; i < count; i++) {
-						s32 playernum = mp_chrslot_to_chrindex(rankings[i].chrnum);
-						struct chrdata *otherchr = mp_chrindex_to_chr(playernum);
+						s32 playernum = func0f18d0e8(rankings[i].chrnum);
+						struct chrdata *otherchr = mpGetChrFromPlayerIndex(playernum);
 
-						if (otherchr != chr && !chr_is_dead(otherchr)) {
+						if (otherchr != chr && !chrIsDead(otherchr)) {
 #if PAL
 							if (1);
 #endif
-							if (chr_compare_teams(chr, otherchr, COMPARE_ENEMIES)
-									&& !bot_is_target_invisible(chr, otherchr)) {
+							if (chrCompareTeams(chr, otherchr, COMPARE_ENEMIES)
+									&& !botIsTargetInvisible(chr, otherchr)) {
 								newaction = MA_AIBOTATTACK;
 								aibot->attackingplayernum = playernum;
 								aibot->abortattacktimer60 = -1;
@@ -3100,16 +3053,16 @@ void bot_tick_unpaused(struct chrdata *chr)
 					s32 i;
 
 					for (i = 0; i < g_MpNumChrs; i++) {
-						struct chrdata *otherchr = mp_chrindex_to_chr(i);
+						struct chrdata *otherchr = mpGetChrFromPlayerIndex(i);
 
 						if (otherchr != chr
-								&& !chr_is_dead(otherchr)
-								&& chr_compare_teams(chr, otherchr, COMPARE_ENEMIES)
-								&& !bot_is_target_invisible(chr, otherchr)) {
+								&& !chrIsDead(otherchr)
+								&& chrCompareTeams(chr, otherchr, COMPARE_ENEMIES)
+								&& !botIsTargetInvisible(chr, otherchr)) {
 							if (otherchr->aibot) {
 								health = otherchr->maxdamage - otherchr->damage;
 							} else {
-								health = g_Vars.players[playermgr_get_player_num_by_prop(otherchr->prop)]->bondhealth * 8;
+								health = g_Vars.players[playermgrGetPlayerNumByProp(otherchr->prop)]->bondhealth * 8;
 							}
 
 							if (weakestplayernum < 0 || health < minhealth) {
@@ -3130,7 +3083,7 @@ void bot_tick_unpaused(struct chrdata *chr)
 			// If the bot didn't set an action above,
 			// try attacking the existing target
 			if (newaction < 0) {
-				if (chr->target != -1 && bot_passes_coward_check(chr, chr_get_target_prop(chr)->chr)) {
+				if (chr->target != -1 && botPassesCowardCheck(chr, chrGetTargetProp(chr)->chr)) {
 					newaction = MA_AIBOTATTACK;
 					aibot->abortattacktimer60 = -1;
 				}
@@ -3138,18 +3091,18 @@ void bot_tick_unpaused(struct chrdata *chr)
 
 			// If there's no existing target, just follow a teammate
 			if (newaction < 0) {
-				s32 playernum = bot_find_teammate_to_follow(chr, 300);
+				s32 playernum = botFindTeammateToFollow(chr, 300);
 
 				if (playernum >= 0) {
 					newaction = MA_AIBOTFOLLOW;
-					aibot->canbreakfollow = random() % 4 == 0;
+					aibot->canbreakfollow = rngRandom() % 4 == 0;
 					aibot->followingplayernum = playernum;
 				}
 			}
 
 			// If there's no teammate to follow, stock up on weapons and ammo
 			if (newaction < 0) {
-				aibot->gotoprop = bot_find_any_pickup(chr);
+				aibot->gotoprop = botFindAnyPickup(chr);
 
 				if (aibot->gotoprop) {
 					newaction = MA_AIBOTGETITEM;
@@ -3161,7 +3114,7 @@ void bot_tick_unpaused(struct chrdata *chr)
 		if (newaction >= 0) {
 			if (newaction == MA_AIBOTGETITEM) {
 				if (aibot->gotoprop) {
-					chr_go_to_prop(chr, aibot->gotoprop, GOPOSFLAG_RUN);
+					chrGoToProp(chr, aibot->gotoprop, GOPOSFLAG_RUN);
 					chr->myaction = newaction;
 				}
 			} else if (newaction == MA_AIBOTATTACK) {
@@ -3175,17 +3128,17 @@ void bot_tick_unpaused(struct chrdata *chr)
 					aibot->distmode = -1;
 
 					if (aibot->canbreakfollow) {
-						bot_set_target(chr, -1);
+						botSetTarget(chr, -1);
 					}
 				}
 			} else if (newaction == MA_AIBOTDEFEND) {
 				chr->myaction = newaction;
 
 				if (aibot->canbreakdefend) {
-					bot_set_target(chr, -1);
+					botSetTarget(chr, -1);
 				}
 
-				chr_go_to_room_pos(chr, &aibot->defendholdpos, aibot->defendholdrooms, GOPOSFLAG_RUN);
+				chrGoToRoomPos(chr, &aibot->defendholdpos, aibot->defendholdrooms, GOPOSFLAG_RUN);
 			} else if (newaction == MA_AIBOTGOTOPOS) {
 				f32 xdist = chr->prop->pos.x - aibot->gotopos.x;
 				f32 ydist = chr->prop->pos.y - aibot->gotopos.y;
@@ -3205,18 +3158,18 @@ void bot_tick_unpaused(struct chrdata *chr)
 
 				if (xdist > 20 || zdist > 20 || (ydist > 200 && chr->inlift == 0)) {
 					chr->myaction = newaction;
-					chr_go_to_room_pos(chr, &aibot->gotopos, aibot->gotorooms, GOPOSFLAG_RUN);
+					chrGoToRoomPos(chr, &aibot->gotopos, aibot->gotorooms, GOPOSFLAG_RUN);
 				} else {
-					chr_stand(chr);
+					chrStand(chr);
 				}
 			} else if (newaction == MA_AIBOTGOTOPROP) {
 				if (aibot->gotoprop) {
 					chr->myaction = newaction;
-					chr_go_to_prop(chr, aibot->gotoprop, GOPOSFLAG_RUN);
+					chrGoToProp(chr, aibot->gotoprop, GOPOSFLAG_RUN);
 				}
 			} else if (newaction == MA_AIBOTDOWNLOAD) {
 				chr->myaction = newaction;
-				chr_stand(chr);
+				chrStand(chr);
 			}
 		}
 
@@ -3231,17 +3184,17 @@ void bot_tick_unpaused(struct chrdata *chr)
 			}
 		} else if (chr->myaction == MA_AIBOTATTACK) {
 			if (aibot->attackingplayernum >= 0
-					&& (chr_is_dead(g_MpAllChrPtrs[aibot->attackingplayernum]) || !bot_passes_coward_check(chr, g_MpAllChrPtrs[aibot->attackingplayernum]))) {
+					&& (chrIsDead(g_MpAllChrPtrs[aibot->attackingplayernum]) || !botPassesCowardCheck(chr, g_MpAllChrPtrs[aibot->attackingplayernum]))) {
 				chr->myaction = MA_AIBOTMAINLOOP;
 			} else if (aibot->attackingplayernum < 0
 					&& (chr->target == -1
-						|| chr_is_dead(chr_get_target_prop(chr)->chr)
-						|| !bot_passes_coward_check(chr, chr_get_target_prop(chr)->chr))) {
+						|| chrIsDead(chrGetTargetProp(chr)->chr)
+						|| !botPassesCowardCheck(chr, chrGetTargetProp(chr)->chr))) {
 				chr->myaction = MA_AIBOTMAINLOOP;
 			} else {
-				botcmd_tick_dist_mode(chr);
+				botcmdTickDistMode(chr);
 
-				if (bot_can_do_critical_pickup(chr)) {
+				if (botCanDoCriticalPickup(chr)) {
 					chr->myaction = MA_AIBOTMAINLOOP;
 				} else if (aibot->abortattacktimer60 >= 0 && aibot->targetlastseen60 < g_Vars.lvframe60 - aibot->abortattacktimer60) {
 					chr->myaction = MA_AIBOTMAINLOOP;
@@ -3249,15 +3202,15 @@ void bot_tick_unpaused(struct chrdata *chr)
 			}
 		} else if (chr->myaction == MA_AIBOTFOLLOW) {
 			if (aibot->followingplayernum < 0
-					|| chr_is_dead(g_MpAllChrPtrs[aibot->followingplayernum])) {
+					|| chrIsDead(g_MpAllChrPtrs[aibot->followingplayernum])) {
 				chr->myaction = MA_AIBOTMAINLOOP;
 			} else {
-				botcmd_tick_dist_mode(chr);
+				botcmdTickDistMode(chr);
 
 				if (aibot->canbreakfollow
 						&& chr->target != -1
 						&& aibot->targetinsight
-						&& bot_passes_coward_check(chr, chr_get_target_prop(chr)->chr)) {
+						&& botPassesCowardCheck(chr, chrGetTargetProp(chr)->chr)) {
 					f32 xdist = chr->prop->pos.x - g_MpAllChrPtrs[aibot->followingplayernum]->prop->pos.x;
 					f32 zdist = chr->prop->pos.z - g_MpAllChrPtrs[aibot->followingplayernum]->prop->pos.z;
 
@@ -3272,13 +3225,13 @@ void bot_tick_unpaused(struct chrdata *chr)
 					// No y check?
 					if (xdist < 500 && zdist < 500) {
 						chr->myaction = MA_AIBOTATTACK;
-						aibot->attackingplayernum = mp_chr_to_chrindex(chr_get_target_prop(chr)->chr);
+						aibot->attackingplayernum = mpPlayerGetIndex(chrGetTargetProp(chr)->chr);
 						aibot->abortattacktimer60 = TICKS(300);
 						aibot->distmode = -1;
 					}
 				}
 
-				if (bot_can_do_critical_pickup(chr)) {
+				if (botCanDoCriticalPickup(chr)) {
 					chr->myaction = MA_AIBOTMAINLOOP;
 				}
 			}
@@ -3306,14 +3259,14 @@ void bot_tick_unpaused(struct chrdata *chr)
 
 				if (xdist > 40 || zdist > 40 || (ydist > 200 && !chr->inlift)) {
 					if (aibot->returntodefendtimer60 <= 0) {
-						chr_go_to_room_pos(chr, &aibot->defendholdpos, aibot->defendholdrooms, GOPOSFLAG_RUN);
+						chrGoToRoomPos(chr, &aibot->defendholdpos, aibot->defendholdrooms, GOPOSFLAG_RUN);
 					}
 				} else if (aibot->canbreakdefend
 						&& chr->target != -1
 						&& aibot->targetinsight
-						&& bot_passes_coward_check(chr, chr_get_target_prop(chr)->chr)) {
+						&& botPassesCowardCheck(chr, chrGetTargetProp(chr)->chr)) {
 					chr->myaction = MA_AIBOTATTACK;
-					aibot->attackingplayernum = mp_chr_to_chrindex(chr_get_target_prop(chr)->chr);
+					aibot->attackingplayernum = mpPlayerGetIndex(chrGetTargetProp(chr)->chr);
 					aibot->abortattacktimer60 = TICKS(300);
 					aibot->distmode = -1;
 				}
@@ -3323,7 +3276,7 @@ void bot_tick_unpaused(struct chrdata *chr)
 				}
 			}
 
-			if (bot_can_do_critical_pickup(chr)) {
+			if (botCanDoCriticalPickup(chr)) {
 				chr->myaction = MA_AIBOTMAINLOOP;
 			}
 		} else if (chr->myaction == MA_AIBOTGOTOPOS) {
@@ -3334,19 +3287,19 @@ void bot_tick_unpaused(struct chrdata *chr)
 				} else if (chr->prop->rooms[0] == g_ScenarioData.koh.hillrooms[0]) {
 					// empty
 				} else if (aibot->hillpadnum >= 0) {
-					pad_set_flag(aibot->hillpadnum, PADFLAG_AIBOTINUSE);
+					padSetFlag(aibot->hillpadnum, PADFLAG_AIBOTINUSE);
 				} else if (aibot->hillcovernum >= 0) {
-					cover_set_flag(aibot->hillcovernum, COVERFLAG_AIBOTINUSE);
+					coverSetFlag(aibot->hillcovernum, COVERFLAG_AIBOTINUSE);
 				}
 			}
 
 			if (chr->actiontype != ACT_GOPOS) {
 				chr->myaction = MA_AIBOTMAINLOOP;
-			} else if (bot_can_do_critical_pickup(chr)) {
+			} else if (botCanDoCriticalPickup(chr)) {
 				chr->myaction = MA_AIBOTMAINLOOP;
 			}
 		} else if (chr->myaction == MA_AIBOTGOTOPROP) {
-			if (bot_can_do_critical_pickup(chr)) {
+			if (botCanDoCriticalPickup(chr)) {
 				chr->myaction = MA_AIBOTMAINLOOP;
 			} else if (chr->actiontype != ACT_GOPOS || aibot->gotoprop == NULL || aibot->gotoprop->parent) {
 				chr->myaction = MA_AIBOTMAINLOOP;
@@ -3354,35 +3307,35 @@ void bot_tick_unpaused(struct chrdata *chr)
 				// empty
 			} else if (g_MpSetup.scenario == MPSCENARIO_HACKERCENTRAL
 					&& g_ScenarioData.htm.uplink == chr->prop
-					&& g_ScenarioData.htm.playernuminrange == mp_chr_to_chrindex(chr)) {
+					&& g_ScenarioData.htm.playernuminrange == mpPlayerGetIndex(chr)) {
 				chr->myaction = MA_AIBOTMAINLOOP;
 			}
 		} else if (chr->myaction == MA_AIBOTDOWNLOAD) {
-			if (bot_can_do_critical_pickup(chr)) {
+			if (botCanDoCriticalPickup(chr)) {
 				chr->myaction = MA_AIBOTMAINLOOP;
-			} else if (g_ScenarioData.htm.playernuminrange != mp_chr_to_chrindex(chr)) {
+			} else if (g_ScenarioData.htm.playernuminrange != mpPlayerGetIndex(chr)) {
 				chr->myaction = MA_AIBOTMAINLOOP;
 			}
 		}
 
 		// Regardless of the action, choose a general target and maintain a
 		// route to them, even if it won't be followed
-		bot_choose_general_target(chr);
+		botChooseGeneralTarget(chr);
 
-		if (mp_chr_to_chrindex(chr) == (g_Vars.lvframenum % g_MpNumChrs) && chr->target != -1) {
-			struct prop *targetprop = chr_get_target_prop(chr);
-			struct waypoint *first = waypoint_find_closest_to_pos(&chr->prop->pos, chr->prop->rooms);
-			struct waypoint *last = waypoint_find_closest_to_pos(&targetprop->pos, targetprop->rooms);
+		if (mpPlayerGetIndex(chr) == (g_Vars.lvframenum % g_MpNumChrs) && chr->target != -1) {
+			struct prop *targetprop = chrGetTargetProp(chr);
+			struct waypoint *first = waypointFindClosestToPos(&chr->prop->pos, chr->prop->rooms);
+			struct waypoint *last = waypointFindClosestToPos(&targetprop->pos, targetprop->rooms);
 
 			if (first && last) {
-				nav_set_seed(CHRNAVSEED(chr), CHRNAVSEED(chr));
-				aibot->numwaystepstotarget = nav_find_route(last, first, aibot->waypoints, ARRAYCOUNT(aibot->waypoints));
-				nav_set_seed(0, 0);
+				navSetSeed(CHRNAVSEED(chr), CHRNAVSEED(chr));
+				aibot->numwaystepstotarget = navFindRoute(last, first, aibot->waypoints, ARRAYCOUNT(aibot->waypoints));
+				navSetSeed(0, 0);
 			}
 		}
 
 		// Tick the bot's inventory. They may decide to switch weapons.
-		botinv_tick(chr);
+		botinvTick(chr);
 
 		// Iterate both hands and handle shooting
 		{
@@ -3415,9 +3368,9 @@ void bot_tick_unpaused(struct chrdata *chr)
 						// starting the punch.
 						if (aibot->punchtimer60[i] >= 0 && aibot->timeuntilreload60[i] <= 0) {
 							if (aibot->weaponnum == WEAPON_TRANQUILIZER
-									&& aibot->loadedammo[i] < bgun_get_min_clip_qty(WEAPON_TRANQUILIZER, FUNC_SECONDARY)) {
+									&& aibot->loadedammo[i] < bgunGetMinClipQty(WEAPON_TRANQUILIZER, FUNC_SECONDARY)) {
 								aibot->punchtimer60[i] = 0;
-								bot_schedule_reload(chr, i);
+								botScheduleReload(chr, i);
 							} else {
 								f32 range = 210;
 
@@ -3429,14 +3382,14 @@ void bot_tick_unpaused(struct chrdata *chr)
 
 								if (chr->target != -1
 										&& aibot->targetinsight
-										&& aibot->shootdelaytimer60 >= g_BotDifficulties[aibot->config->difficulty].shootdelay60) {
-									if (!bot_is_dizzy(chr)) {
+										&& aibot->shootdelaytimer60 >= g_BotDifficulties[aibot->config->difficulty].shootdelay) {
+									if (!botIsDizzy(chr)) {
 										if (aibot->weaponnum == WEAPON_TRANQUILIZER) {
-											if (!chr_is_target_in_fov(chr, 30, 0) || chr_get_distance_to_target(chr) > range) {
+											if (!chrIsTargetInFov(chr, 30, 0) || chrGetDistanceToTarget(chr) > range) {
 												aibot->punchtimer60[i] = 0;
 											}
 										} else {
-											if (!chr_is_target_in_fov(chr, 40, 0) || chr_get_distance_to_target(chr) > range + 150) {
+											if (!chrIsTargetInFov(chr, 40, 0) || chrGetDistanceToTarget(chr) > range + 150) {
 												aibot->punchtimer60[i] = 0;
 											}
 										}
@@ -3447,8 +3400,8 @@ void bot_tick_unpaused(struct chrdata *chr)
 
 								// If the punch was not cancelled, execute it
 								if (aibot->punchtimer60[i] < 0) {
-									chr_uncloak_temporarily(chr);
-									chr_punch_inflict_damage(chr, 2, range, false);
+									chrUncloakTemporarily(chr);
+									chrPunchInflictDamage(chr, 2, range, false);
 
 									if (i == HAND_RIGHT) {
 										// Set the punch cooldown timer
@@ -3482,7 +3435,7 @@ void bot_tick_unpaused(struct chrdata *chr)
 												aibot->punchtimer60[0] = TICKS(30);
 											}
 
-											if (random() % 3 == 0) {
+											if (rngRandom() % 3 == 0) {
 												aibot->punchtimer60[1] = aibot->punchtimer60[0] - TICKS(20);
 											}
 											break;
@@ -3506,7 +3459,7 @@ void bot_tick_unpaused(struct chrdata *chr)
 											break;
 										case WEAPON_TRANQUILIZER:
 											aibot->punchtimer60[0] = TICKS(60);
-											aibot->loadedammo[0] -= bgun_get_min_clip_qty(WEAPON_TRANQUILIZER, FUNC_SECONDARY);
+											aibot->loadedammo[0] -= bgunGetMinClipQty(WEAPON_TRANQUILIZER, FUNC_SECONDARY);
 											break;
 										case WEAPON_REAPER:
 											aibot->punchtimer60[0] = 0;
@@ -3520,11 +3473,11 @@ void bot_tick_unpaused(struct chrdata *chr)
 						// Bots fire Slayer rockets regardless of where they are
 						// on the map provided they have ammo
 						if (aibot->loadedammo[0] > 0) {
-							chr_uncloak_temporarily(chr);
-							botact_create_slayer_rocket(chr);
+							chrUncloakTemporarily(chr);
+							botactCreateSlayerRocket(chr);
 							aibot->loadedammo[0]--;
 						}
-					} else if (botact_is_weapon_throwable(aibot->weaponnum, aibot->gunfunc)) {
+					} else if (botactIsWeaponThrowable(aibot->weaponnum, aibot->gunfunc)) {
 						// Hand throwing a weapon
 						if (i == HAND_RIGHT) {
 							if (aibot->throwtimer60 > 0) {
@@ -3532,33 +3485,33 @@ void bot_tick_unpaused(struct chrdata *chr)
 							}
 
 							if (chr->aibot->throwtimer60 <= 0) {
-								if (botact_get_ammo_quantity_by_weapon(aibot, aibot->weaponnum, aibot->gunfunc, false) > 0
+								if (botactGetAmmoQuantityByWeapon(aibot, aibot->weaponnum, aibot->gunfunc, false) > 0
 										|| aibot->weaponnum == WEAPON_LAPTOPGUN
 										|| aibot->weaponnum == WEAPON_DRAGON) {
 									bool throw = false;
 
 									if (chr->target != -1
 											&& aibot->targetinsight
-											&& aibot->shootdelaytimer60 >= g_BotDifficulties[aibot->config->difficulty].shootdelay60
-											&& (bot_is_dizzy(chr) || chr_is_target_in_fov(chr, 45, false))) {
+											&& aibot->shootdelaytimer60 >= g_BotDifficulties[aibot->config->difficulty].shootdelay
+											&& (botIsDizzy(chr) || chrIsTargetInFov(chr, 45, false))) {
 										throw = true;
 									}
 
 									if (throw) {
-										struct funcdef *func;
+										struct weaponfunc *func;
 
-										chr_uncloak_temporarily(chr);
-										botact_try_remove_ammo_from_reserve(aibot, aibot->weaponnum, aibot->gunfunc, 1);
-										botact_throw(chr);
+										chrUncloakTemporarily(chr);
+										botactTryRemoveAmmoFromReserve(aibot, aibot->weaponnum, aibot->gunfunc, 1);
+										botactThrow(chr);
 
-										func = gset_get_funcdef_by_weaponnum_funcnum(aibot->weaponnum, aibot->gunfunc);
+										func = weaponGetFunctionById(aibot->weaponnum, aibot->gunfunc);
 
 										if (func && (func->flags & FUNCFLAG_DISCARDWEAPON)) {
-											botinv_remove_item(chr, aibot->weaponnum);
-											botinv_switch_to_weapon(chr, WEAPON_UNARMED, FUNC_PRIMARY);
+											botinvRemoveItem(chr, aibot->weaponnum);
+											botinvSwitchToWeapon(chr, WEAPON_UNARMED, FUNC_PRIMARY);
 										}
 
-										aibot->throwtimer60 = botact_get_projectile_throw_interval(chr->aibot->weaponnum);
+										aibot->throwtimer60 = botactGetProjectileThrowInterval(chr->aibot->weaponnum);
 									}
 								}
 							}
@@ -3567,7 +3520,7 @@ void bot_tick_unpaused(struct chrdata *chr)
 						// Handle firing a regular weapon
 						bool canshoot = false;
 
-						if (weapon_get_num_ticks_per_shot(aibot->weaponnum, aibot->gunfunc) <= 0) {
+						if (weaponGetNumTicksPerShot(aibot->weaponnum, aibot->gunfunc) <= 0) {
 							// Increment the mauler charge and deplete ammo as
 							// the charge amount crosses each whole number.
 							// Yes, this is actually implemented for bots.
@@ -3602,9 +3555,9 @@ void bot_tick_unpaused(struct chrdata *chr)
 								firing = true;
 							} else if (chr->target != -1
 									&& aibot->targetinsight
-									&& aibot->shootdelaytimer60 >= g_BotDifficulties[aibot->config->difficulty].shootdelay60
-									&& (bot_is_dizzy(chr) || chr_is_target_in_fov(chr, 45, false))
-									&& !chr_is_dead(chr_get_target_prop(chr)->chr)) {
+									&& aibot->shootdelaytimer60 >= g_BotDifficulties[aibot->config->difficulty].shootdelay
+									&& (botIsDizzy(chr) || chrIsTargetInFov(chr, 45, false))
+									&& !chrIsDead(chrGetTargetProp(chr)->chr)) {
 								firing = true;
 
 								if (aibot->weaponnum == WEAPON_CYCLONE && aibot->gunfunc == FUNC_SECONDARY) {
@@ -3631,9 +3584,9 @@ void bot_tick_unpaused(struct chrdata *chr)
 							}
 						}
 
-						if (weapon_get_num_ticks_per_shot(aibot->weaponnum, aibot->gunfunc) <= 0 && firing) {
-							struct funcdef *func;
-							aibot->nextbullettimer60[i] = botact_get_shoot_interval60(aibot->weaponnum, aibot->gunfunc);
+						if (weaponGetNumTicksPerShot(aibot->weaponnum, aibot->gunfunc) <= 0 && firing) {
+							struct weaponfunc *func;
+							aibot->nextbullettimer60[i] = botactGetShootInterval60(aibot->weaponnum, aibot->gunfunc);
 
 #if PAL
 							if (aibot->nextbullettimer60[i] >= 6) {
@@ -3641,7 +3594,7 @@ void bot_tick_unpaused(struct chrdata *chr)
 							}
 #endif
 
-							func = gset_get_funcdef_by_weaponnum_funcnum(aibot->weaponnum, aibot->gunfunc);
+							func = weaponGetFunctionById(aibot->weaponnum, aibot->gunfunc);
 
 							if (func
 									&& (func->flags & (FUNCFLAG_BURST3 | FUNCFLAG_BURST2))
@@ -3664,20 +3617,20 @@ void bot_tick_unpaused(struct chrdata *chr)
 				}
 
 				if (firing) {
-					chr_uncloak_temporarily(chr);
+					chrUncloakTemporarily(chr);
 
 					if (i == HAND_RIGHT) {
 						firingright = true;
 					}
 				}
 
-				chr_set_hand_firing(chr, i, firing);
+				chrSetHandFiring(chr, i, firing);
 			}
 		}
 	}
 }
 
-void bot_check_fetch(struct chrdata *chr)
+void botCheckFetch(struct chrdata *chr)
 {
 	bool alreadyfetching = false;
 	struct aibot *aibot = chr->aibot;
@@ -3707,6 +3660,6 @@ void bot_check_fetch(struct chrdata *chr)
 	}
 
 	if (!alreadyfetching) {
-		chr_go_to_room_pos(chr, &chr->act_gopos.endpos, chr->act_gopos.endrooms, chr->act_gopos.flags);
+		chrGoToRoomPos(chr, &chr->act_gopos.endpos, chr->act_gopos.endrooms, chr->act_gopos.flags);
 	}
 }

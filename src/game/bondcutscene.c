@@ -5,7 +5,7 @@
 #include "data.h"
 #include "types.h"
 
-void bcutscene_init(void)
+void bcutsceneInit(void)
 {
 	s32 i;
 	s32 j;
@@ -19,8 +19,8 @@ void bcutscene_init(void)
 		for (j = 0; j < 1; j++) {
 			struct hand *hand = &g_Vars.players[i]->hands[j];
 
-			if (hand->audiohandle && sndp_get_state(hand->audiohandle) != AL_STOPPED) {
-				sndp_stop_sound(hand->audiohandle);
+			if (hand->audiohandle && sndGetState(hand->audiohandle) != AL_STOPPED) {
+				audioStop(hand->audiohandle);
 				hand->audiohandle = NULL;
 			}
 
@@ -29,7 +29,7 @@ void bcutscene_init(void)
 	}
 }
 
-void bcutscene_tick(void)
+void bcutsceneTick(void)
 {
 	// empty
 }

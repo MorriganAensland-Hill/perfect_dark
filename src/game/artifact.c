@@ -16,6 +16,12 @@
 #include "lib/mtx.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "lib/collision.h"
+#include "lib/lib_17ce0.h"
+#include "game/player.h"
+#include "game/prop.h"
+#endif
 
 /**
  * Artifacts are points of interest in the z-buffer.
@@ -82,10 +88,13 @@
  */
 
 u8 *var800a41a0;
+u32 var800a41a4;
+u32 var800a41a8;
+u32 var800a41ac;
 
-void artifacts_clear(void)
+void artifactsClear(void)
 {
-	struct artifact *artifacts = sched_get_write_artifacts();
+	struct artifact *artifacts = schedGetWriteArtifacts();
 	s32 i;
 
 	for (i = 0; i < MAX_ARTIFACTS; i++) {
@@ -93,17 +102,31 @@ void artifacts_clear(void)
 	}
 }
 
-void artifacts_tick(void)
+void artifactsTick(void)
 {
-	sched_increment_write_artifacts();
-	sched_increment_front_artifacts();
+	schedIncrementWriteArtifacts();
+	schedIncrementFrontArtifacts();
 }
 
-u16 artifacts_calculate_unk04(f32 arg0)
+u16 floatToN64Depth(f32 arg0)
 {
+	/**
+	 * Method to convert a 32 bit floating point depth value to the
+	 * unsigned 16 bit integer format used by the zbuffer on the N64.
+	 * The argument arg0 represents z normalized to [0, 1] * 32704.0f.
+	 *
+	 * It works by converting the depth value to a large, unsigned 32 bit
+	 * integer before scaling back down to an unsigned 16 bit integer.
+	 * The scaling is done using bit shift operations on the most & least
+	 * significant bytes of the resulting 16 bit integer, likely because
+	 * bit shift operations are faster than division. The segmentation of
+	 * this calculation at values 0x3f800, 0x3f000, etc. is probably
+	 * intended to reduce z-fighting by adding more differentiation for
+	 * distant z values.
+	 */
 	u32 value = arg0 * 8.0f;
-	u32 left;
-	u32 right;
+	u32 left; // forms the most significant byte of the final u16
+	u32 right = value; // forms the least significant byte of the final u16
 
 	if (value > 0x3f800) {
 		right = value & 0x7ff;
@@ -139,10 +162,10 @@ u16 artifacts_calculate_unk04(f32 arg0)
 		left = 0;
 	}
 
-	return left << 13 | right << 2;
+	return left << 13 | (right << 2);
 }
 
-s32 artifacts_float_to_int(f32 arg0)
+s32 artifactsFloatToInt(f32 arg0)
 {
 	if (arg0 > 0.0f) {
 		if (arg0 > 2147483520.0f) {
@@ -157,7 +180,35 @@ s32 artifacts_float_to_int(f32 arg0)
 	return arg0;
 }
 
-void artifacts_calculate_glares_for_room(s32 roomnum)
+#ifndef PLATFORM_N64
+
+bool artifactTestLos(struct coord *spec, struct coord *roompos, s32 xi, s32 yi)
+{
+	s32 i = 0;
+
+	if (!g_Vars.currentplayer) {
+		return false;
+	}
+
+	struct coord endpos;
+	endpos.x = roompos->x + spec->x;
+	endpos.y = roompos->y + spec->y;
+	endpos.z = roompos->z + spec->z;
+
+	struct coord gundir2d;
+	struct coord gunpos2d = {{ 0.f, 0.f, 0.f }};
+	struct coord gundir3d;
+	struct coord gunpos3d = g_Vars.currentplayer->cam_pos;
+	f32 crosspos[2] = { (f32)xi, (f32)yi };
+	cam0f0b4c3c(crosspos, &gundir2d, 1.f);
+	mtx4RotateVec(camGetProjectionMtxF(), &gundir2d, &gundir3d);
+
+	return shotTestLos(&gunpos2d, &gundir2d, &gunpos3d, &gundir3d, &endpos);
+}
+
+#endif
+
+void artifactsCalculateGlaresForRoom(s32 roomnum)
 {
 	s32 i;
 	s32 j;
@@ -191,7 +242,7 @@ void artifacts_calculate_glares_for_room(s32 roomnum)
 	struct coord spc4;
 	struct light *roomlights;
 	s32 index;
-	struct artifact *artifacts = sched_get_write_artifacts();
+	struct artifact *artifacts = schedGetWriteArtifacts();
 	struct coord *campos = &g_Vars.currentplayer->cam_pos;
 	struct artifact *artifact;
 
@@ -202,14 +253,14 @@ void artifacts_calculate_glares_for_room(s32 roomnum)
 			roomlights = (struct light *)&g_BgLightsFileData[g_Rooms[roomnum].gfxdata->lightsindex * 0x22];
 			s1 = &var800a41a0[g_Rooms[roomnum].gfxdata->lightsindex * 3];
 
-			room_populate_mtx(&sp138, roomnum);
-			mtx00015f88(bg_get_scale_bg2gfx(), &sp138);
-			mtx4_mult_mtx4(cam_get_mtxf006c(), &sp138, &spf8);
+			roomPopulateMtx(&sp138, roomnum);
+			mtx00015f88(bgGetScaleBg2Gfx(), &sp138);
+			mtx4MultMtx4(camGetMtxF006c(), &sp138, &spf8);
 
-			viewwidth = vi_get_view_width();
-			viewheight = vi_get_view_height();
-			viewleft = vi_get_view_left();
-			viewtop = vi_get_view_top();
+			viewwidth = viGetViewWidth();
+			viewheight = viGetViewHeight();
+			viewleft = viGetViewLeft();
+			viewtop = viGetViewTop();
 
 			for (i = 0; i < numlights; i++) {
 				origin.x = 0.0f;
@@ -259,8 +310,8 @@ void artifacts_calculate_glares_for_room(s32 roomnum)
 
 					if (spdc[3] > 0.0001f) {
 						f20 = 1.0f / spdc[3];
-						x = artifacts_float_to_int(viewleft + (1.0f + spdc[0] * f20) * (viewwidth * 0.5f));
-						y = artifacts_float_to_int(viewtop + (1.0f - spdc[1] * f20) * (viewheight * 0.5f));
+						x = artifactsFloatToInt(viewleft + (1.0f + spdc[0] * f20) * (viewwidth * 0.5f));
+						y = artifactsFloatToInt(viewtop + (1.0f - spdc[1] * f20) * (viewheight * 0.5f));
 						f0 = (spdc[2] * f20 * 511.0f + 511.0f) * 32.0f;
 
 						if (f0 < 32576.0f) {
@@ -362,8 +413,8 @@ void artifacts_calculate_glares_for_room(s32 roomnum)
 								f20 = -9999.0f;
 							}
 
-							xi = artifacts_float_to_int(viewleft + (1.0f + spdc[0] * f20) * (viewwidth * 0.5f));
-							yi = artifacts_float_to_int(viewtop + (1.0f - spdc[1] * f20) * (viewheight * 0.5f));
+							xi = artifactsFloatToInt(viewleft + (1.0f + spdc[0] * f20) * (viewwidth * 0.5f));
+							yi = artifactsFloatToInt(viewtop + (1.0f - spdc[1] * f20) * (viewheight * 0.5f));
 							f0 = (spdc[2] * f20 * 511.0f + 511.0f) * 32.0f;
 
 							if (g_ZbufPtr1
@@ -372,7 +423,7 @@ void artifacts_calculate_glares_for_room(s32 roomnum)
 									&& yi >= (s32)viewtop
 									&& yi < (s32)(viewtop + viewheight)
 									&& f0 < 32576.0f) {
-								index = env_get_current()->numsuns;
+								index = envGetCurrent()->numsuns;
 								index *= 8;
 								artifact = artifacts;
 								artifact += index;
@@ -383,8 +434,17 @@ void artifacts_calculate_glares_for_room(s32 roomnum)
 								}
 
 								if (index < MAX_ARTIFACTS) {
-									artifact->expecteddepth = artifacts_calculate_unk04(f0) >> 2;
-									artifact->zbufptr = &g_ZbufPtr1[vi_get_width() * yi + xi];
+#ifndef PLATFORM_N64
+									artifact->visiblelos = artifactTestLos(&spec, &g_BgRooms[roomnum].pos, xi, yi);
+#endif
+									/**
+									 * the original game performs artifact depth comparison
+									 * using the N64 depth values divided by 4. This is
+									 * accomplished by bit shifting the N64 depth value
+									 * to the right using >> 2
+									 */
+									artifact->expecteddepth = floatToN64Depth(f0) >> 2;
+									artifact->zbufptr = &g_ZbufPtr1[viGetWidth() * yi + xi];
 									artifact->light = &roomlights[i];
 									artifact->type = ARTIFACTTYPE_GLARE;
 									artifact->screenx = xi;
@@ -399,27 +459,24 @@ void artifacts_calculate_glares_for_room(s32 roomnum)
 	}
 }
 
-/**
- * Clamp the given value to with 7 units of base.
- */
-u8 artifacts_clamp(u8 base, u8 value)
+u8 artifactsClamp(u8 arg0, u8 arg1)
 {
-	if (value >= base + 7) {
-		return base + 7;
+	if (arg1 >= arg0 + 7) {
+		return arg0 + 7;
 	}
 
-	if (value <= base - 7) {
-		return base - 7;
+	if (arg1 <= arg0 - 7) {
+		return arg0 - 7;
 	}
 
-	return value;
+	return arg1;
 }
 
-Gfx *artifacts_configure_for_glares(Gfx *gdl)
+Gfx *artifactsConfigureForGlares(Gfx *gdl)
 {
-	struct stagetableentry *stage = stage_get_current();
+	struct stagetableentry *stage = stageGetCurrent();
 
-	tex_select(&gdl, &g_TexLightGlareConfigs[stage->light_type], 4, 0, 2, 1, NULL);
+	texSelect(&gdl, &g_TexLightGlareConfigs[stage->light_type], 4, 0, 2, 1, NULL);
 
 	gDPSetCycleType(gdl++, G_CYC_1CYCLE);
 	gDPSetRenderMode(gdl++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
@@ -434,14 +491,14 @@ Gfx *artifacts_configure_for_glares(Gfx *gdl)
 	return gdl;
 }
 
-Gfx *artifacts_unconfigure_for_glares(Gfx *gdl)
+Gfx *artifactsUnconfigureForGlares(Gfx *gdl)
 {
 	gDPSetTexturePersp(gdl++, G_TP_PERSP);
 
 	return gdl;
 }
 
-Gfx *artifacts_render_glares_for_room(Gfx *gdl, s32 roomnum)
+Gfx *artifactsRenderGlaresForRoom(Gfx *gdl, s32 roomnum)
 {
 	s32 i;
 	s32 j;
@@ -469,24 +526,30 @@ Gfx *artifacts_render_glares_for_room(Gfx *gdl, s32 roomnum)
 	u8 colour[4];
 	s16 lightroompos[3];
 	struct coord lightworldpos;
-	struct coord lightworlddiff;
-	f32 screenpos[2];
+	struct coord lightscreenpos;
+	f32 spdc[2];
 	f32 spd4[2];
 	f32 f24;
 	bool extra;
 	f32 f26;
 
-	artifacts = sched_get_front_artifacts();
-	lightop_cur_frac = room_get_light_op_cur_frac(roomnum);
+	artifacts = schedGetFrontArtifacts();
+	lightop_cur_frac = roomGetLightOpCurFrac(roomnum);
 
 	if (g_Rooms[roomnum].gfxdata == NULL || g_Rooms[roomnum].loaded240 == 0) {
 		return gdl;
 	}
 
-	for (i = env_get_current()->numsuns * 8; i < MAX_ARTIFACTS; i++) {
+	for (i = envGetCurrent()->numsuns * 8; i < MAX_ARTIFACTS; i++) {
 		struct light *light2 = artifacts[i].light;
 		count = 0;
 
+		/**
+		 * light arifacts are created from several, closely spaced
+		 * textures that give the appearance of a dynamic light glare
+		 * as the character moves. Loop to count all the sub-artifacts
+		 * in this light.
+		 */
 		for (j = i; j < MAX_ARTIFACTS && artifacts[j].type == ARTIFACTTYPE_GLARE && artifacts[j].light == light2; j++) {
 			count++;
 		}
@@ -501,6 +564,10 @@ Gfx *artifacts_render_glares_for_room(Gfx *gdl, s32 roomnum)
 				min = 0xffff;
 				max = 0;
 
+				/**
+				 * loop to determine the min & max depth of
+				 * the sub-artifacts composing this room light.
+				 */
 				for (k = i; k < i + count; k++) {
 					if (artifacts[k].expecteddepth > max) {
 						max = artifacts[k].expecteddepth;
@@ -511,6 +578,16 @@ Gfx *artifacts_render_glares_for_room(Gfx *gdl, s32 roomnum)
 					}
 				}
 
+				/**
+				 * Define a depth tolerance from the min & max
+				 * depths of sub-artifacts for a given light.
+				 * This will be used to determine which light
+				 * artifacts are visible when comparing depth
+				 * values of lights to other items rendered
+				 * on screen. Without this, the lights would
+				 * constantly flicker due to z-fighting caused
+				 * by the low precision of the N64 depth.
+				 */
 				tolerance = (max - min) >> 1;
 
 				if (tolerance < 25) {
@@ -518,11 +595,12 @@ Gfx *artifacts_render_glares_for_room(Gfx *gdl, s32 roomnum)
 				}
 
 				for (k = i; k < i + count; k++) {
+#ifdef PLATFORM_N64
 					u16 expecteddepth;
 					actualdepth = (artifacts[k].actualdepth & 0xfffc) >> 2;
 					expecteddepth = artifacts[k].expecteddepth;
 
-					if (actualdepth > expecteddepth) {
+					if (expecteddepth < actualdepth) {
 						difference = actualdepth - expecteddepth;
 					} else {
 						difference = expecteddepth - actualdepth;
@@ -531,23 +609,26 @@ Gfx *artifacts_render_glares_for_room(Gfx *gdl, s32 roomnum)
 					if (difference <= tolerance) {
 						numgood++;
 					}
+#else
+					numgood += artifacts[k].visiblelos;
+#endif
 
 					artifacts[k].type = ARTIFACTTYPE_FREE;
 				}
 
-				s3[0] = artifacts_clamp(s3[0], numgood * 2);
+				s3[0] = artifactsClamp(s3[0], numgood * 2);
 
 				if (numgood > 0) {
-					brightness = vi_get_fov_y() * DTOR(1.0f);
+					brightness = viGetFovY() * 0.017453292f;
 					add = cosf(brightness) / sinf(brightness) * 14.6f;
 
-					if (light_is_healthy(roomnum, lightindex - g_Rooms[roomnum].gfxdata->lightsindex)) {
-						if (!light_is_on(roomnum, lightindex - g_Rooms[roomnum].gfxdata->lightsindex)) {
+					if (lightIsHealthy(roomnum, lightindex - g_Rooms[roomnum].gfxdata->lightsindex)) {
+						if (!lightIsOn(roomnum, lightindex - g_Rooms[roomnum].gfxdata->lightsindex)) {
 							continue;
 						}
 
 						brightness = 1.0f;
-					} else if (light_tick_broken(roomnum, lightindex - g_Rooms[roomnum].gfxdata->lightsindex)) {
+					} else if (lightTickBroken(roomnum, lightindex - g_Rooms[roomnum].gfxdata->lightsindex)) {
 						brightness = 0.4f;
 					} else {
 						continue;
@@ -569,19 +650,19 @@ Gfx *artifacts_render_glares_for_room(Gfx *gdl, s32 roomnum)
 
 					f0 = s3[2] * (1.0f / 255.0f);
 
-					sky_set_overexposure((s32) ((f32)f0 * r), (s32) ((f32)f0 * g), (s32) ((f32)f0 * b));
+					skySetOverexposure((s32) ((f32)f0 * r), (s32) ((f32)f0 * g), (s32) ((f32)f0 * b));
 
 					for (l = 0; l < 3; l++) {
 						lightroompos[l] = (light->bbox[0].s[l] + light->bbox[1].s[l] + light->bbox[2].s[l] + light->bbox[3].s[l]) / 4;
 						lightworldpos.f[l] = lightroompos[l] + g_BgRooms[roomnum].pos.f[l];
-						lightworlddiff.f[l] = lightworldpos.f[l] - g_Vars.currentplayer->cam_pos.f[l];
+						lightscreenpos.f[l] = lightworldpos.f[l] - g_Vars.currentplayer->cam_pos.f[l];
 					}
 
-					mtx4_rotate_vec_in_place(cam_get_world_to_screen_mtxf(), &lightworlddiff);
+					mtx4RotateVecInPlace(camGetWorldToScreenMtxf(), &lightscreenpos);
 
-					cam0f0b4d04(&lightworlddiff, screenpos);
+					cam0f0b4d04(&lightscreenpos, spdc);
 
-					brightness *= 27500.0f / (-lightworlddiff.z < 1.0f ? 1.0f : -lightworlddiff.z);
+					brightness *= 27500.0f / (-lightscreenpos.z < 1.0f ? 1.0f : -lightscreenpos.z);
 
 					if (light->brightnessmult != 0) {
 						brightness *= light->brightnessmult * (1.0f / 32.0f);
@@ -594,17 +675,17 @@ Gfx *artifacts_render_glares_for_room(Gfx *gdl, s32 roomnum)
 					}
 
 					brightness += add;
-					brightness *= 2.0f * room_get_settled_local_brightness_frac(roomnum);
+					brightness *= 2.0f * roomGetSettledLocalBrightnessFrac(roomnum);
 
 					if (brightness > 750.0f) {
 						brightness = 750.0f;
 					}
 
-					f24 = stage_get_current()->light_width * brightness * 0.01f;
-					f26 = stage_get_current()->light_height * brightness * 0.01f;
+					f24 = stageGetCurrent()->light_width * brightness * 0.01f;
+					f26 = stageGetCurrent()->light_height * brightness * 0.01f;
 
-					f24 *= vi_get_view_width() * (1.0f / 240.0f) / cam_get_persp_aspect();
-					f26 *= vi_get_view_height() * (1.0f / 240.0f);
+					f24 *= viGetViewWidth() * (1.0f / 240.0f) / camGetPerspAspect();
+					f26 *= viGetViewHeight() * (1.0f / 240.0f);
 
 					if (brightness > 3.0f) {
 						f32 alpha = (light->colour & 0xf) * 17;
@@ -613,7 +694,7 @@ Gfx *artifacts_render_glares_for_room(Gfx *gdl, s32 roomnum)
 						colour[1] = g;
 						colour[2] = b;
 
-						alpha *= stage_get_current()->light_alpha / 255.0f;
+						alpha *= stageGetCurrent()->light_alpha / 255.0f;
 						alpha *= (s3[1] / 255.0f);
 						alpha *= (s3[0] / 8.0f);
 
@@ -632,13 +713,13 @@ Gfx *artifacts_render_glares_for_room(Gfx *gdl, s32 roomnum)
 						spd4[0] = f24;
 						spd4[1] = f26;
 
-						func0f0b2740(&gdl, screenpos, spd4, 64, 64, false, false, false, 1);
+						func0f0b2740(&gdl, spdc, spd4, 64, 64, false, false, false, 1);
 
 						if (extra) {
 							colour[0] = 0xff;
 							colour[1] = 0xff;
 							colour[2] = 0xff;
-							colour[3] = stage_get_current()->light_alpha;
+							colour[3] = stageGetCurrent()->light_alpha;
 							colour[3] = s3[0] * colour[3] / 8;
 
 							gDPSetEnvColor(gdl++, colour[0], colour[1], colour[2], colour[3]);
@@ -646,7 +727,7 @@ Gfx *artifacts_render_glares_for_room(Gfx *gdl, s32 roomnum)
 							spd4[0] = f24 * 0.4f;
 							spd4[1] = f26 * 0.4f;
 
-							func0f0b2740(&gdl, screenpos, spd4, 64, 64, false, false, false, 1);
+							func0f0b2740(&gdl, spdc, spd4, 64, 64, false, false, false, 1);
 						}
 					}
 				}

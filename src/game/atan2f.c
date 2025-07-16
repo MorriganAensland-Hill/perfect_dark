@@ -11,13 +11,13 @@ f32 atan2f(f32 x, f32 z)
 		if (z >= 0) {
 			result = 0;
 		} else {
-			result = DTOR(180);
+			result = M_PI;
 		}
 	} else if (z == 0) {
 		if (x > 0) {
-			result = DTOR(90);
+			result = 1.5707963705063f;
 		} else {
-			result = DTOR(270);
+			result = 1.5707963705063f * 3;
 		}
 	} else {
 		result = sqrtf(x * x + z * z);
@@ -26,18 +26,18 @@ f32 atan2f(f32 x, f32 z)
 			result = acosf(z / result);
 
 			if (x < 0) {
-				result = DTOR(360) - result;
+				result = M_TAU - result;
 			}
 		} else {
 			result = acosf(x / result);
-			result = DTOR(90) - result;
+			result = 1.5707963705063f - result;
 
 			if (z < 0) {
-				result = DTOR(180) - result;
+				result = M_PI - result;
 			}
 
 			if (result < 0) {
-				result += DTOR(360);
+				result = result + M_TAU;
 			}
 		}
 	}

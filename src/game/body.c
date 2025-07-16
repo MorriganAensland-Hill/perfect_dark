@@ -29,7 +29,7 @@ u32 var8009cd24;
 s32 g_ActiveMaleHeads[8];
 s32 g_ActiveFemaleHeads[8];
 
-s32 g_NumTuxedos = 0;
+s32 g_NumBondBodies = 0;
 s32 g_NumMaleGuardHeads = 0;
 s32 g_NumFemaleGuardHeads = 0;
 s32 g_NumMaleGuardTeamHeads = 0;
@@ -37,7 +37,7 @@ s32 g_NumFemaleGuardTeamHeads = 0;
 s32 var80062b14 = 0;
 s32 var80062b18 = 0;
 
-s32 g_TuxedoBodynums[] = {
+s32 g_BondBodies[] = {
 	BODY_DJBOND,
 	BODY_CONNERY,
 	BODY_DALTON,
@@ -127,7 +127,7 @@ s32 g_FemaleGuardTeamHeads[] = {
 	-1,
 };
 
-s32 g_TuxedoIndex = 0;
+s32 var80062c80 = 0;
 s32 g_ActiveMaleHeadsIndex = 0;
 s32 g_ActiveFemaleHeadsIndex = 0;
 
@@ -137,7 +137,7 @@ s32 g_FemGuardHeads[3] = {
 	HEAD_LAURA,
 };
 
-u32 body_get_race(s32 bodynum)
+u32 bodyGetRace(s32 bodynum)
 {
 	switch (bodynum) {
 	case BODY_SKEDAR:
@@ -155,62 +155,62 @@ u32 body_get_race(s32 bodynum)
 	return RACE_HUMAN;
 }
 
-bool body_load_modeldef(s32 bodynum)
+bool bodyLoad(s32 bodynum)
 {
 	if (!g_HeadsAndBodies[bodynum].modeldef) {
-		g_HeadsAndBodies[bodynum].modeldef = modeldef_load_to_new(g_HeadsAndBodies[bodynum].filenum);
+		g_HeadsAndBodies[bodynum].modeldef = modeldefLoadToNew(g_HeadsAndBodies[bodynum].filenum);
 		return true;
 	}
 
 	return false;
 }
 
-struct model *body_instantiate_model_to_addr(s32 bodynum, s32 headnum, struct modeldef *bodymodeldef, struct modeldef *headmodeldef, bool sunglasses, struct model *model, bool isplayer, u8 varyheight)
+struct model *body0f02ce8c(s32 bodynum, s32 headnum, struct modeldef *bodymodeldef, struct modeldef *headmodeldef, bool sunglasses, struct model *model, bool isplayer, u8 varyheight)
 {
 	f32 scale = g_HeadsAndBodies[bodynum].scale * 0.10000001f;
 	f32 animscale = g_HeadsAndBodies[bodynum].animscale;
 	struct modelnode *node = NULL;
 	u32 stack[2];
 
-	if (cheat_is_active(CHEAT_DKMODE)) {
+	if (cheatIsActive(CHEAT_DKMODE)) {
 		scale *= 0.8f;
 	}
 
 	if (bodymodeldef == NULL) {
 		if (g_HeadsAndBodies[bodynum].modeldef == NULL) {
-			g_HeadsAndBodies[bodynum].modeldef = modeldef_load_to_new(g_HeadsAndBodies[bodynum].filenum);
+			g_HeadsAndBodies[bodynum].modeldef = modeldefLoadToNew(g_HeadsAndBodies[bodynum].filenum);
 		}
 
 		bodymodeldef = g_HeadsAndBodies[bodynum].modeldef;
 	}
 
-	model_allocate_rw_data(bodymodeldef);
+	modelAllocateRwData(bodymodeldef);
 
 	if (!g_HeadsAndBodies[bodynum].unk00_01) {
 		if (bodymodeldef->skel == &g_SkelChr) {
-			node = model_get_part(bodymodeldef, MODELPART_CHR_HEADSPOT);
+			node = modelGetPart(bodymodeldef, MODELPART_CHR_HEADSPOT);
 
 			if (node != NULL) {
 				if (headnum < 0) {
-					headmodeldef = mp_get_phead_modeldef(-1 - headnum, &headnum);
+					headmodeldef = func0f18e57c(-1 - headnum, &headnum);
 					bodymodeldef->rwdatalen += headmodeldef->rwdatalen;
 				} else if (headnum > 0) {
 					if (headmodeldef == NULL) {
-						if (g_Vars.normmplayerisrunning && IS8MB()) {
-							headmodeldef = modeldef_load_to_new(g_HeadsAndBodies[headnum].filenum);
+						if (g_Vars.normmplayerisrunning && !IS4MB()) {
+							headmodeldef = modeldefLoadToNew(g_HeadsAndBodies[headnum].filenum);
 							g_HeadsAndBodies[headnum].modeldef = headmodeldef;
 							g_FileInfo[g_HeadsAndBodies[headnum].filenum].loadedsize = 0;
-							body_calculate_head_offset(headmodeldef, headnum, bodynum);
+							bodyCalculateHeadOffset(headmodeldef, headnum, bodynum);
 						} else {
 							if (g_HeadsAndBodies[headnum].modeldef == NULL) {
-								g_HeadsAndBodies[headnum].modeldef = modeldef_load_to_new(g_HeadsAndBodies[headnum].filenum);
+								g_HeadsAndBodies[headnum].modeldef = modeldefLoadToNew(g_HeadsAndBodies[headnum].filenum);
 							}
 
 							headmodeldef = g_HeadsAndBodies[headnum].modeldef;
 						}
 					}
 
-					model_allocate_rw_data(headmodeldef);
+					modelAllocateRwData(headmodeldef);
 
 					bodymodeldef->rwdatalen += headmodeldef->rwdatalen;
 
@@ -222,15 +222,15 @@ struct model *body_instantiate_model_to_addr(s32 bodynum, s32 headnum, struct mo
 				}
 
 				if (!isplayer) {
-					if (cheat_is_active(CHEAT_SMALLCHARACTERS)) {
+					if (cheatIsActive(CHEAT_SMALLCHARACTERS)) {
 						scale *= 0.4f;
 					}
 
-					if (cheat_is_active(CHEAT_DKMODE)) {
+					if (cheatIsActive(CHEAT_DKMODE)) {
 						scale *= 1.25f;
 					}
 				} else {
-					if (cheat_is_active(CHEAT_SMALLJO)) {
+					if (cheatIsActive(CHEAT_SMALLJO)) {
 						scale *= 0.4f;
 					}
 				}
@@ -249,34 +249,34 @@ struct model *body_instantiate_model_to_addr(s32 bodynum, s32 headnum, struct mo
 	if (model) {
 		if (model->rwdatalen < bodymodeldef->rwdatalen);
 	} else {
-		model = modelmgr_instantiate_model_with_anim(bodymodeldef);
+		model = modelmgrInstantiateModelWithAnim(bodymodeldef);
 	}
 
 	if (model) {
-		model_set_scale(model, scale);
-		model_set_anim_scale(model, animscale);
+		modelSetScale(model, scale);
+		modelSetAnimScale(model, animscale);
 
 		if (headmodeldef && !g_HeadsAndBodies[bodynum].unk00_01) {
 			bodymodeldef->rwdatalen -= headmodeldef->rwdatalen;
 
-			modelmgr_attach_head(model, node, headmodeldef);
+			modelmgrAttachHead(model, node, headmodeldef);
 
 			if ((s16)*(s32 *)&headmodeldef->skel == SKEL_HEAD) {
 				struct modelnode *node2;
 
 				if (!sunglasses) {
-					node2 = model_get_part(headmodeldef, MODELPART_HEAD_SUNGLASSES);
+					node2 = modelGetPart(headmodeldef, MODELPART_HEAD_SUNGLASSES);
 
 					if (node2) {
-						union modelrwdata *rwdata = model_get_node_rw_data(model, node2);
+						union modelrwdata *rwdata = modelGetNodeRwData(model, node2);
 						rwdata->toggle.visible = false;
 					}
 				}
 
-				node2 = model_get_part(headmodeldef, MODELPART_HEAD_HUDPIECE);
+				node2 = modelGetPart(headmodeldef, MODELPART_HEAD_HUDPIECE);
 
 				if (node2) {
-					union modelrwdata *rwdata = model_get_node_rw_data(model, node2);
+					union modelrwdata *rwdata = modelGetNodeRwData(model, node2);
 					rwdata->toggle.visible = false;
 				}
 			}
@@ -286,12 +286,12 @@ struct model *body_instantiate_model_to_addr(s32 bodynum, s32 headnum, struct mo
 	return model;
 }
 
-struct model *body_instantiate_model_to_new(s32 bodynum, s32 headnum, struct modeldef *bodymodeldef, struct modeldef *headmodeldef, bool sunglasses, u8 varyheight)
+struct model *body0f02d338(s32 bodynum, s32 headnum, struct modeldef *bodymodeldef, struct modeldef *headmodeldef, bool sunglasses, u8 varyheight)
 {
-	return body_instantiate_model_to_addr(bodynum, headnum, bodymodeldef, headmodeldef, sunglasses, NULL, false, varyheight);
+	return body0f02ce8c(bodynum, headnum, bodymodeldef, headmodeldef, sunglasses, NULL, false, varyheight);
 }
 
-struct model *body_instantiate_model_with_spawnflags(s32 bodynum, s32 headnum, u32 spawnflags)
+struct model *bodyAllocateModel(s32 bodynum, s32 headnum, u32 spawnflags)
 {
 	bool sunglasses = false;
 	u8 varyheight = true;
@@ -299,22 +299,22 @@ struct model *body_instantiate_model_with_spawnflags(s32 bodynum, s32 headnum, u
 	if (spawnflags & SPAWNFLAG_FORCESUNGLASSES) {
 		sunglasses = true;
 	} else if (spawnflags & SPAWNFLAG_MAYBESUNGLASSES) {
-		sunglasses = random() % 2 == 0;
+		sunglasses = rngRandom() % 2 == 0;
 	}
 
 	if (spawnflags & SPAWNFLAG_FIXEDHEIGHT) {
 		varyheight = false;
 	}
 
-	return body_instantiate_model_to_new(bodynum, headnum, NULL, NULL, sunglasses, varyheight);
+	return body0f02d338(bodynum, headnum, NULL, NULL, sunglasses, varyheight);
 }
 
-s32 body_get_tuxedo_bodynum(void)
+s32 body0f02d3f8(void)
 {
-	return g_TuxedoBodynums[g_TuxedoIndex];
+	return g_BondBodies[var80062c80];
 }
 
-s32 body_choose_head(s32 bodynum)
+s32 bodyChooseHead(s32 bodynum)
 {
 	s32 head;
 
@@ -325,7 +325,7 @@ s32 body_choose_head(s32 bodynum)
 			g_ActiveMaleHeadsIndex = 0;
 		}
 	} else if (bodynum == BODY_FEM_GUARD) {
-		head = g_FemGuardHeads[random() % 3];
+		head = g_FemGuardHeads[rngRandom() % 3];
 	} else {
 		head = g_ActiveFemaleHeads[g_ActiveFemaleHeadsIndex++];
 
@@ -343,7 +343,7 @@ s32 body_choose_head(s32 bodynum)
  * Chr definitions are stored in a packed format in each stage's setup file.
  * The packed format is used for space saving reasons.
  */
-void body_instantiate_chr(s32 stagenum, struct packedchr *packed, s32 cmdindex)
+void bodyAllocateChr(s32 stagenum, struct packedchr *packed, s32 cmdindex)
 {
 	struct pad pad;
 	RoomNum rooms[2];
@@ -356,12 +356,12 @@ void body_instantiate_chr(s32 stagenum, struct packedchr *packed, s32 cmdindex)
 	f32 angle;
 	s32 index;
 
-	pad_unpack(packed->padnum, PADFIELD_POS | PADFIELD_LOOK | PADFIELD_ROOM, &pad);
+	padUnpack(packed->padnum, PADFIELD_POS | PADFIELD_LOOK | PADFIELD_ROOM, &pad);
 
 	rooms[0] = pad.room;
 	rooms[1] = -1;
 
-	if (cd_test_volume_simple(&pad.pos, 20, rooms, CDTYPE_ALL, CHECKVERTICAL_YES, 200, -200) == CDRESULT_COLLISION
+	if (cdTestVolume(&pad.pos, 20, rooms, CDTYPE_ALL, CHECKVERTICAL_YES, 200, -200) == CDRESULT_COLLISION
 			&& packed->chair == -1
 			&& (packed->spawnflags & SPAWNFLAG_IGNORECOLLISION) == 0) {
 		return;
@@ -372,9 +372,9 @@ void body_instantiate_chr(s32 stagenum, struct packedchr *packed, s32 cmdindex)
 			return;
 		}
 
-		if (((packed->spawnflags & SPAWNFLAG_ONLYONA) && lv_get_difficulty() == DIFF_A)
-				|| ((packed->spawnflags & SPAWNFLAG_ONLYONSA) && lv_get_difficulty() == DIFF_SA)
-				|| ((packed->spawnflags & SPAWNFLAG_ONLYONPA) && lv_get_difficulty() == DIFF_PA)) {
+		if (((packed->spawnflags & SPAWNFLAG_ONLYONA) && lvGetDifficulty() == DIFF_A)
+				|| ((packed->spawnflags & SPAWNFLAG_ONLYONSA) && lvGetDifficulty() == DIFF_SA)
+				|| ((packed->spawnflags & SPAWNFLAG_ONLYONPA) && lvGetDifficulty() == DIFF_PA)) {
 			// ok
 		} else {
 			return;
@@ -385,7 +385,7 @@ void body_instantiate_chr(s32 stagenum, struct packedchr *packed, s32 cmdindex)
 	headmodeldef = NULL;
 
 	if (packed->bodynum == 255) {
-		bodynum = body_get_tuxedo_bodynum();
+		bodynum = body0f02d3f8();
 	} else {
 		bodynum = packed->bodynum;
 	}
@@ -394,7 +394,7 @@ void body_instantiate_chr(s32 stagenum, struct packedchr *packed, s32 cmdindex)
 		if (packed->headnum >= 0) {
 			headnum = packed->headnum;
 		} else if (headnum == -55555) {
-			headnum = body_choose_head(bodynum);
+			headnum = bodyChooseHead(bodynum);
 		}
 	}
 
@@ -402,31 +402,31 @@ void body_instantiate_chr(s32 stagenum, struct packedchr *packed, s32 cmdindex)
 		index = -1 - headnum;
 
 		if (index >= 0 && index < 22) {
-			headmodeldef = mp_get_phead_modeldef(index, &headnum);
+			headmodeldef = func0f18e57c(index, &headnum);
 		}
 
-		model = body_instantiate_model_to_addr(bodynum, headnum, NULL, headmodeldef, false, NULL, false, false);
+		model = body0f02ce8c(bodynum, headnum, NULL, headmodeldef, false, NULL, false, false);
 	} else {
-		model = body_instantiate_model_with_spawnflags(bodynum, headnum, packed->spawnflags);
+		model = bodyAllocateModel(bodynum, headnum, packed->spawnflags);
 	}
 
 	if (model != NULL) {
 		angle = atan2f(pad.look.x, pad.look.z);
-		prop = chr_create_with_model(model, &pad.pos, rooms, angle, ailist_find_by_id(packed->ailistnum));
+		prop = chrAllocate(model, &pad.pos, rooms, angle, ailistFindById(packed->ailistnum));
 
 		if (prop != NULL) {
-			prop_activate(prop);
-			prop_enable(prop);
+			propActivate(prop);
+			propEnable(prop);
 
 			chr = prop->chr;
-			chr_set_chrnum(chr, packed->chrnum);
+			chrSetChrnum(chr, packed->chrnum);
 			chr->hearingscale = packed->hearscale / 1000.0f;
 			chr->visionrange = packed->viewdist;
 			chr->padpreset1 = packed->padpreset;
 			chr->chrpreset1 = packed->chrpreset;
 			chr->headnum = headnum;
 			chr->bodynum = bodynum;
-			chr->race = body_get_race(chr->bodynum);
+			chr->race = bodyGetRace(chr->bodynum);
 
 			chr->rtracked = false;
 
@@ -436,10 +436,10 @@ void body_instantiate_chr(s32 stagenum, struct packedchr *packed, s32 cmdindex)
 				chr->height = 185;
 				chr->radius = 30;
 			} else if (bodynum == BODY_CHICROB) {
-				chr->unk348[0] = memp_alloc(sizeof(struct fireslotthing), MEMPOOL_STAGE);
-				chr->unk348[1] = memp_alloc(sizeof(struct fireslotthing), MEMPOOL_STAGE);
-				chr->unk348[0]->beam = memp_alloc(ALIGN16(sizeof(struct beam)), MEMPOOL_STAGE);
-				chr->unk348[1]->beam = memp_alloc(ALIGN16(sizeof(struct beam)), MEMPOOL_STAGE);
+				chr->unk348[0] = mempAlloc(sizeof(struct fireslotthing), MEMPOOL_STAGE);
+				chr->unk348[1] = mempAlloc(sizeof(struct fireslotthing), MEMPOOL_STAGE);
+				chr->unk348[0]->beam = mempAlloc(ALIGN16(sizeof(struct beam)), MEMPOOL_STAGE);
+				chr->unk348[1]->beam = mempAlloc(ALIGN16(sizeof(struct beam)), MEMPOOL_STAGE);
 				chr->unk348[0]->beam->age = -1;
 				chr->unk348[1]->beam->age = -1;
 				chr->height = 200;
@@ -481,7 +481,7 @@ void body_instantiate_chr(s32 stagenum, struct packedchr *packed, s32 cmdindex)
 			chr->flags = packed->flags;
 			chr->flags2 = packed->flags2;
 
-			if (cheat_is_active(CHEAT_MARQUIS)) {
+			if (cheatIsActive(CHEAT_MARQUIS)) {
 				chr->flags2 &= ~CHRFLAG1_NOHANDCOMBAT;
 				chr->flags2 |= CHRFLAG1_HANDCOMBATONLY;
 			}
@@ -493,10 +493,10 @@ void body_instantiate_chr(s32 stagenum, struct packedchr *packed, s32 cmdindex)
 			if (packed->tude != 4) {
 				chr->tude = packed->tude;
 			} else {
-				chr->tude = random() % 4;
+				chr->tude = rngRandom() % 4;
 			}
 
-			chr->voicebox = random() % 3;
+			chr->voicebox = rngRandom() % 3;
 
 			if (!g_HeadsAndBodies[chr->bodynum].ismale) {
 				chr->voicebox = VOICEBOX_FEMALE;
@@ -519,7 +519,7 @@ void body_instantiate_chr(s32 stagenum, struct packedchr *packed, s32 cmdindex)
 				chr->flags |= CHRFLAG0_AIVSAI;
 			}
 
-			if (random() % 5 == 0) {
+			if (rngRandom() % 5 == 0) {
 				// Make chr punch slower
 				chr->flags2 |= CHRFLAG1_ADJUSTPUNCHSPEED;
 			}
@@ -531,7 +531,7 @@ void body_instantiate_chr(s32 stagenum, struct packedchr *packed, s32 cmdindex)
 	}
 }
 
-struct prop *body_instantiate_eyespy(struct pad *pad, RoomNum room)
+struct prop *bodyAllocateEyespy(struct pad *pad, RoomNum room)
 {
 	RoomNum rooms[2];
 	struct prop *prop;
@@ -548,8 +548,8 @@ struct prop *body_instantiate_eyespy(struct pad *pad, RoomNum room)
 	{
 		u32 stack[2];
 		u32 checksum = 0;
-		s32 *ptr = (s32 *)&lv_reset;
-		s32 *end = (s32 *)&lv_configure_fade;
+		s32 *ptr = (s32 *)&lvReset;
+		s32 *end = (s32 *)&lvConfigureFade;
 
 		while (ptr < end) {
 			checksum <<= 1;
@@ -558,8 +558,8 @@ struct prop *body_instantiate_eyespy(struct pad *pad, RoomNum room)
 		}
 
 		if (checksum != CHECKSUM_PLACEHOLDER) {
-			s32 *ptr2 = (s32 *)_mema_free;
-			s32 *end2 = (s32 *)mema_init;
+			s32 *ptr2 = (s32 *)_memaFree;
+			s32 *end2 = (s32 *)memaInit;
 
 			while (ptr2 < end2) {
 				ptr2[0] = 0;
@@ -569,25 +569,25 @@ struct prop *body_instantiate_eyespy(struct pad *pad, RoomNum room)
 	}
 #endif
 
-	model = body_instantiate_model_with_spawnflags(BODY_EYESPY, 0, 0);
+	model = bodyAllocateModel(BODY_EYESPY, 0, 0);
 
 	if (model) {
-		prop = chr_create_with_model(model, &pad->pos, rooms, 0, ailist_find_by_id(GAILIST_IDLE));
+		prop = chrAllocate(model, &pad->pos, rooms, 0, ailistFindById(GAILIST_IDLE));
 
 		if (prop) {
-			prop_activate(prop);
-			prop_enable(prop);
+			propActivate(prop);
+			propEnable(prop);
 			chr = prop->chr;
-			chr_set_chrnum(chr, chrs_get_next_unused_chrnum());
+			chrSetChrnum(chr, chrsGetNextUnusedChrnum());
 			chr->bodynum = BODY_EYESPY;
 			chr->padpreset1 = 0;
 			chr->chrpreset1 = 0;
 			chr->headnum = 0;
 			chr->hearingscale = 0;
 			chr->visionrange = 0;
-			chr->race = body_get_race(chr->bodynum);
+			chr->race = bodyGetRace(chr->bodynum);
 
-			ground = cd_find_ground_at_cyl_ctfril(&pad->pos, 30, rooms, NULL, NULL, NULL, NULL, &inlift, &lift);
+			ground = cdFindGroundInfoAtCyl(&pad->pos, 30, rooms, NULL, NULL, NULL, NULL, &inlift, &lift);
 			chr->ground = ground;
 			chr->manground = ground;
 
@@ -596,8 +596,8 @@ struct prop *body_instantiate_eyespy(struct pad *pad, RoomNum room)
 			chr->team = 0;
 			chr->squadron = 0;
 			chr->maxdamage = 2;
-			chr->tude = random() & 3;
-			chr->voicebox = random() % 3;
+			chr->tude = rngRandom() & 3;
+			chr->voicebox = rngRandom() % 3;
 			chr->naturalanim = 0;
 			chr->myspecial = 0;
 			chr->yvisang = 0;
@@ -605,7 +605,7 @@ struct prop *body_instantiate_eyespy(struct pad *pad, RoomNum room)
 			chr->convtalk = 0;
 			chr->radius = 26;
 			chr->height = 200;
-			chr_stand_immediate(chr, 0);
+			func0f02e9a0(chr, 0);
 			chr->chrflags |= CHRCFLAG_HIDDEN;
 
 #if VERSION >= VERSION_NTSC_1_0
@@ -633,7 +633,7 @@ void body0f02ddbf(void)
  * any tweaking. This function is used in multiplayer where players can put any
  * heads on any bodies.
  */
-void body_calculate_head_offset(struct modeldef *headmodeldef, s32 headnum, s32 bodynum)
+void bodyCalculateHeadOffset(struct modeldef *headmodeldef, s32 headnum, s32 bodynum)
 {
 	struct modelnode *node;
 	struct modelnode *prev;
@@ -682,35 +682,52 @@ void body_calculate_head_offset(struct modeldef *headmodeldef, s32 headnum, s32 
 		}
 #endif
 
-		// In the switch statement below, most versions set the offset directly.
-		// JPN increments it instead.
 #if VERSION >= VERSION_JPN_FINAL
-#define ADJUST(var, amount) (var + amount)
-#else
-#define ADJUST(var, amount) (amount)
-#endif
-
 		switch (g_HeadsAndBodies[headnum].type) {
 		default:
 		case HEADBODYTYPE_FEMALE:
-			offset = ADJUST(offset, 0);
+			offset += 0;
 			break;
 		case HEADBODYTYPE_MAIAN:
-			offset = ADJUST(offset, 0);
+			offset += 0;
 			break;
 		case HEADBODYTYPE_DEFAULT:
-			offset = ADJUST(offset, -35);
+			offset -= 35;
 			break;
 		case HEADBODYTYPE_MRBLONDE:
-			offset = ADJUST(offset, 0);
+			offset += 0;
 			break;
 		case HEADBODYTYPE_CASS:
-			offset = ADJUST(offset, -20);
+			offset -= 20;
 			break;
 		case HEADBODYTYPE_FEMALEGUARD:
-			offset = ADJUST(offset, -40);
+			offset -= 40;
 			break;
 		}
+#else
+		// Same as JPN, but sets the value rather than adjusts
+		switch (g_HeadsAndBodies[headnum].type) {
+		default:
+		case HEADBODYTYPE_FEMALE:
+			offset = 0;
+			break;
+		case HEADBODYTYPE_MAIAN:
+			offset = 0;
+			break;
+		case HEADBODYTYPE_DEFAULT:
+			offset = -35;
+			break;
+		case HEADBODYTYPE_MRBLONDE:
+			offset = 0;
+			break;
+		case HEADBODYTYPE_CASS:
+			offset = -20;
+			break;
+		case HEADBODYTYPE_FEMALEGUARD:
+			offset = -40;
+			break;
+		}
+#endif
 
 		switch (g_HeadsAndBodies[bodynum].type) {
 		case HEADBODYTYPE_FEMALE:
@@ -752,7 +769,7 @@ void body_calculate_head_offset(struct modeldef *headmodeldef, s32 headnum, s32 
 			do {
 				prev = node;
 
-				model_iterate_display_lists(headmodeldef, &node, &gdl);
+				modelIterateDisplayLists(headmodeldef, &node, &gdl);
 
 				if (node && node != prev && node->type == MODELNODETYPE_DL) {
 					struct modelrodata_dl *rodata = &node->rodata->dl;
@@ -763,7 +780,7 @@ void body_calculate_head_offset(struct modeldef *headmodeldef, s32 headnum, s32 
 				}
 			} while (node);
 
-			bbox = modeldef_find_bbox_rodata(headmodeldef);
+			bbox = modeldefFindBboxRodata(headmodeldef);
 
 			if (bbox != NULL) {
 				bbox->ymin += offset;

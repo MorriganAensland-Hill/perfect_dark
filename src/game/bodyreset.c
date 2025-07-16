@@ -3,7 +3,7 @@
 #include "game/body.h"
 #include "game/cheats.h"
 #include "game/chrai.h"
-#include "game/chraireset.h"
+#include "game/game_00b820.h"
 #include "game/playerreset.h"
 #include "game/setuputils.h"
 #include "bss.h"
@@ -12,7 +12,7 @@
 #include "data.h"
 #include "types.h"
 
-void bodies_reset(s32 stagenum)
+void bodiesReset(s32 stagenum)
 {
 	s32 *headsavailablelist;
 	s32 headsavailablelen;
@@ -26,7 +26,7 @@ void bodies_reset(s32 stagenum)
 		g_HeadsAndBodies[i].modeldef = NULL;
 	}
 
-	g_TuxedoIndex = random() % g_NumTuxedos;
+	var80062c80 = rngRandom() % g_NumBondBodies;
 	var80062b14 = 0;
 	var80062b18 = 0;
 
@@ -51,7 +51,7 @@ void bodies_reset(s32 stagenum)
 	}
 
 	// Male heads
-	if (cheat_is_active(CHEAT_TEAMHEADSONLY)) {
+	if (cheatIsActive(CHEAT_TEAMHEADSONLY)) {
 		if (whichteamlist) {
 			headsavailablelist = g_MaleGuardTeamHeads;
 			headsavailablelen = g_NumMaleGuardTeamHeads;
@@ -67,7 +67,7 @@ void bodies_reset(s32 stagenum)
 	for (i = 0; i < g_NumActiveHeadsPerGender; i++) {
 		do {
 			done = true;
-			g_ActiveMaleHeads[i] = headsavailablelist[random() % headsavailablelen];
+			g_ActiveMaleHeads[i] = headsavailablelist[rngRandom() % headsavailablelen];
 
 			if (headsavailablelen > g_NumActiveHeadsPerGender) {
 				for (j = 0; j < i; j++) {
@@ -81,7 +81,7 @@ void bodies_reset(s32 stagenum)
 	}
 
 	// Female heads
-	if (cheat_is_active(CHEAT_TEAMHEADSONLY)) {
+	if (cheatIsActive(CHEAT_TEAMHEADSONLY)) {
 		if (whichteamlist) {
 			headsavailablelist = g_FemaleGuardTeamHeads;
 			headsavailablelen = g_NumFemaleGuardTeamHeads;
@@ -97,7 +97,7 @@ void bodies_reset(s32 stagenum)
 	for (i = 0; i < g_NumActiveHeadsPerGender; i++) {
 		do {
 			done = true;
-			g_ActiveFemaleHeads[i] = headsavailablelist[random() % headsavailablelen];
+			g_ActiveFemaleHeads[i] = headsavailablelist[rngRandom() % headsavailablelen];
 
 			if (headsavailablelen > g_NumActiveHeadsPerGender) {
 				for (j = 0; j < i; j++) {

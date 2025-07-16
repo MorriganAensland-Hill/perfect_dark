@@ -34,7 +34,7 @@
  * For covernums, the three variables declared above it are never written to the
  * stack, so the outer loop would need to iterate three times while covernums is
  * full in order to write into the caller's stack space. The only caller is
- * bot_tick_unpaused, and its first stack usage is 0x20 where it backs up s0.
+ * botTickUnpaused, and its first stack usage is 0x20 where it backs up s0.
  * So the outer loop would need to iterate 11 times before any damage could be
  * done.
  *
@@ -46,7 +46,7 @@
  * It's likely that these don't ever overflow, or they overflow minimally which
  * has no serious effect, but this should be investigated further.
  */
-bool botroom_find_pos(RoomNum room, struct coord *pos, f32 *angleptr, s32 *padnumptr, s32 *covernumptr)
+bool botroomFindPos(RoomNum room, struct coord *pos, f32 *angleptr, s32 *padnumptr, s32 *covernumptr)
 {
 	s32 i;
 	struct waypoint *waypoint;
@@ -75,12 +75,12 @@ bool botroom_find_pos(RoomNum room, struct coord *pos, f32 *angleptr, s32 *padnu
 
 	do {
 		sp54 = false;
-		count = cover_get_count();
+		count = coverGetCount();
 
 		for (i = 0; i < count; i++) {
-			if (cover_unpack(i, &cover) && !cover_is_special(&cover) && array_intersects(cover.rooms, rooms)) {
+			if (coverUnpack(i, &cover) && !coverIsSpecial(&cover) && arrayIntersects(cover.rooms, rooms)) {
 				if (sp50 && (cover.flags & COVERFLAG_AIBOTINUSE)) {
-					cover_unset_flag(i, COVERFLAG_AIBOTINUSE);
+					coverUnsetFlag(i, COVERFLAG_AIBOTINUSE);
 					covernums[covercount] = i;
 					covercount++;
 					totalcount++;
@@ -105,10 +105,10 @@ bool botroom_find_pos(RoomNum room, struct coord *pos, f32 *angleptr, s32 *padnu
 				waypointnum = g_Vars.waypointnums[g_Rooms[room].firstwaypoint + i];
 				waypoint = &g_StageSetup.waypoints[waypointnum];
 
-				pad_unpack(waypoint->padnum, PADFIELD_FLAGS, &pad);
+				padUnpack(waypoint->padnum, PADFIELD_FLAGS, &pad);
 
 				if (sp50 && (pad.flags & PADFLAG_AIBOTINUSE)) {
-					pad_unset_flag(waypoint->padnum, PADFLAG_AIBOTINUSE);
+					padUnsetFlag(waypoint->padnum, PADFLAG_AIBOTINUSE);
 					padnums[padcount] = waypoint->padnum;
 					padcount++;
 					totalcount++;
@@ -135,10 +135,10 @@ bool botroom_find_pos(RoomNum room, struct coord *pos, f32 *angleptr, s32 *padnu
 		return false;
 	}
 
-	i = random() % totalcount;
+	i = rngRandom() % totalcount;
 
 	if (i < covercount) {
-		cover_unpack(covernums[i], &cover);
+		coverUnpack(covernums[i], &cover);
 
 		pos->x = cover.pos->x;
 		pos->y = cover.pos->y;
@@ -149,7 +149,7 @@ bool botroom_find_pos(RoomNum room, struct coord *pos, f32 *angleptr, s32 *padnu
 		*covernumptr = covernums[i];
 	} else {
 		i -= covercount;
-		pad_unpack(padnums[i], PADFIELD_POS | PADFIELD_LOOK, &pad);
+		padUnpack(padnums[i], PADFIELD_POS | PADFIELD_LOOK, &pad);
 
 		pos->x = pad.pos.x;
 		pos->y = pad.pos.y;

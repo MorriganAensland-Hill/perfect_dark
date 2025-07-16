@@ -4,7 +4,7 @@
 #include "game/debug.h"
 #include "game/chr.h"
 #include "game/ceil.h"
-#include "game/gset.h"
+#include "game/game_0b0fd0.h"
 #include "game/playermgr.h"
 #include "game/mplayer/setup.h"
 #include "game/bot.h"
@@ -18,126 +18,139 @@
 #include "data.h"
 #include "types.h"
 
-struct botweaponconfig g_BotWeaponConfigs[] = {
-	//                             score1
-	//                             |    score2                                                                                    targetammosec
-	//                             |    |    dualscore1                                                                           |    criticalammopri
-	//                             |    |    |    dualscore2                                                                      |    |   criticalammosec
-	//                             |    |    |    |    haspriammogoal                                                             |    |   |   reloaddelay (seconds)
-	//                             |    |    |    |    |  hassecammogoal                                                          |    |   |   |  allowpartialreloaddelay
-	//                             |    |    |    |    |  |  pridistconfig              secdistconfig              targetammopri  |    |   |   |  |
-	/*WEAPON_NONE             */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  0, 0 },
-	/*WEAPON_UNARMED          */ { 13,  13,  13,  13,  1, 1, BOTDISTCFG_CLOSE,          BOTDISTCFG_CLOSE,          0,             0,   0,  0,  0, 0 },
-	/*WEAPON_FALCON2          */ { 56,  60,  84,  88,  1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_CLOSE,          30,            0,   10, 0,  1, 0 },
-	/*WEAPON_FALCON2_SILENCER */ { 52,  60,  80,  88,  1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_CLOSE,          30,            0,   10, 0,  1, 0 },
-	/*WEAPON_FALCON2_SCOPE    */ { 60,  60,  88,  88,  1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_CLOSE,          30,            0,   10, 0,  1, 0 },
-	/*WEAPON_MAGSEC4          */ { 76,  88,  104, 120, 1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_DEFAULT,        30,            30,  10, 10, 1, 0 },
-	/*WEAPON_MAULER           */ { 64,  88,  92,  120, 1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_DEFAULT,        30,            30,  10, 10, 1, 0 },
-	/*WEAPON_PHOENIX          */ { 72,  76,  100, 120, 1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_DEFAULT,        30,            30,  10, 10, 2, 0 },
-	/*WEAPON_DY357MAGNUM      */ { 68,  76,  96,  120, 1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_CLOSE,          30,            0,   8,  0,  3, 0 },
-	/*WEAPON_DY357LX          */ { 180, 188, 184, 188, 1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_CLOSE,          20,            0,   6,  0,  3, 0 },
-	/*WEAPON_CMP150           */ { 116, 128, 136, 152, 1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        100,           100, 30, 30, 2, 0 },
-	/*WEAPON_CYCLONE          */ { 120, 128, 132, 140, 1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        150,           150, 50, 50, 2, 0 },
-	/*WEAPON_CALLISTO         */ { 152, 176, 0,   0,   1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        100,           70,  25, 15, 2, 0 },
-	/*WEAPON_RCP120           */ { 172, 188, 0,   0,   1, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        300,           0,   40, 0,  2, 0 },
-	/*WEAPON_LAPTOPGUN        */ { 128, 140, 0,   0,   1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        100,           0,   30, 0,  3, 0 },
-	/*WEAPON_DRAGON           */ { 124, 148, 0,   0,   1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        90,            0,   30, 0,  1, 0 },
-	/*WEAPON_K7AVENGER        */ { 156, 180, 0,   0,   1, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        150,           0,   40, 0,  2, 0 },
-	/*WEAPON_AR34             */ { 148, 176, 0,   0,   1, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        120,           0,   40, 0,  2, 0 },
-	/*WEAPON_SUPERDRAGON      */ { 164, 188, 0,   0,   1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_SHOOTEXPLOSIVE, 120,           20,  30, 6,  1, 0 },
-	/*WEAPON_SHOTGUN          */ { 140, 156, 0,   0,   1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_PISTOL,         18,            18,  8,  8,  6, 1 },
-	/*WEAPON_REAPER           */ { 144, 176, 0,   0,   1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_CLOSE,          400,           0,   80, 0,  3, 0 },
-	/*WEAPON_SNIPERRIFLE      */ { 28,  40,  0,   0,   1, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        30,            30,  10, 10, 2, 0 },
-	/*WEAPON_FARSIGHT         */ { 188, 188, 0,   0,   1, 0, BOTDISTCFG_SHOOTEXPLOSIVE, BOTDISTCFG_FARSIGHT,       16,            0,   4,  0,  2, 0 },
-	/*WEAPON_DEVASTATOR       */ { 176, 188, 0,   0,   1, 1, BOTDISTCFG_SHOOTEXPLOSIVE, BOTDISTCFG_SHOOTEXPLOSIVE, 20,            20,  4,  4,  2, 0 },
-	/*WEAPON_ROCKETLAUNCHER   */ { 160, 188, 0,   0,   1, 1, BOTDISTCFG_SHOOTEXPLOSIVE, BOTDISTCFG_SHOOTEXPLOSIVE, 2,             2,   1,  1,  2, 0 },
-	/*WEAPON_SLAYER           */ { 168, 188, 0,   0,   1, 1, BOTDISTCFG_SHOOTEXPLOSIVE, BOTDISTCFG_SHOOTEXPLOSIVE, 2,             2,   1,  1,  3, 0 },
-#if VERSION == VERSION_JPN_FINAL
-	/*WEAPON_COMBATKNIFE      */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
+struct aibotweaponpreference g_AibotWeaponPreferences[] = {
+	//                             haspriammogoal
+	//                             |  hassecammogoal
+	//                             |  |  pridistconfig
+	//                             |  |  |                          secdistconfig
+	//                             |  |  |                          |                          targetammopri
+	//                             |  |  |                          |                          |              targetammosec
+	//                             |  |  |                          |                          |              |    criticalammopri
+	//                             |  |  |                          |                          |              |    |   criticalammosec
+	//                             |  |  |                          |                          |              |    |   |   reloaddelay (seconds)
+	//                             |  |  |                          |                          |              |    |   |   |  allowpartialreloaddelay
+	//                             |  |  |                          |                          |              |    |   |   |  |
+	/*0x00*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  0, 0 }, // WEAPON_NONE
+	/*0x01*/ { 13,  13,  13,  13,  1, 1, BOTDISTCFG_CLOSE,          BOTDISTCFG_CLOSE,          0,             0,   0,  0,  0, 0 }, // WEAPON_UNARMED
+	/*0x02*/ { 56,  60,  84,  88,  1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_CLOSE,          30,            0,   10, 0,  1, 0 }, // WEAPON_FALCON2
+	/*0x03*/ { 52,  60,  80,  88,  1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_CLOSE,          30,            0,   10, 0,  1, 0 }, // WEAPON_FALCON2_SILENCER
+	/*0x04*/ { 60,  60,  88,  88,  1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_CLOSE,          30,            0,   10, 0,  1, 0 }, // WEAPON_FALCON2_SCOPE
+	/*0x05*/ { 76,  88,  104, 120, 1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_DEFAULT,        30,            30,  10, 10, 1, 0 }, // WEAPON_MAGSEC4
+	/*0x06*/ { 64,  88,  92,  120, 1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_DEFAULT,        30,            30,  10, 10, 1, 0 }, // WEAPON_MAULER
+	/*0x07*/ { 72,  76,  100, 120, 1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_DEFAULT,        30,            30,  10, 10, 2, 0 }, // WEAPON_PHOENIX
+	/*0x08*/ { 68,  76,  96,  120, 1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_CLOSE,          30,            0,   8,  0,  3, 0 }, // WEAPON_DY357MAGNUM
+	/*0x09*/ { 180, 188, 184, 188, 1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_CLOSE,          20,            0,   6,  0,  3, 0 }, // WEAPON_DY357LX
+	/*0x0a*/ { 116, 128, 136, 152, 1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        100,           100, 30, 30, 2, 0 }, // WEAPON_CMP150
+	/*0x0b*/ { 120, 128, 132, 140, 1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        150,           150, 50, 50, 2, 0 }, // WEAPON_CYCLONE
+	/*0x0c*/ { 152, 176, 0,   0,   1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        100,           70,  25, 15, 2, 0 }, // WEAPON_CALLISTO
+	/*0x0d*/ { 172, 188, 0,   0,   1, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        300,           0,   40, 0,  2, 0 }, // WEAPON_RCP120
+	/*0x0e*/ { 128, 140, 0,   0,   1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        100,           0,   30, 0,  3, 0 }, // WEAPON_LAPTOPGUN
+	/*0x0f*/ { 124, 148, 0,   0,   1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        90,            0,   30, 0,  1, 0 }, // WEAPON_DRAGON
+	/*0x10*/ { 156, 180, 0,   0,   1, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        150,           0,   40, 0,  2, 0 }, // WEAPON_K7AVENGER
+	/*0x11*/ { 148, 176, 0,   0,   1, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        120,           0,   40, 0,  2, 0 }, // WEAPON_AR34
+	/*0x12*/ { 164, 188, 0,   0,   1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_SHOOTEXPLOSIVE, 120,           20,  30, 6,  1, 0 }, // WEAPON_SUPERDRAGON
+	/*0x13*/ { 140, 156, 0,   0,   1, 1, BOTDISTCFG_PISTOL,         BOTDISTCFG_PISTOL,         18,            18,  8,  8,  6, 1 }, // WEAPON_SHOTGUN
+	/*0x14*/ { 144, 176, 0,   0,   1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_CLOSE,          400,           0,   80, 0,  3, 0 }, // WEAPON_REAPER
+	/*0x15*/ { 28,  40,  0,   0,   1, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        30,            30,  10, 10, 2, 0 }, // WEAPON_SNIPERRIFLE
+	/*0x16*/ { 188, 188, 0,   0,   1, 0, BOTDISTCFG_SHOOTEXPLOSIVE, BOTDISTCFG_FARSIGHT,       16,            0,   4,  0,  2, 0 }, // WEAPON_FARSIGHT
+	/*0x17*/ { 176, 188, 0,   0,   1, 1, BOTDISTCFG_SHOOTEXPLOSIVE, BOTDISTCFG_SHOOTEXPLOSIVE, 20,            20,  4,  4,  2, 0 }, // WEAPON_DEVASTATOR
+	/*0x18*/ { 160, 188, 0,   0,   1, 1, BOTDISTCFG_SHOOTEXPLOSIVE, BOTDISTCFG_SHOOTEXPLOSIVE, 2,             2,   1,  1,  2, 0 }, // WEAPON_ROCKETLAUNCHER
+	/*0x19*/ { 168, 188, 0,   0,   1, 1, BOTDISTCFG_SHOOTEXPLOSIVE, BOTDISTCFG_SHOOTEXPLOSIVE, 2,             2,   1,  1,  3, 0 }, // WEAPON_SLAYER
+#if (VERSION == VERSION_JPN_FINAL) && defined(PLATFORM_N64)
+	/*0x1a*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_COMBATKNIFE
 #else
-	/*WEAPON_COMBATKNIFE      */ { 20,  40,  24,  40,  1, 1, BOTDISTCFG_CLOSE,          BOTDISTCFG_DEFAULT,        0,             5,   0,  1,  1, 0 },
+	/*0x1a*/ { 20,  40,  24,  40,  1, 1, BOTDISTCFG_CLOSE,          BOTDISTCFG_DEFAULT,        0,             5,   0,  1,  1, 0 }, // WEAPON_COMBATKNIFE
 #endif
-	/*WEAPON_CROSSBOW         */ { 108, 176, 0,   0,   1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        15,            15,  5,  5,  4, 1 },
-	/*WEAPON_TRANQUILIZER     */ { 48,  188, 0,   0,   1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_CLOSE,          20,            24,  6,  8,  1, 0 },
-	/*WEAPON_LASER            */ { 112, 112, 0,   0,   1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_CLOSE,          0,             0,   0,  0,  1, 0 },
-	/*WEAPON_GRENADE          */ { 36,  172, 0,   0,   1, 1, BOTDISTCFG_THROWEXPLOSIVE, BOTDISTCFG_THROWEXPLOSIVE, 6,             6,   2,  2,  1, 0 },
-	/*WEAPON_NBOMB            */ { 32,  188, 0,   0,   1, 1, BOTDISTCFG_THROWEXPLOSIVE, BOTDISTCFG_THROWEXPLOSIVE, 3,             3,   1,  1,  1, 0 },
-	/*WEAPON_TIMEDMINE        */ { 12,  12,  0,   0,   0, 0, BOTDISTCFG_THROWEXPLOSIVE, BOTDISTCFG_DEFAULT,        5,             5,   1,  1,  1, 0 },
-	/*WEAPON_PROXIMITYMINE    */ { 40,  176, 0,   0,   0, 0, BOTDISTCFG_THROWEXPLOSIVE, BOTDISTCFG_DEFAULT,        5,             5,   1,  1,  1, 0 },
-	/*WEAPON_REMOTEMINE       */ { 44,  156, 0,   0,   1, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        5,             5,   2,  2,  1, 0 },
-	/*WEAPON_COMBATBOOST      */ { 8,   8,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_PP9I             */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_CC13             */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_KL01313          */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_KF7SPECIAL       */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_ZZT              */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_DMC              */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_AR53             */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_RCP45            */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_PSYCHOSISGUN     */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_NIGHTVISION      */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_EYESPY           */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_XRAYSCANNER      */ { 4,   4,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_IRSCANNER        */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
+	/*0x1b*/ { 108, 176, 0,   0,   1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        15,            15,  5,  5,  4, 1 }, // WEAPON_CROSSBOW
+	/*0x1c*/ { 48,  188, 0,   0,   1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_CLOSE,          20,            24,  6,  8,  1, 0 }, // WEAPON_TRANQUILIZER
+	/*0x1d*/ { 112, 112, 0,   0,   1, 1, BOTDISTCFG_DEFAULT,        BOTDISTCFG_CLOSE,          0,             0,   0,  0,  1, 0 }, // WEAPON_LASER
+	/*0x1e*/ { 36,  172, 0,   0,   1, 1, BOTDISTCFG_THROWEXPLOSIVE, BOTDISTCFG_THROWEXPLOSIVE, 6,             6,   2,  2,  1, 0 }, // WEAPON_GRENADE
+	/*0x1f*/ { 32,  188, 0,   0,   1, 1, BOTDISTCFG_THROWEXPLOSIVE, BOTDISTCFG_THROWEXPLOSIVE, 3,             3,   1,  1,  1, 0 }, // WEAPON_NBOMB
+	/*0x20*/ { 12,  12,  0,   0,   0, 0, BOTDISTCFG_THROWEXPLOSIVE, BOTDISTCFG_DEFAULT,        5,             5,   1,  1,  1, 0 }, // WEAPON_TIMEDMINE
+	/*0x21*/ { 40,  176, 0,   0,   0, 0, BOTDISTCFG_THROWEXPLOSIVE, BOTDISTCFG_DEFAULT,        5,             5,   1,  1,  1, 0 }, // WEAPON_PROXIMITYMINE
+	/*0x22*/ { 44,  156, 0,   0,   1, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        5,             5,   2,  2,  1, 0 }, // WEAPON_REMOTEMINE
+	/*0x23*/ { 8,   8,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_COMBATBOOST
+#ifndef PLATFORM_N64 // add all classic weapons to multiplayer
+	/*0x24*/ { 56,  60,  84,  88,  1, 0, BOTDISTCFG_PISTOL,         BOTDISTCFG_CLOSE,          30,            0,   10, 0,  1, 0 }, // WEAPON_PP9I
+	/*0x25*/ { 56,  60,  84,  88,  1, 0, BOTDISTCFG_PISTOL,         BOTDISTCFG_CLOSE,          30,            0,   10, 0,  1, 0 }, // WEAPON_CC13
+	/*0x26*/ { 56,  60,  84,  88,  1, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_CLOSE,          30,            0,   10, 0,  1, 0 }, // WEAPON_KL01313
+	/*0x27*/ { 124, 148, 0,   0,   1, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        90,            0,   30, 0,  1, 0 }, // WEAPON_KF7SPECIAL
+	/*0x28*/ { 116, 128, 136, 152, 1, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        100,           0,   30, 0,  1, 0 }, // WEAPON_ZZT
+	/*0x29*/ { 124, 148, 0,   0,   1, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        90,            0,   30, 0,  1, 0 }, // WEAPON_DMC
+	/*0x2a*/ { 156, 180, 0,   0,   1, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        150,           0,   30, 0,  1, 0 }, // WEAPON_AR53
+	/*0x2b*/ { 164, 188, 0,   0,   1, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        200,           0,   40, 0,  1, 0 }, // WEAPON_RCP45
+#else
+	/*0x24*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_PP9I
+	/*0x25*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_CC13
+	/*0x26*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_KL01313
+	/*0x27*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_KF7SPECIAL
+	/*0x28*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_ZZT
+	/*0x29*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_DMC
+	/*0x2a*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_AR53
+	/*0x2b*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_RCP45
+#endif
+	/*0x2c*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_PSYCHOSISGUN
+	/*0x2d*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_NIGHTVISION
+	/*0x2e*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_EYESPY
+	/*0x2f*/ { 4,   4,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_XRAYSCANNER
+	/*0x30*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_IRSCANNER
 #if VERSION >= VERSION_PAL_FINAL
-	/*WEAPON_CLOAKINGDEVICE   */ { 218, 218, 0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        TICKS(1200),   0,   0,  0,  1, 0 },
+	/*0x31*/ { 218, 218, 0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        TICKS(1200),   0,   0,  0,  1, 0 }, // WEAPON_CLOAKINGDEVICE
 #else
-	/*WEAPON_CLOAKINGDEVICE   */ { 218, 218, 0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        1200,          0,   0,  0,  1, 0 },
+	/*0x31*/ { 218, 218, 0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        1200,          0,   0,  0,  1, 0 }, // WEAPON_CLOAKINGDEVICE
 #endif
-	/*WEAPON_HORIZONSCANNER   */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_TESTER           */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_KINGSCEPTRE      */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_ECMMINE          */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_DATAUPLINK       */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_RTRACKER         */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_PRESIDENTSCANNER */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_DOORDECODER      */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_AUTOSURGEON      */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_EXPLOSIVES       */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_SKEDARBOMB       */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_COMMSRIDER       */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_TRACERBUG        */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_TARGETAMPLIFIER  */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_DISGUISE40       */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_DISGUISE41       */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_FLIGHTPLANS      */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_RESEARCHTAPE     */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_BACKUPDISK       */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_KEYCARD45        */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_KEYCARD46        */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_KEYCARD47        */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_KEYCARD48        */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_KEYCARD49        */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_KEYCARD4A        */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_KEYCARD4B        */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_KEYCARD4C        */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_SUITCASE         */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_BRIEFCASE        */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
+	/*0x32*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_HORIZONSCANNER
+	/*0x33*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_TESTER
+	/*0x34*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_ROCKETLAUNCHER_34
+	/*0x35*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_ECMMINE
+	/*0x36*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_DATAUPLINK
+	/*0x37*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_RTRACKER
+	/*0x38*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_PRESIDENTSCANNER
+	/*0x39*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_DOORDECODER
+	/*0x3a*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_AUTOSURGEON
+	/*0x3b*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_EXPLOSIVES
+	/*0x3c*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_SKEDARBOMB
+	/*0x3d*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_COMMSRIDER
+	/*0x3e*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_TRACERBUG
+	/*0x3f*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_TARGETAMPLIFIER
+	/*0x40*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_DISGUISE40
+	/*0x41*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_DISGUISE41
+	/*0x42*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_FLIGHTPLANS
+	/*0x43*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_RESEARCHTAPE
+	/*0x44*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_BACKUPDISK
+	/*0x45*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_KEYCARD45
+	/*0x46*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_KEYCARD46
+	/*0x47*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_KEYCARD47
+	/*0x48*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_KEYCARD48
+	/*0x49*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_KEYCARD49
+	/*0x4a*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_KEYCARD4A
+	/*0x4b*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_KEYCARD4B
+	/*0x4c*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_KEYCARD4C
+	/*0x4d*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_SUITCASE
+	/*0x4e*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_BRIEFCASE
 #if VERSION >= VERSION_NTSC_1_0
-	/*WEAPON_SHIELDTECHITEM   */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
+	/*0x4f*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_SHIELDTECHITEM
 #endif
-	/*WEAPON_NECKLACE         */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_HAMMER           */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_SCREWDRIVER      */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_ROCKET           */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_HOMINGROCKET     */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_GRENADEROUND     */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_BOLT             */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_BRIEFCASE2       */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_SKROCKET         */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_CHOPPERGUN       */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_WATCHLASER       */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_MPSHIELD         */ { 220, 220, 0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_DISABLED         */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
-	/*WEAPON_SUICIDEPILL      */ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 },
+	/*0x50*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_NECKLACE
+	/*0x51*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_HAMMER
+	/*0x52*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_SCREWDRIVER
+	/*0x53*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_ROCKET
+	/*0x54*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_HOMINGROCKET
+	/*0x55*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_GRENADEROUND
+	/*0x56*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_BOLT
+	/*0x57*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_BRIEFCASE2
+	/*0x58*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_SKROCKET
+	/*0x59*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_CHOPPERGUN
+	/*0x5a*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_WATCHLASER
+	/*0x5b*/ { 220, 220, 0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_MPSHIELD
+	/*0x5c*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_DISABLED
+	/*0x5d*/ { 0,   0,   0,   0,   0, 0, BOTDISTCFG_DEFAULT,        BOTDISTCFG_DEFAULT,        0,             0,   0,  0,  1, 0 }, // WEAPON_SUICIDEPILL
 };
-
-void botinv_score_weapon_by_itself(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 ifammo, bool dual, s32 *dst1, s32 *dst2);
 
 /**
  * Remove all items from the bot's inventory.
  */
-void botinv_clear(struct chrdata *chr)
+void botinvClear(struct chrdata *chr)
 {
 	if (chr && chr->aibot) {
 		s32 i = 0;
@@ -157,7 +170,7 @@ void botinv_clear(struct chrdata *chr)
  * weapons, and 4 are for scenario-specific items such as briefcases and the
  * data uplink.
  */
-struct invitem *botinv_get_free_slot(struct chrdata *chr)
+struct invitem *botinvGetFreeSlot(struct chrdata *chr)
 {
 	s32 i;
 
@@ -179,7 +192,7 @@ struct invitem *botinv_get_free_slot(struct chrdata *chr)
 /**
  * Retrieve an inventory item from the bot's inventory.
  */
-struct invitem *botinv_get_item(struct chrdata *chr, s32 weaponnum)
+struct invitem *botinvGetItem(struct chrdata *chr, s32 weaponnum)
 {
 	s32 i;
 
@@ -207,7 +220,7 @@ struct invitem *botinv_get_item(struct chrdata *chr, s32 weaponnum)
 /**
  * Remove a weapon from the bot's inventory.
  */
-void botinv_remove_item(struct chrdata *chr, s32 weaponnum)
+void botinvRemoveItem(struct chrdata *chr, s32 weaponnum)
 {
 	s32 i;
 
@@ -236,7 +249,7 @@ void botinv_remove_item(struct chrdata *chr, s32 weaponnum)
  *
  * See the INVITEMTYPE constants.
  */
-u32 botinv_get_item_type(struct chrdata *chr, u32 weaponnum)
+u32 botinvGetItemType(struct chrdata *chr, u32 weaponnum)
 {
 	struct invitem *item;
 
@@ -244,7 +257,7 @@ u32 botinv_get_item_type(struct chrdata *chr, u32 weaponnum)
 		return 0;
 	}
 
-	item = botinv_get_item(chr, weaponnum);
+	item = botinvGetItem(chr, weaponnum);
 
 	if (item) {
 		return item->type;
@@ -258,14 +271,14 @@ u32 botinv_get_item_type(struct chrdata *chr, u32 weaponnum)
  *
  * There is no pickup pad, so this is likely for dropped items.
  */
-bool botinv_give_single_weapon(struct chrdata *chr, u32 weaponnum)
+bool botinvGiveSingleWeapon(struct chrdata *chr, u32 weaponnum)
 {
 	if (!chr || !chr->aibot) {
 		return false;
 	}
 
-	if (!botinv_get_item_type(chr, weaponnum)) {
-		struct invitem *item = botinv_get_free_slot(chr);
+	if (!botinvGetItemType(chr, weaponnum)) {
+		struct invitem *item = botinvGetFreeSlot(chr);
 
 		if (item) {
 			item->type = INVITEMTYPE_WEAP;
@@ -289,9 +302,9 @@ bool botinv_give_single_weapon(struct chrdata *chr, u32 weaponnum)
  * inventory items for both single and dual and the player can choose which one
  * they want to use.
  */
-void botinv_give_dual_weapon(struct chrdata *chr, u32 weaponnum)
+void botinvGiveDualWeapon(struct chrdata *chr, u32 weaponnum)
 {
-	struct invitem *item = botinv_get_item(chr, weaponnum);
+	struct invitem *item = botinvGetItem(chr, weaponnum);
 
 	if (item) {
 		item->type = INVITEMTYPE_DUAL;
@@ -305,9 +318,9 @@ void botinv_give_dual_weapon(struct chrdata *chr, u32 weaponnum)
  * this does not happen if the second weapon is from the same pad as the first
  * (ie. is the first weapon respawned).
  */
-s16 botinv_get_weapon_pad(struct chrdata *chr, u32 weaponnum)
+s16 botinvGetWeaponPad(struct chrdata *chr, u32 weaponnum)
 {
-	struct invitem *item = botinv_get_item(chr, weaponnum);
+	struct invitem *item = botinvGetItem(chr, weaponnum);
 
 	if (item && item->type == INVITEMTYPE_WEAP) {
 		return item->type_weap.pickuppad;
@@ -321,7 +334,7 @@ s16 botinv_get_weapon_pad(struct chrdata *chr, u32 weaponnum)
  *
  * This function does not give any ammo to the bot.
  */
-bool botinv_give_prop(struct chrdata *chr, struct prop *prop)
+bool botinvGiveProp(struct chrdata *chr, struct prop *prop)
 {
 	bool result = false;
 	struct defaultobj *obj;
@@ -337,10 +350,10 @@ bool botinv_give_prop(struct chrdata *chr, struct prop *prop)
 		if (obj->type == OBJTYPE_WEAPON) {
 			struct weaponobj *weapon = prop->weapon;
 			s32 weaponnum = weapon->weaponnum;
-			result = botinv_give_single_weapon(chr, weaponnum);
+			result = botinvGiveSingleWeapon(chr, weaponnum);
 
 			if (result) {
-				struct invitem *item = botinv_get_item(chr, weaponnum);
+				struct invitem *item = botinvGetItem(chr, weaponnum);
 				item->type_weap.pickuppad = obj->pad;
 			}
 		}
@@ -349,10 +362,10 @@ bool botinv_give_prop(struct chrdata *chr, struct prop *prop)
 
 		for (i = 0; i < 19; i++) {
 			if (multi->slots[i].quantity > 0) {
-				s32 weaponnum = botact_get_weapon_by_ammo_type(i + 1);
+				s32 weaponnum = botactGetWeaponByAmmoType(i + 1);
 
 				if (weaponnum > 0) {
-					botinv_give_single_weapon(chr, weaponnum);
+					botinvGiveSingleWeapon(chr, weaponnum);
 				}
 			}
 		}
@@ -370,7 +383,7 @@ void botinv0f198060(u32 arg0)
  * Score all weapons in the match's weaponset by themselves and write them to
  * the 3 array pointers, ordered by score1 descending.
  */
-void botinv_score_all_weapons(struct chrdata *chr, s32 *weaponnums, s32 *scores1, s32 *scores2)
+void botinvScoreAllWeapons(struct chrdata *chr, s32 *weaponnums, s32 *scores1, s32 *scores2)
 {
 	s32 i;
 	s32 pri1;
@@ -384,8 +397,8 @@ void botinv_score_all_weapons(struct chrdata *chr, s32 *weaponnums, s32 *scores1
 		s32 weaponnum = g_MpWeapons[g_MpSetup.weapons[i]].weaponnum;
 		weaponnums[i] = weaponnum;
 
-		botinv_score_weapon_by_itself(chr, weaponnum, FUNC_PRIMARY, -1, false, &pri1, &pri2);
-		botinv_score_weapon_by_itself(chr, weaponnum, FUNC_SECONDARY, -1, false, &sec1, &sec2);
+		botinvScoreWeaponByItself(chr, weaponnum, FUNC_PRIMARY, -1, false, &pri1, &pri2);
+		botinvScoreWeaponByItself(chr, weaponnum, FUNC_SECONDARY, -1, false, &sec1, &sec2);
 
 		scores1[i] = pri1 >= sec1 ? pri1 : sec1;
 		scores2[i] = pri2 >= sec2 ? pri2 : sec2;
@@ -422,7 +435,7 @@ void botinv_score_all_weapons(struct chrdata *chr, s32 *weaponnums, s32 *scores1
 /**
  * Return true if the match's weaponset contains a shield.
  */
-bool mp_has_shield(void)
+bool mpHasShield(void)
 {
 	s32 i;
 
@@ -440,7 +453,7 @@ bool mp_has_shield(void)
 /**
  * Get the weapon slot (0 to 5) by weapon number.
  */
-s32 mp_get_weapon_slot_by_weapon_num(s32 weaponnum)
+s32 mpGetWeaponSlotByWeaponNum(s32 weaponnum)
 {
 	s32 result = -1;
 	s32 i;
@@ -462,7 +475,7 @@ s32 mp_get_weapon_slot_by_weapon_num(s32 weaponnum)
  * Weapon scoring is used to determine if a weapon is better than another,
  * which affects whether the bot engages in combat or seeks a better weapon.
  */
-void botinv_score_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 ifammo, bool dual, s32 *dst1, s32 *dst2, bool comparewithtarget, bool learn)
+void botinvScoreWeapon(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 arg3, bool arg4, s32 *dst1, s32 *dst2, bool comparewithtarget, bool arg8)
 {
 	s32 score1 = 0;
 	s32 score2 = 0;
@@ -470,15 +483,15 @@ void botinv_score_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 if
 
 	// @dangerous: Array overflow can occur if more weapons are added to the
 	// game without extending the preferences table
-	if (ifammo < 0
-			|| (funcnum == FUNC_PRIMARY && ifammo == g_BotWeaponConfigs[weaponnum].haspriammogoal)
-			|| (funcnum != FUNC_PRIMARY && ifammo == g_BotWeaponConfigs[weaponnum].hassecammogoal)) {
-		if (dual) {
-			score1 = g_BotWeaponConfigs[weaponnum].dualscore1;
-			score2 = g_BotWeaponConfigs[weaponnum].dualscore2;
+	if (arg3 < 0
+			|| (!funcnum && arg3 == g_AibotWeaponPreferences[weaponnum].haspriammogoal)
+			|| (funcnum && arg3 == g_AibotWeaponPreferences[weaponnum].hassecammogoal)) {
+		if (arg4) {
+			score1 = g_AibotWeaponPreferences[weaponnum].unk02;
+			score2 = g_AibotWeaponPreferences[weaponnum].unk03;
 		} else {
-			score1 = g_BotWeaponConfigs[weaponnum].score1;
-			score2 = g_BotWeaponConfigs[weaponnum].score2;
+			score1 = g_AibotWeaponPreferences[weaponnum].unk00;
+			score2 = g_AibotWeaponPreferences[weaponnum].unk01;
 		}
 
 		if (chr && chr->aibot) {
@@ -519,7 +532,7 @@ void botinv_score_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 if
 	case WEAPON_UNARMED:
 		if (comparewithtarget && funcnum != FUNC_PRIMARY) {
 			if (chr->target != -1
-					&& bot_get_targets_weapon_num(chr) > WEAPON_UNARMED
+					&& botGetTargetsWeaponNum(chr) > WEAPON_UNARMED
 					&& chr->aibot->config->difficulty > BOTDIFF_MEAT) {
 				score1 = 26;
 				score2 = 26;
@@ -549,7 +562,7 @@ void botinv_score_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 if
 		break;
 	case WEAPON_MAGSEC4:
 		if (funcnum == FUNC_PRIMARY) {
-			score1 = dual ? 91 : 63;
+			score1 = arg4 ? 91 : 63;
 		}
 		break;
 	case WEAPON_PHOENIX:
@@ -561,7 +574,7 @@ void botinv_score_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 if
 					score2 = 150;
 				}
 			} else {
-				score1 = dual ? 90 : 62;
+				score1 = arg4 ? 90 : 62;
 			}
 		}
 		break;
@@ -589,7 +602,7 @@ void botinv_score_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 if
 		break;
 	case WEAPON_RCP120:
 		if (chr->aibot->cloakdeviceenabled == false
-				&& botact_get_ammo_quantity_by_weapon(chr->aibot, WEAPON_RCP120, FUNC_PRIMARY, true) > 500
+				&& botactGetAmmoQuantityByWeapon(chr->aibot, WEAPON_RCP120, FUNC_PRIMARY, true) > 500
 				&& chr->aibot->config->difficulty > BOTDIFF_MEAT) {
 			score1 += chr->aibot->random1 % 10;
 			score2 += chr->aibot->random1 % 10;
@@ -641,7 +654,7 @@ void botinv_score_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 if
 				if (chr->aibot->config->difficulty > BOTDIFF_MEAT) {
 					if (comparewithtarget) {
 						if (chr->target != -1
-								&& chr->aibot->chrsinsight[mp_chr_to_chrindex(chr_get_target_prop(chr)->chr)] == 0
+								&& chr->aibot->chrsinsight[mpPlayerGetIndex(chrGetTargetProp(chr)->chr)] == 0
 								&& (chr->aibot->random1 % 2) == 0) {
 							score1 += 10;
 						} else {
@@ -658,7 +671,7 @@ void botinv_score_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 if
 				if (chr->aibot->config->difficulty >= BOTDIFF_NORMAL) {
 					if (comparewithtarget) {
 						if (chr->target != -1
-								&& chr->aibot->chrsinsight[mp_chr_to_chrindex(chr_get_target_prop(chr)->chr)] == 0
+								&& chr->aibot->chrsinsight[mpPlayerGetIndex(chrGetTargetProp(chr)->chr)] == 0
 								&& (chr->aibot->random1 % 2) == 0) {
 							score1 = 178;
 							score2 = 188;
@@ -690,7 +703,7 @@ void botinv_score_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 if
 				score2 = 0;
 			}
 		} else {
-			if (comparewithtarget && chr->target != -1 && chr_get_target_prop(chr)->chr->blurdrugamount > TICKS(3500)) {
+			if (comparewithtarget && chr->target != -1 && chrGetTargetProp(chr)->chr->blurdrugamount > TICKS(3500)) {
 				score1 = 0;
 				score2 = 0;
 			} else {
@@ -704,7 +717,7 @@ void botinv_score_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 if
 			s32 bluramount = 0;
 
 			if (chr->target != -1) {
-				bluramount = chr_get_target_prop(chr)->chr->blurdrugamount;
+				bluramount = chrGetTargetProp(chr)->chr->blurdrugamount;
 			}
 
 			if (funcnum != FUNC_PRIMARY) {
@@ -754,13 +767,12 @@ void botinv_score_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 if
 		break;
 	case WEAPON_NBOMB:
 		if (comparewithtarget && chr->target != -1) {
-			bot_get_targets_weapon_num(chr);
+			botGetTargetsWeaponNum(chr);
 		}
 		break;
 	}
 
-	if (learn) {
-		// Learn from recent usage stats
+	if (arg8) {
 		s32 weaponindex;
 		s32 extra = 0;
 		f32 float1;
@@ -775,7 +787,7 @@ void botinv_score_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 if
 			}
 		}
 
-		weaponindex = mp_get_weapon_slot_by_weapon_num(weaponnum);
+		weaponindex = mpGetWeaponSlotByWeaponNum(weaponnum);
 
 		if (weaponindex >= 0) {
 			float2 = ceilf(chr->aibot->equipdurations60[weaponindex][funcnum] * (1.0f / TICKS(3600.0f)));
@@ -815,44 +827,44 @@ void botinv_score_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 if
 	*dst2 = score2;
 }
 
-void botinv_score_weapon_against_target(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 ifammo, bool dual, s32 *dst1, s32 *dst2)
+void botinvScoreWeaponAgainstTarget(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 arg3, bool arg4, s32 *dst1, s32 *dst2)
 {
-	botinv_score_weapon(chr, weaponnum, funcnum, ifammo, dual, dst1, dst2, true, true);
+	botinvScoreWeapon(chr, weaponnum, funcnum, arg3, arg4, dst1, dst2, true, true);
 }
 
-void botinv_score_weapon_by_itself(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 ifammo, bool dual, s32 *dst1, s32 *dst2)
+void botinvScoreWeaponByItself(struct chrdata *chr, s32 weaponnum, s32 funcnum, s32 arg3, bool arg4, s32 *dst1, s32 *dst2)
 {
-	botinv_score_weapon(chr, weaponnum, funcnum, ifammo, dual, dst1, dst2, false, true);
+	botinvScoreWeapon(chr, weaponnum, funcnum, arg3, arg4, dst1, dst2, false, true);
 }
 
 /**
  * Return the aibot's distance configuration index for the given weapon and
  * function.
  */
-s32 botinv_get_dist_config(s32 weaponnum, s32 funcnum)
+s32 botinvGetDistConfig(s32 weaponnum, s32 funcnum)
 {
 	if (funcnum != FUNC_PRIMARY) {
-		return g_BotWeaponConfigs[weaponnum].secdistconfig;
+		return g_AibotWeaponPreferences[weaponnum].secdistconfig;
 	}
 
-	return g_BotWeaponConfigs[weaponnum].pridistconfig;
+	return g_AibotWeaponPreferences[weaponnum].pridistconfig;
 }
 
 /**
  * Check if the bot's personality permits it to use the given weapon and
  * function.
  */
-bool botinv_allows_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum)
+bool botinvAllowsWeapon(struct chrdata *chr, s32 weaponnum, s32 funcnum)
 {
 	bool allow = true;
 
 	if (chr->aibot->config->type == BOTTYPE_FIST) {
 		if (funcnum != FUNC_PRIMARY) {
-			if (g_BotWeaponConfigs[weaponnum].secdistconfig != BOTDISTCFG_CLOSE) {
+			if (g_AibotWeaponPreferences[weaponnum].secdistconfig != BOTDISTCFG_CLOSE) {
 				allow = false;
 			}
 		} else {
-			if (g_BotWeaponConfigs[weaponnum].pridistconfig != BOTDISTCFG_CLOSE) {
+			if (g_AibotWeaponPreferences[weaponnum].pridistconfig != BOTDISTCFG_CLOSE) {
 				allow = false;
 			}
 		}
@@ -866,7 +878,7 @@ bool botinv_allows_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum)
  *
  * The logic for deciding when to switch weapons is here.
  */
-void botinv_tick(struct chrdata *chr)
+void botinvTick(struct chrdata *chr)
 {
 	s32 newweaponnum = WEAPON_UNARMED;
 	s32 newfuncnum = FUNC_PRIMARY;
@@ -880,7 +892,7 @@ void botinv_tick(struct chrdata *chr)
 	}
 
 	aibot = chr->aibot;
-	weaponindex = mp_get_weapon_slot_by_weapon_num(aibot->weaponnum);
+	weaponindex = mpGetWeaponSlotByWeaponNum(aibot->weaponnum);
 
 	if (weaponindex >= 0) {
 		aibot->equipdurations60[weaponindex][aibot->gunfunc] += g_Vars.lvupdate60;
@@ -892,7 +904,7 @@ void botinv_tick(struct chrdata *chr)
 	aibot->dampensuicidesttl60 -= g_Vars.lvupdate60;
 
 	if (aibot->dampensuicidesttl60 < 0) {
-		aibot->dampensuicidesttl60 = TICKS(3600) + random() % TICKS(60);
+		aibot->dampensuicidesttl60 = TICKS(3600) + rngRandom() % TICKS(60);
 
 		for (i = 0; i < ARRAYCOUNT(aibot->suicidesbygunfunc); i++) {
 			aibot->suicidesbygunfunc[i][0] *= 0.9f;
@@ -904,15 +916,15 @@ void botinv_tick(struct chrdata *chr)
 	aibot->equipextrascorestimer60 -= g_Vars.lvupdate60;
 
 	if (aibot->equipextrascorestimer60 < 0) {
-		aibot->equipextrascorestimer60 = TICKS(600) + random() % TICKS(3000);
+		aibot->equipextrascorestimer60 = TICKS(600) + rngRandom() % TICKS(3000);
 
 		for (i = 0; i < ARRAYCOUNT(aibot->equipextrascores); i++) {
 			if (aibot->config->difficulty == BOTDIFF_MEAT) {
-				aibot->equipextrascores[i] = random() % 200 - 100; // -100 to +100
+				aibot->equipextrascores[i] = rngRandom() % 200 - 100; // -100 to +100
 			} else if (aibot->config->difficulty == BOTDIFF_EASY) {
-				aibot->equipextrascores[i] = random() % 100 - 50; // -50 to +50
+				aibot->equipextrascores[i] = rngRandom() % 100 - 50; // -50 to +50
 			} else {
-				aibot->equipextrascores[i] = random() % 30 - 15; // -15 to +15
+				aibot->equipextrascores[i] = rngRandom() % 30 - 15; // -15 to +15
 			}
 		}
 	}
@@ -922,8 +934,8 @@ void botinv_tick(struct chrdata *chr)
 	aibot->random1ttl60 -= g_Vars.lvupdate60;
 
 	if (aibot->random1ttl60 < 0) {
-		aibot->random1ttl60 = TICKS(120) + random() % TICKS(600);
-		aibot->random1 = random();
+		aibot->random1ttl60 = TICKS(120) + rngRandom() % TICKS(600);
+		aibot->random1 = rngRandom();
 	}
 
 	if (aibot->cyclonedischarging[HAND_LEFT] == 0
@@ -966,17 +978,17 @@ void botinv_tick(struct chrdata *chr)
 				if (weaponnum >= 0) {
 					for (j = 1; j >= 0; j--) {
 						if (j != FUNC_PRIMARY) {
-							canuse = g_BotWeaponConfigs[weaponnum].hassecammogoal;
+							canuse = g_AibotWeaponPreferences[weaponnum].hassecammogoal;
 						} else {
-							canuse = g_BotWeaponConfigs[weaponnum].haspriammogoal;
+							canuse = g_AibotWeaponPreferences[weaponnum].haspriammogoal;
 						}
 
-						if (canuse && botinv_allows_weapon(chr, weaponnum, j)) {
-							botinv_score_weapon_against_target(chr, weaponnum, j, 1, item && item->type == INVITEMTYPE_DUAL, &score1, &score2);
+						if (canuse && botinvAllowsWeapon(chr, weaponnum, j)) {
+							botinvScoreWeaponAgainstTarget(chr, weaponnum, j, 1, item && item->type == INVITEMTYPE_DUAL, &score1, &score2);
 
 							if (score1 >= bestscore) {
-								if (!botact_get_ammo_type_by_function(weaponnum, j)
-										|| botact_get_ammo_quantity_by_weapon(aibot, weaponnum, j, true) > 0) {
+								if (!botactGetAmmoTypeByFunction(weaponnum, j)
+										|| botactGetAmmoQuantityByWeapon(aibot, weaponnum, j, true) > 0) {
 									bestscore = score1;
 									newweaponnum = weaponnum;
 									newfuncnum = j;
@@ -990,23 +1002,23 @@ void botinv_tick(struct chrdata *chr)
 
 		// Consider setting knives to secondary function (throw)
 		if (newweaponnum == WEAPON_COMBATKNIFE
-				&& botact_get_ammo_quantity_by_weapon(aibot, WEAPON_COMBATKNIFE, FUNC_SECONDARY, true) >= 2
+				&& botactGetAmmoQuantityByWeapon(aibot, WEAPON_COMBATKNIFE, FUNC_SECONDARY, true) >= 2
 				&& chr->target != -1
-				&& chr->aibot->chrdistances[mp_chr_to_chrindex(chr_get_target_prop(chr)->chr)] > 200
-				&& chr->aibot->chrdistances[mp_chr_to_chrindex(chr_get_target_prop(chr)->chr)] < 1500) {
+				&& chr->aibot->chrdistances[mpPlayerGetIndex(chrGetTargetProp(chr)->chr)] > 200
+				&& chr->aibot->chrdistances[mpPlayerGetIndex(chrGetTargetProp(chr)->chr)] < 1500) {
 			newfuncnum = FUNC_SECONDARY;
 		}
 
 		// Consider setting Phoenix and SuperDragon to their explosive functions
 		if (aibot->config->type == BOTTYPE_ROCKET) {
-			if (newweaponnum == WEAPON_PHOENIX && botact_get_ammo_quantity_by_weapon(aibot, WEAPON_PHOENIX, FUNC_SECONDARY, true) > 0) {
+			if (newweaponnum == WEAPON_PHOENIX && botactGetAmmoQuantityByWeapon(aibot, WEAPON_PHOENIX, FUNC_SECONDARY, true) > 0) {
 				newfuncnum = FUNC_SECONDARY;
-			} else if (newweaponnum == WEAPON_SUPERDRAGON && botact_get_ammo_quantity_by_weapon(aibot, WEAPON_SUPERDRAGON, FUNC_SECONDARY, true) > 0) {
+			} else if (newweaponnum == WEAPON_SUPERDRAGON && botactGetAmmoQuantityByWeapon(aibot, WEAPON_SUPERDRAGON, FUNC_SECONDARY, true) > 0) {
 				newfuncnum = FUNC_SECONDARY;
 			}
 		}
 
-		botinv_switch_to_weapon(chr, newweaponnum, newfuncnum);
+		botinvSwitchToWeapon(chr, newweaponnum, newfuncnum);
 	}
 }
 
@@ -1016,10 +1028,10 @@ void botinv_tick(struct chrdata *chr)
  * The weapon must already exist in the bot's inventory,
  * otherwise unarmed will be equipped instead.
  */
-bool botinv_switch_to_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum)
+bool botinvSwitchToWeapon(struct chrdata *chr, s32 weaponnum, s32 funcnum)
 {
 	struct invitem *item;
-	struct funcdef *func;
+	struct weaponfunc *func;
 	struct aibot *aibot;
 	s32 i;
 	s32 modelnum;
@@ -1039,7 +1051,7 @@ bool botinv_switch_to_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum)
 	// If changing to anything other than unarmed, make sure the aibot has the
 	// weapon in their inventory. Otherwise make them switch to unarmed.
 	if (weaponnum != WEAPON_UNARMED) {
-		item = botinv_get_item(chr, weaponnum);
+		item = botinvGetItem(chr, weaponnum);
 
 		if (!item) {
 			weaponnum = WEAPON_UNARMED;
@@ -1069,7 +1081,7 @@ bool botinv_switch_to_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum)
 	if (changingfunc || changinggun) {
 		for (i = 0; i < 2; i++) {
 			if (aibot->loadedammo[i] > 0) {
-				botact_give_ammo_by_weapon(aibot, aibot->weaponnum, aibot->gunfunc, aibot->loadedammo[i]);
+				botactGiveAmmoByWeapon(aibot, aibot->weaponnum, aibot->gunfunc, aibot->loadedammo[i]);
 				aibot->loadedammo[i] = 0;
 			}
 		}
@@ -1083,24 +1095,24 @@ bool botinv_switch_to_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum)
 	if (changingfunc && !changinggun) {
 		for (i = 0; i < 2; i++) {
 			if (chr->weapons_held[i]) {
-				botact_reload(chr, i, false);
+				botactReload(chr, i, false);
 			}
 		}
 	}
 
 	if (!changinggun) {
-		modelnum = playermgr_get_model_of_weapon(weaponnum);
+		modelnum = playermgrGetModelOfWeapon(weaponnum);
 
 		// @dangerous: item is uninitialised if weaponnum is WEAPON_UNARMED.
-		// This function assumes playermgr_get_model_of_weapon returns a negative value for
+		// This function assumes playermgrGetModelOfWeapon returns a negative value for
 		// WEAPON_UNARMED which is a dangerous assumption to make, but correct.
 		if (modelnum >= 0 && item && item->type == INVITEMTYPE_DUAL && chr->weapons_held[HAND_LEFT] == NULL) {
-			chr_give_weapon(chr, modelnum, weaponnum, OBJFLAG_WEAPON_LEFTHANDED);
-			botact_reload(chr, HAND_LEFT, false);
+			chrGiveWeapon(chr, modelnum, weaponnum, OBJFLAG_WEAPON_LEFTHANDED);
+			botactReload(chr, HAND_LEFT, false);
 		}
 	}
 
-	func = gset_get_funcdef_by_weaponnum_funcnum(weaponnum, funcnum);
+	func = weaponGetFunctionById(weaponnum, funcnum);
 
 	aibot->ismeleeweapon = func && func->type == INVENTORYFUNCTYPE_MELEE;
 
@@ -1119,7 +1131,7 @@ bool botinv_switch_to_weapon(struct chrdata *chr, s32 weaponnum, s32 funcnum)
  *
  * dropall is used when the bot is killed.
  */
-void botinv_drop(struct chrdata *chr, s32 weaponnum, u8 dropall)
+void botinvDrop(struct chrdata *chr, s32 weaponnum, u8 dropall)
 {
 	s32 i;
 
@@ -1136,21 +1148,21 @@ void botinv_drop(struct chrdata *chr, s32 weaponnum, u8 dropall)
 
 		if ((item->type == INVITEMTYPE_WEAP || item->type == INVITEMTYPE_DUAL)
 				&& (dropall || weaponnum == item->type_weap.weapon1)) {
-			if (!gset_has_weapon_flag(item->type_weap.weapon1, WEAPONFLAG_UNDROPPABLE)
+			if (!weaponHasFlag(item->type_weap.weapon1, WEAPONFLAG_UNDROPPABLE)
 					|| (g_Vars.normmplayerisrunning
 						&& g_MpSetup.scenario == MPSCENARIO_HACKERCENTRAL
 						&& item->type_weap.weapon1 == WEAPON_DATAUPLINK)) {
-				s32 modelnum = playermgr_get_model_of_weapon(item->type_weap.weapon1);
+				s32 modelnum = playermgrGetModelOfWeapon(item->type_weap.weapon1);
 
 				if (modelnum > 0) {
-					struct prop *prop = weapon_create_for_chr(chr, modelnum, item->type_weap.weapon1, OBJFLAG_WEAPON_AICANNOTUSE, NULL, NULL);
+					struct prop *prop = weaponCreateForChr(chr, modelnum, item->type_weap.weapon1, OBJFLAG_WEAPON_AICANNOTUSE, NULL, NULL);
 
 					if (prop) {
-						obj_set_dropped(prop, DROPTYPE_DEFAULT);
-						obj_drop(prop, true);
+						objSetDropped(prop, DROPTYPE_DEFAULT);
+						objDrop(prop, true);
 
 						if (item->type_weap.weapon1 == WEAPON_BRIEFCASE2) {
-							scenario_handle_dropped_token(chr, prop);
+							scenarioHandleDroppedToken(chr, prop);
 						}
 					}
 				}
@@ -1160,22 +1172,22 @@ void botinv_drop(struct chrdata *chr, s32 weaponnum, u8 dropall)
 
 	if ((dropall && weaponnum >= WEAPON_FALCON2)
 			|| (!dropall && weaponnum == chr->aibot->weaponnum)) {
-		botinv_switch_to_weapon(chr, WEAPON_UNARMED, FUNC_PRIMARY);
+		botinvSwitchToWeapon(chr, WEAPON_UNARMED, FUNC_PRIMARY);
 	}
 
 	chr->hidden |= CHRHFLAG_DROPPINGITEM;
 
 	if (!dropall) {
-		botinv_remove_item(chr, weaponnum);
+		botinvRemoveItem(chr, weaponnum);
 	}
 }
 
-void botinv_drop_all(struct chrdata *chr, u32 weaponnum)
+void botinvDropAll(struct chrdata *chr, u32 weaponnum)
 {
-	botinv_drop(chr, weaponnum, true);
+	botinvDrop(chr, weaponnum, true);
 }
 
-void botinv_drop_one(struct chrdata *chr, u32 weaponnum)
+void botinvDropOne(struct chrdata *chr, u32 weaponnum)
 {
-	botinv_drop(chr, weaponnum, false);
+	botinvDrop(chr, weaponnum, false);
 }

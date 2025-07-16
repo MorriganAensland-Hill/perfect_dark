@@ -15,7 +15,7 @@
 #include "data.h"
 #include "types.h"
 
-void botmgr_remove_all(void)
+void botmgrRemoveAll(void)
 {
 	s32 i;
 
@@ -26,7 +26,7 @@ void botmgr_remove_all(void)
 	g_BotCount = 0;
 }
 
-void botmgr_allocate_bot(s32 chrnum, s32 aibotnum)
+void botmgrAllocateBot(s32 chrnum, s32 aibotnum)
 {
 	RoomNum rooms[1];
 	struct prop *prop;
@@ -39,29 +39,29 @@ void botmgr_allocate_bot(s32 chrnum, s32 aibotnum)
 
 	rooms[0] = -1;
 
-	headnum = mp_get_head_id(g_BotConfigsArray[aibotnum].base.mpheadnum);
-	bodynum = mp_get_body_id(g_BotConfigsArray[aibotnum].base.mpbodynum);
+	headnum = mpGetHeadId(g_BotConfigsArray[aibotnum].base.mpheadnum);
+	bodynum = mpGetBodyId(g_BotConfigsArray[aibotnum].base.mpbodynum);
 
 	if (IS4MB()) {
 		headnum = HEAD_DDSHOCK;
 		bodynum = BODY_DDSHOCK;
 	}
 
-	model = body_instantiate_model_with_spawnflags(bodynum, headnum, 0);
+	model = bodyAllocateModel(bodynum, headnum, 0);
 
 	if (model != NULL) {
 		struct coord pos = {0.0f, 0.0f, 0.0f};
 		u32 stack;
 
-		prop = chr_create_with_model(model, &pos, rooms, 0.0f, ailist_find_by_id(GAILIST_AIBOT_INIT));
+		prop = chrAllocate(model, &pos, rooms, 0.0f, ailistFindById(GAILIST_AIBOT_INIT));
 
 		if (prop != NULL) {
-			prop_activate(prop);
-			prop_enable(prop);
+			propActivate(prop);
+			propEnable(prop);
 
 			chr = prop->chr;
 
-			chr_set_chrnum(chr, chrnum);
+			chrSetChrnum(chr, chrnum);
 
 			chr->chrnum = chrnum;
 			chr->padpreset1 = -1;
@@ -70,7 +70,7 @@ void botmgr_allocate_bot(s32 chrnum, s32 aibotnum)
 			chr->visionrange = 80;
 			chr->headnum = headnum;
 			chr->bodynum = bodynum;
-			chr->race = body_get_race(chr->bodynum);
+			chr->race = bodyGetRace(chr->bodynum);
 			chr->flags = CHRFLAG0_CAN_EXAMINE_BODY; // reused flag?
 			chr->flags2 = 0;
 			chr->team = 1 << g_BotConfigsArray[aibotnum].base.team;
@@ -80,12 +80,12 @@ void botmgr_allocate_bot(s32 chrnum, s32 aibotnum)
 				g_MpBotChrPtrs[g_BotCount] = chr;
 				g_BotCount++;
 
-				aibot = memp_alloc(sizeof(struct aibot), MEMPOOL_STAGE);
+				aibot = mempAlloc(sizeof(struct aibot), MEMPOOL_STAGE);
 				chr->aibot = aibot;
 
 				if (aibot != NULL) {
 					chr->tude = 0;
-					chr->voicebox = random() % 3;
+					chr->voicebox = rngRandom() % 3;
 
 					if (g_HeadsAndBodies[chr->bodynum].ismale == false) {
 						chr->voicebox = VOICEBOX_FEMALE;
@@ -103,7 +103,7 @@ void botmgr_allocate_bot(s32 chrnum, s32 aibotnum)
 					g_MpAllChrConfigPtrs[g_MpNumChrs] = &g_BotConfigsArray[aibotnum].base;
 					g_MpNumChrs++;
 
-					aibot->ammoheld = memp_alloc(36 * sizeof(s32), MEMPOOL_STAGE);
+					aibot->ammoheld = mempAlloc(36 * sizeof(s32), MEMPOOL_STAGE);
 
 					for (i = 0; i < 33; i++) {
 						aibot->ammoheld[i] = 0;
@@ -201,10 +201,10 @@ void botmgr_allocate_bot(s32 chrnum, s32 aibotnum)
 					aibot->reaperspeed[HAND_RIGHT] = 0;
 					aibot->maulercharge[HAND_LEFT] = 0.0f;
 					aibot->maulercharge[HAND_RIGHT] = 0.0f;
-					aibot->roty = model_get_chr_rot_y(chr->model);
+					aibot->roty = modelGetChrRotY(chr->model);
 					aibot->angleoffset = 0.0f;
 					aibot->speedtheta = 0.0f;
-					aibot->lookangle = model_get_chr_rot_y(chr->model);
+					aibot->lookangle = modelGetChrRotY(chr->model);
 
 					aibot->moveratex = 0.0f;
 					aibot->moveratey = 0.0f;
@@ -226,16 +226,16 @@ void botmgr_allocate_bot(s32 chrnum, s32 aibotnum)
 						aibot->chrrooms[i] = -1;
 					}
 
-					aibot->zeroangle = 0.0f;
-					aibot->zerospeed = 0.0f;
-					aibot->zeroinc = 0.0f;
+					aibot->extraangle = 0.0f;
+					aibot->extraanglerate = 0.0f;
+					aibot->extraanglebase = 0.0f;
 					aibot->random3ttl60 = -1;
 					aibot->random3 = 0;
-					aibot->curzerotimer60 = 0.0f;
+					aibot->targetinsighttemperature = 0.0f;
 					aibot->realignangleframe = -1;
 					aibot->waypoints[0] = NULL;
 					aibot->numwaystepstotarget = 0;
-					aibot->random1 = random();
+					aibot->random1 = rngRandom();
 					aibot->random1ttl60 = 0;
 
 					for (i = 0; i < ARRAYCOUNT(aibot->killsbygunfunc); i++) {
@@ -258,7 +258,7 @@ void botmgr_allocate_bot(s32 chrnum, s32 aibotnum)
 					aibot->canseecloaked = false;
 
 					aibot->random2ttl60 = 0;
-					aibot->random2 = random();
+					aibot->random2 = rngRandom();
 					aibot->randomfrac = RANDOMFRAC();
 					aibot->cheap = false;
 #if VERSION >= VERSION_NTSC_1_0
@@ -271,7 +271,7 @@ void botmgr_allocate_bot(s32 chrnum, s32 aibotnum)
 					return;
 				}
 
-				botinv_init(chr, 10);
+				botinvInit(chr, 10);
 			}
 		}
 	}

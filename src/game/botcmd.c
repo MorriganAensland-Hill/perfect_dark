@@ -5,7 +5,7 @@
 #include "game/debug.h"
 #include "game/chr.h"
 #include "game/ceil.h"
-#include "game/gset.h"
+#include "game/game_0b0fd0.h"
 #include "game/playermgr.h"
 #include "game/mplayer/setup.h"
 #include "game/bot.h"
@@ -37,7 +37,7 @@ f32 g_BotDistConfigs[][3] = {
 	{ 450,  700,  4500  }, // BOTDISTCFG_THROWEXPLOSIVE
 };
 
-void botcmd_tick_dist_mode(struct chrdata *chr)
+void botcmdTickDistMode(struct chrdata *chr)
 {
 	s32 confignum;
 	f32 *limits;
@@ -55,7 +55,7 @@ void botcmd_tick_dist_mode(struct chrdata *chr)
 	if (aibot->config->type == BOTTYPE_KAZE) {
 		confignum = BOTDISTCFG_KAZE;
 	} else {
-		confignum = botinv_get_dist_config(aibot->weaponnum, aibot->gunfunc);
+		confignum = botinvGetDistConfig(aibot->weaponnum, aibot->gunfunc);
 	}
 
 	if (chr->myaction == MA_AIBOTFOLLOW && aibot->followingplayernum >= 0) {
@@ -64,7 +64,7 @@ void botcmd_tick_dist_mode(struct chrdata *chr)
 		insight = aibot->chrsinsight[aibot->followingplayernum];
 
 		if (chr->target != -1 && (confignum == BOTDISTCFG_CLOSE || confignum == BOTDISTCFG_KAZE)) {
-			struct prop *target = chr_get_target_prop(chr);
+			struct prop *target = chrGetTargetProp(chr);
 			f32 xdiff = targetprop->pos.x - target->pos.x;
 			f32 ydiff = targetprop->pos.y - target->pos.y;
 			f32 zdiff = targetprop->pos.z - target->pos.z;
@@ -82,7 +82,7 @@ void botcmd_tick_dist_mode(struct chrdata *chr)
 			targetprop = g_MpAllChrPtrs[aibot->attackingplayernum]->prop;
 			insight = aibot->chrsinsight[aibot->attackingplayernum];
 		} else if (chr->target != -1) {
-			targetprop = chr_get_target_prop(chr);
+			targetprop = chrGetTargetProp(chr);
 			insight = aibot->targetinsight;
 		}
 	}
@@ -91,11 +91,11 @@ void botcmd_tick_dist_mode(struct chrdata *chr)
 		return;
 	}
 
-	if (!bot_has_ground(targetprop->chr)) {
+	if (!botHasGround(targetprop->chr)) {
 		return;
 	}
 
-	distance = chr_get_distance_to_coord(chr, &targetprop->pos);
+	distance = chrGetDistanceToCoord(chr, &targetprop->pos);
 	minattackdistance = limits[0];
 	maxattackdistance = limits[1];
 	limit3 = limits[2];
@@ -149,7 +149,7 @@ void botcmd_tick_dist_mode(struct chrdata *chr)
 		if (!insight) {
 			newmode = BOTDISTMODE_ADVANCE;
 			aibot->distoverrideprop = targetprop;
-			aibot->distoverridetimer60 = TICKS(20) + (random() % TICKS(120));
+			aibot->distoverridetimer60 = TICKS(20) + (rngRandom() % TICKS(120));
 		} else if (aibot->distoverrideprop) {
 			if (g_Vars.lvupdate60 < aibot->distoverridetimer60) {
 				aibot->distoverridetimer60 -= g_Vars.lvupdate60;
@@ -176,16 +176,16 @@ void botcmd_tick_dist_mode(struct chrdata *chr)
 			|| (newmode != BOTDISTMODE_OK && (chr->actiontype == ACT_STAND || aibot->distmodettl60 <= 0))) {
 		switch (newmode) {
 		case BOTDISTMODE_BACKUP:
-			chr_run_from_pos(chr, GOPOSFLAG_RUN, 10000, &targetprop->pos);
+			chrRunFromPos(chr, GOPOSFLAG_RUN, 10000, &targetprop->pos);
 			break;
 		case BOTDISTMODE_OK:
-			chr_try_stop(chr);
+			chrTryStop(chr);
 			break;
 		case BOTDISTMODE_ADVANCE:
-			chr_go_to_prop(chr, targetprop, GOPOSFLAG_RUN);
+			chrGoToProp(chr, targetprop, GOPOSFLAG_RUN);
 			break;
 		case BOTDISTMODE_GOTO:
-			chr_go_to_prop(chr, targetprop, GOPOSFLAG_RUN);
+			chrGoToProp(chr, targetprop, GOPOSFLAG_RUN);
 			break;
 		}
 
@@ -193,30 +193,30 @@ void botcmd_tick_dist_mode(struct chrdata *chr)
 	}
 }
 
-void botcmd_apply(struct chrdata *chr, u32 command)
+void botcmdApply(struct chrdata *chr, u32 command)
 {
 	f32 value;
 
 	switch (command) {
 	case AIBOTCMD_ATTACK:
-		am_open_pick_target();
+		amOpenPickTarget();
 		break;
 	case AIBOTCMD_FOLLOW:
-		bot_apply_follow(chr, g_Vars.currentplayer->prop);
+		botApplyFollow(chr, g_Vars.currentplayer->prop);
 		break;
 	case AIBOTCMD_PROTECT:
-		bot_apply_protect(chr, g_Vars.currentplayer->prop);
+		botApplyProtect(chr, g_Vars.currentplayer->prop);
 		break;
 	case AIBOTCMD_DEFEND:
-		value = chr_get_theta(g_Vars.currentplayer->prop->chr);
-		bot_apply_defend(chr, &g_Vars.currentplayer->prop->pos, g_Vars.currentplayer->prop->rooms, value);
+		value = chrGetInverseTheta(g_Vars.currentplayer->prop->chr);
+		botApplyDefend(chr, &g_Vars.currentplayer->prop->pos, g_Vars.currentplayer->prop->rooms, value);
 		break;
 	case AIBOTCMD_HOLD:
-		value = chr_get_theta(g_Vars.currentplayer->prop->chr);
-		bot_apply_hold(chr, &g_Vars.currentplayer->prop->pos, g_Vars.currentplayer->prop->rooms, value);
+		value = chrGetInverseTheta(g_Vars.currentplayer->prop->chr);
+		botApplyHold(chr, &g_Vars.currentplayer->prop->pos, g_Vars.currentplayer->prop->rooms, value);
 		break;
 	default:
-		bot_apply_scenario_command(chr, command);
+		botApplyScenarioCommand(chr, command);
 		break;
 	}
 }
