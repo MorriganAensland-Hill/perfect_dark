@@ -4,30 +4,43 @@
 #include "data.h"
 #include "types.h"
 
-bool snd_is_filtered(s32 audioid);
-bool snd_is_playing_mp3(void);
-void snd_set_sfx_volume(u16 volume);
-void snd_reset_cur_mp3(void);
-void snd_set_sound_mode(s32 mode);
-ALSound *snd_load_sound(s16 soundnum);
-void snd_init(void);
-bool snd_is_mp3(s16 soundnum);
-bool snd_stop_mp3(s16 soundnum);
-bool seq_play(struct seqinstance *seq, s32 tracknum);
-void seq_set_volume(struct seqinstance *seq, u16 volume);
-void snd_handle_retrace(void);
-void snd_pause_mp3(void);
-void snd_unpause_mp3(void);
-void snd_tick(void);
-bool snd_is_disabled(void);
-void snd_start_mp3_by_filenum(u32 filenum);
-void snd_adjust(struct sndstate **handle, bool ismp3, s32 vol, s32 pan, s32 soundnum, f32 pitch, s32 fxbus, s32 fxmix, bool forcefxmix);
-struct sndstate *snd_start_extra(struct sndstate **handle, bool ismp3, s32 volume, s32 pan, s32 soundnum, f32 pitch, s32 fxbus, s32 fxmix, bool forcefxmix);
-struct sndstate *snd_start(s32 arg0, s16 sound, struct sndstate **handle, s32 volume, s32 pan, f32 pitch, s32 fxbus, s32 fxmix);
-void snd_start_mp3(s16 soundnum, s32 volume, s32 pan, s32 responseflags);
-void snd_play_nosedive(s32 seconds);
-void snd_stop_nosedive(void);
-void snd_play_ufo(s32 seconds);
-void snd_stop_ufo(void);
+bool sndIsFiltered(s32 audioid);
+bool sndIsPlayingMp3(void);
+u16 snd0000e9dc(void);
+void sndSetSfxVolume(u16 volume);
+void snd0000ea80(u16 volume);
+void sndResetCurMp3(void);
+void sndLoadSfxCtl(void);
+void sndIncrementAges(void);
+ALEnvelope *sndLoadEnvelope(uintptr_t offset, u16 index);
+ALKeyMap *sndLoadKeymap(uintptr_t offset, u16 index);
+ALADPCMBook* sndLoadAdpcmBook(uintptr_t offset, u16 index);
+ALADPCMloop* sndLoadAdpcmLoop(uintptr_t offset, u16 index);
+ALWaveTable* sndLoadWavetable(uintptr_t offset, u16 index);
+void sndSetSoundMode(s32 mode);
+ALSound *sndLoadSound(s16 soundnum);
+void seqInit(struct seqinstance *seq);
+void sndInit(void);
+bool sndIsMp3(s16 soundnum);
+bool sndStopMp3(s16 arg0);
+bool seqPlay(struct seqinstance *seq, s32 tracknum);
+u16 seqGetVolume(struct seqinstance *seq);
+void seqSetVolume(struct seqinstance *seq, u16 volume);
+void sndHandleRetrace(void);
+void snd0000fe20(void);
+void snd0000fe50(void);
+void sndTick(void);
+bool sndIsDisabled(void);
+void sndStartMp3ByFilenum(u32 filenum);
+void sndAdjust(struct sndstate **handle, bool ismp3, s32 vol, s32 pan, s32 soundnum, f32 pitch, s32 fxbus, s32 fxmix, bool forcefxmix);
+struct sndstate *snd00010718(struct sndstate **handle, s32 flags, s32 volume, s32 pan, s32 soundnum, f32 pitch, s32 fxbus, s32 fxmix, bool forcefxmix);
+struct sndstate *sndStart(s32 arg0, s16 sound, struct sndstate **handle, s32 volume, s32 pan, f32 pitch, s32 fxbus, s32 fxmix);
+void sndStartMp3(s16 soundnum, s32 volume, s32 pan, s32 responseflags);
+void sndPlayNosedive(s32 seconds);
+void sndStopNosedive(void);
+void sndTickNosedive(void);
+void sndPlayUfo(s32 seconds);
+void sndStopUfo(void);
+void sndTickUfo(void);
 
 #endif

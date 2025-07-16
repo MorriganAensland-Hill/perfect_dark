@@ -4,10 +4,12 @@
 #include "data.h"
 #include "types.h"
 
-void dma_init(void);
-void dma_wait(void);
-void dma_exec(void *memaddr, u32 romaddr, u32 len);
-void dma_exec_high_priority(void *memaddr, u32 romaddr, u32 len);
-void *dma_exec_with_auto_align(void *memaddr, u32 romaddr, u32 len);
+void dmaInit(void);
+void dmaStart(void *memaddr, romptr_t romaddr, u32 len, bool priority);
+void dmaCheckPiracy(void *memaddr, u32 len);
+void dmaWait(void);
+void dmaExec(void *memaddr, romptr_t romaddr, u32 len);
+void dmaExecHighPriority(void *memaddr, romptr_t romaddr, u32 len);
+void *dmaExecWithAutoAlign(void *memaddr, romptr_t romaddr, u32 len);
 
 #endif

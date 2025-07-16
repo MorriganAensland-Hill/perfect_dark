@@ -6,13 +6,15 @@
 
 extern s32 g_MainIsBooting;
 
-void main_init(void);
-void main_proc(void);
-void main_override_variable(char *name, void *value);
-void main_loop(void);
-void main_end_stage(void);
-void main_change_to_stage(s32 stagenum);
+void mainInit(void);
+void mainProc(void);
+void mainOverrideVariable(char *name, void *value);
+void mainLoop(void);
+void mainTick(void);
+void mainEndStage(void);
+void mainChangeToStage(s32 stagenum);
 void func0000e990(void);
-s32 main_get_stage_num(void);
+void func0000e9c0(void);
+s32 mainGetStageNum(void);
 
 #endif

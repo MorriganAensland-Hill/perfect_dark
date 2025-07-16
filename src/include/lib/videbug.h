@@ -4,7 +4,7 @@
 #include "data.h"
 #include "types.h"
 
-void videbug_create(void);
-void videbug_init(void);
+void videbugCreate(void);
+void videbugInit(void);
 
 #endif

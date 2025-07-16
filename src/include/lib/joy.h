@@ -4,47 +4,58 @@
 #include "data.h"
 #include "types.h"
 
-void joy_lock_cyclic_polling(void);
-void joy_unlock_cyclic_polling(void);
-void joy_set_pfs_poll_enabled(bool enabled);
-bool joy_is_pfs_poll_enabled(void);
-void joy_set_pfs_poll_interval(s32 value);
-void joy_set_default_pfs_poll_interval(void);
-s32 joy_shift_pfs_states(void);
-void joy_record_pfs_state(u8 pfsstate);
-void joy_poll_pfs(s32 force);
-void joy_set_pfs_temporarily_plugged(s8 index);
-void joy_init(void);
-void joy_disable_temporarily(void);
-void joy_reset(void);
-u32 joy_get_connected_controllers(void);
-void joy_debug_joy(void);
-void joys_handle_retrace(void);
+void joyLockCyclicPolling(void);
+void joyUnlockCyclicPolling(void);
+void joySetPfsPollEnabled(bool enabled);
+bool joyIsPfsPollEnabled(void);
+void joySetPfsPollInterval(s32 value);
+void joySetDefaultPfsPollInterval(void);
+s32 joyShiftPfsStates(void);
+void joyRecordPfsState(u8 pfsstate);
+void joyPollPfs(s32 force);
+void joySetPfsTemporarilyPlugged(s8 index);
+void joyInit(void);
+void joyDisableTemporarily(void);
+void joyReset(void);
+void joy00013e84(void);
+u32 joyGetConnectedControllers(void);
+void joy00014238(void);
+void joyDebugJoy(void);
+s32 joyStartReadData(OSMesgQueue *mq);
+void joyReadData(void);
+void joysHandleRetrace(void);
 void joy00014810(bool value);
-s32 joy_get_num_samples(void);
-s32 joy_get_stick_x_on_sample(s32 samplenum, s8 contpadnum);
-s32 joy_get_stick_y_on_sample(s32 samplenum, s8 contpadnum);
-s32 joy_get_stick_y_on_sample_index(s32 samplenum, s8 contpadnum);
-u16 joy_get_buttons_on_sample(s32 samplenum, s8 contpadnum, u16 mask);
-u16 joy_get_buttons_pressed_on_sample(s32 samplenum, s8 contpadnum, u16 mask);
-s32 joy_count_buttons_on_specific_samples(u32 *arg0, s8 contpadnum, u16 mask);
-s8 joy_get_stick_x(s8 contpadnum);
-s8 joy_get_stick_y(s8 contpadnum);
-u16 joy_get_buttons(s8 contpadnum, u16 mask);
-u16 joy_get_buttons_pressed_this_frame(s8 contpadnum, u16 mask);
-bool joy_is_cyclic_polling_enabled(void);
+s32 joyGetNumSamples(void);
+s32 joyGetRStickXOnSample(s32 samplenum, s8 contpadnum);
+s32 joyGetRStickYOnSample(s32 samplenum, s8 contpadnum);
+s32 joyGetStickXOnSample(s32 samplenum, s8 contpadnum);
+s32 joyGetStickYOnSample(s32 samplenum, s8 contpadnum);
+s32 joyGetStickYOnSampleIndex(s32 samplenum, s8 contpadnum);
+s32 joyGetRStickYOnSampleIndex(s32 samplenum, s8 contpadnum);
+u32 joyGetButtonsOnSample(s32 samplenum, s8 contpadnum, u32 mask);
+u32 joyGetButtonsPressedOnSample(s32 samplenum, s8 contpadnum, u32 mask);
+s32 joyCountButtonsOnSpecificSamples(u32 *arg0, s8 contpadnum, u32 mask);
+s8 joyGetStickX(s8 contpadnum);
+s8 joyGetStickY(s8 contpadnum);
+s8 joyGetRStickX(s8 contpadnum);
+s8 joyGetRStickY(s8 contpadnum);
+u32 joyGetButtons(s8 contpadnum, u32 mask);
+u32 joyGetButtonsPressedThisFrame(s8 contpadnum, u32 mask);
+bool joyIsCyclicPollingEnabled(void);
 
 #if VERSION >= VERSION_NTSC_1_0
-void joy_disable_cyclic_polling(void);
-void joy_enable_cyclic_polling(void);
+void joyDisableCyclicPolling(void);
+void joyEnableCyclicPolling(void);
 #else
-void joy_disable_cyclic_polling(s32 line, char *file);
-void joy_enable_cyclic_polling(s32 line, char *file);
+void joyDisableCyclicPolling(s32 line, char *file);
+void joyEnableCyclicPolling(s32 line, char *file);
 #endif
 
-void joy_destroy(void);
-void joy_get_contpad_nums_for_player(s8 playernum, s32 *pad1, s32 *pad2);
-void joy_stop_rumble(s8 device, bool disablepolling);
-s32 joy_get_pak_state(s8 device);
+void joyDestroy(void);
+void joyGetContpadNumsForPlayer(s8 playernum, s32 *pad1, s32 *pad2);
+void joyStopRumble(s8 device, bool disablepolling);
+s32 joyGetPakState(s8 device);
+s32 joyGetPakState2(s8 device);
+void joysTickRumble(void);
 
 #endif
