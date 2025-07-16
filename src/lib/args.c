@@ -34,7 +34,7 @@ char *argv[17] = {
 /**
  * Split the given string into words and populate the argv array.
  */
-char *arg_parse_string(char *str)
+char *argParseString(char *str)
 {
 	argv[0] = "";
 	argc = 1;
@@ -56,13 +56,13 @@ char *arg_parse_string(char *str)
 	return str;
 }
 
-void arg_set_string(char *string)
+void argSetString(char *string)
 {
 	strcpy((char *) g_ArgBuffer, string);
-	arg_parse_string((char *) g_ArgBuffer);
+	argParseString((char *) g_ArgBuffer);
 }
 
-bool args_parse_debug_args(void)
+bool argsParseDebugArgs(void)
 {
 	u32 devaddr;
 	u32 stack;
@@ -71,7 +71,7 @@ bool args_parse_debug_args(void)
 
 	devaddr = 0x1ffff00;
 
-	if (rmon_is_disabled()) {
+	if (rmonIsDisabled()) {
 		g_ArgBuffer[0] = 0;
 	} else {
 		for (i = 0; i < ARRAYCOUNT(g_ArgBuffer); i++) {
@@ -80,20 +80,20 @@ bool args_parse_debug_args(void)
 		}
 	}
 
-	arg_parse_string((char *) g_ArgBuffer);
+	argParseString((char *) g_ArgBuffer);
 
 	// I'm guessing the -d stands for debug. If set at boot, the main thread
 	// stops itself immediately after creating the rmon thread.
-	if (arg_find_by_prefix(1, "-d")) {
+	if (argFindByPrefix(1, "-d")) {
 		ret = true;
 	}
 
-	if (arg_find_by_prefix(1, "-s")) {
+	if (argFindByPrefix(1, "-s")) {
 		g_SndDisabled = true;
 	}
 
 #if VERSION < VERSION_JPN_FINAL
-	if (arg_find_by_prefix(1, "-j")) {
+	if (argFindByPrefix(1, "-j")) {
 		g_Jpn = true;
 	}
 #endif
@@ -108,7 +108,7 @@ bool args_parse_debug_args(void)
  * Typically called with arguments such as 1, "-hard". In this example, if the
  * argument "-hard2" exists then it would return a pointer to "2".
  */
-char *arg_find_by_prefix(s32 occurrence, char *str)
+char *argFindByPrefix(s32 occurrence, char *str)
 {
 	s32 len = strlen(str);
 	s32 i;
@@ -126,9 +126,9 @@ char *arg_find_by_prefix(s32 occurrence, char *str)
 	return NULL;
 }
 
-void arg_get_level(s32 *stagenum)
+void argGetLevel(s32 *stagenum)
 {
-	char *ptr = arg_find_by_prefix(1, "-level_");
+	char *ptr = argFindByPrefix(1, "-level_");
 
 	if (ptr) {
 		*stagenum = ptr[0] * 10 + ptr[1] - 528;

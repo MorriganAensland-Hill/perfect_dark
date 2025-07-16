@@ -175,19 +175,18 @@ extern u32 _libSegmentStart;
 extern u32 _libSegmentEnd;
 
 void faultproc(void *arg0);
-u32 crash_generate(OSThread *thread, u32 *callstack, s32 *tracelen);
-void crash_print_description(u32 mask, char *label, struct crashdescription *descriptions);
-void crash_scroll(s32 numlines);
+u32 crashGenerate(OSThread *thread, u32 *callstack, s32 *tracelen);
+void crashPrintDescription(u32 mask, char *label, struct crashdescription *descriptions);
 
 #if VERSION < VERSION_NTSC_1_0
-void crash_set_message(char *string)
+void crashSetMessage(char *string)
 {
 	strncpy(g_CrashMessage, string, sizeof(g_CrashMessage));
 	g_CrashHasMessage = true;
 }
 #endif
 
-void crash_create_thread(void)
+void crashCreateThread(void)
 {
 	osCreateMesgQueue(&g_FaultMesgQueue, &g_FaultMesg, 1);
 	osCreateThread(&g_FaultThread, THREAD_FAULT, faultproc, NULL, &g_FaultStack[1024], THREADPRI_FAULT);
@@ -226,8 +225,8 @@ void faultproc(void *arg0)
 #endif
 
 #ifdef DEBUG
-		crash_generate(curr, callstack, &tracelen);
-		sched_set_crashed_unexpectedly(true);
+		crashGenerate(curr, callstack, &tracelen);
+		schedSetCrashedUnexpectedly(true);
 #endif
 	}
 }
@@ -247,7 +246,7 @@ char var80097178nb[MAX_LINES + 1][71];
  * Given a pointer to an instruction and a stack frame pointer, attempt to find
  * the calling function. Return the address of the caller's stack frame and
  * populate regs with stack addresses where that register was saved. This can be
- * used to retrieve the RA value and invoke crash_get_parent_stack_frame again to
+ * used to retrieve the RA value and invoke crashGetParentStackFrame again to
  * build a backtrace.
  *
  * origptr is a pointer to an instruction. This should be either the value of
@@ -268,7 +267,7 @@ char var80097178nb[MAX_LINES + 1][71];
  * store $ra in the stack. It can also fail if the function being analysed uses
  * returns within branches.
  */
-u32 crash_get_parent_stack_frame(u32 *origptr, u32 *minaddr, u32 origsp, u32 *regs)
+u32 crashGetParentStackFrame(u32 *origptr, u32 *minaddr, u32 origsp, u32 *regs)
 {
 	u32 sp = origsp;
 	u32 *ptr;
@@ -356,10 +355,10 @@ u32 crash_get_parent_stack_frame(u32 *origptr, u32 *minaddr, u32 origsp, u32 *re
 	return 0;
 }
 
-bool crash_is_return_address(u32 *instruction)
+bool crashIsReturnAddress(u32 *instruction)
 {
 	if (((uintptr_t)instruction % 4) == 0
-			&& (uintptr_t)instruction >= (uintptr_t)vm_boot
+			&& (uintptr_t)instruction >= (uintptr_t)vmBoot
 			&& (uintptr_t)instruction <= (uintptr_t)&_libSegmentEnd) {
 		// This condition can never pass because 9 is masked out
 		if ((instruction[-2] & 0xfc00003c) == 9) {
@@ -376,7 +375,7 @@ bool crash_is_return_address(u32 *instruction)
 }
 
 #if VERSION < VERSION_NTSC_1_0
-s32 crash_get_str_len(char *str)
+s32 crashGetStrLen(char *str)
 {
 	s32 i = 0;
 	char c = *str++;
@@ -400,13 +399,13 @@ u32 crash0000c52cnb(u32 romaddr)
 {
 	u32 addr;
 
-	dma_exec(var80097118nb, romaddr, 0x60);
+	dmaExec(var80097118nb, romaddr, 0x60);
 
 	var8009710cnb = var80097118nb[0];
 	var80097110nb = (char *)&var80097118nb[1];
-	var80097114nb = (char *)(crash_get_str_len(var80097110nb) + (uintptr_t)var80097110nb + 1);
+	var80097114nb = (char *)(crashGetStrLen(var80097110nb) + (uintptr_t)var80097110nb + 1);
 
-	addr = romaddr + crash_get_str_len(var80097110nb) + crash_get_str_len(var80097114nb) + 6;
+	addr = romaddr + crashGetStrLen(var80097110nb) + crashGetStrLen(var80097114nb) + 6;
 
 	if (addr % 4) {
 		addr = (addr | 3) + 1;
@@ -466,9 +465,9 @@ void crash0000c694nb(void)
 	}
 
 	if (numvalid == 4) {
-		rmon_printf("%.49s", var80097110nb);
+		rmonPrintf("%.49s", var80097110nb);
 	} else {
-		rmon_printf("???");
+		rmonPrintf("???");
 	}
 }
 #endif
@@ -486,9 +485,9 @@ void crash0000c714nb(void)
 	}
 
 	if (numvalid == 4) {
-		rmon_printf("%.41s", var80097114nb);
+		rmonPrintf("%.41s", var80097114nb);
 	} else {
-		rmon_printf("???");
+		rmonPrintf("???");
 	}
 }
 #endif
@@ -496,7 +495,7 @@ void crash0000c714nb(void)
 #if VERSION < VERSION_NTSC_1_0
 void crash0000c794nb(void)
 {
-	rmon_printf("%08x", var8009710cnb);
+	rmonPrintf("%08x", var8009710cnb);
 }
 #endif
 
@@ -507,13 +506,13 @@ u32 crash0000c7c0nb(void)
 }
 #endif
 
-u32 crash_get_stack_end(u32 sp, s32 tid)
+u32 crashGetStackEnd(u32 sp, s32 tid)
 {
 	u32 start;
 	u32 end;
 
 	if (tid <= 0 || tid > 6U) {
-		rmon_printf("Bad tid\n");
+		rmonPrintf("Bad tid\n");
 		return 0;
 	}
 
@@ -527,12 +526,12 @@ u32 crash_get_stack_end(u32 sp, s32 tid)
 	return (sp & 0xf0000000) | (end - start);
 }
 
-u32 crash_get_stack_start(u32 sp, s32 tid)
+u32 crashGetStackStart(u32 sp, s32 tid)
 {
 	u32 start;
 
 	if (tid <= 0 || tid > 6U) {
-		rmon_printf("Bad tid\n");
+		rmonPrintf("Bad tid\n");
 		return 0;
 	}
 
@@ -545,7 +544,7 @@ u32 crash_get_stack_start(u32 sp, s32 tid)
 	return sp & 0xf0000000;
 }
 
-bool crash_is_double(f32 value)
+bool crashIsDouble(f32 value)
 {
 	u32 bits = *(u32*)&value;
 	u32 fraction = bits & 0x7fffff;
@@ -554,38 +553,38 @@ bool crash_is_double(f32 value)
 	return fraction == 0 || (exponent != 0 && exponent != 0xff);
 }
 
-void crash_print_float(s32 index, f32 value)
+void crashPrintFloat(s32 index, f32 value)
 {
-	if (crash_is_double(value)) {
-		rmon_printf("%s%s%02d: % .7e ", "", "", index, (f64)value);
+	if (crashIsDouble(value)) {
+		rmonPrintf("%s%s%02d: % .7e ", "", "", index, (f64)value);
 	} else {
 		u32 bits = *(u32 *)&value;
-		rmon_printf("%02d: I%d.%03d.%07d ", index, (bits & 0x80000000) >> 31, (bits & 0x7f800000) >> 23, bits & 0x7fffff);
+		rmonPrintf("%02d: I%d.%03d.%07d ", index, (bits & 0x80000000) >> 31, (bits & 0x7f800000) >> 23, bits & 0x7fffff);
 	}
 }
 
-void crash_print_2_floats(s32 index, f32 value1, f32 value2)
+void crashPrint2Floats(s32 index, f32 value1, f32 value2)
 {
-	crash_print_float(index, value1);
-	rmon_printf(" ");
+	crashPrintFloat(index, value1);
+	rmonPrintf(" ");
 
-	crash_print_float(index + 1, value2);
-	rmon_printf("\n");
+	crashPrintFloat(index + 1, value2);
+	rmonPrintf("\n");
 }
 
-void crash_print_3_floats(s32 index, f32 value1, f32 value2, f32 value3)
+void crashPrint3Floats(s32 index, f32 value1, f32 value2, f32 value3)
 {
-	crash_print_float(index, value1);
-	rmon_printf(" ");
+	crashPrintFloat(index, value1);
+	rmonPrintf(" ");
 
-	crash_print_float(index + 1, value2);
-	rmon_printf(" ");
+	crashPrintFloat(index + 1, value2);
+	rmonPrintf(" ");
 
-	crash_print_float(index + 2, value3);
-	rmon_printf("\n");
+	crashPrintFloat(index + 2, value3);
+	rmonPrintf("\n");
 }
 
-u32 crash_generate(OSThread *thread, u32 *callstack, s32 *tracelen)
+u32 crashGenerate(OSThread *thread, u32 *callstack, s32 *tracelen)
 {
 	s32 i;
 	u32 ptr;
@@ -606,7 +605,7 @@ u32 crash_generate(OSThread *thread, u32 *callstack, s32 *tracelen)
 	s32 len;
 #endif
 
-	rmon_printf("\n\nFAULT-\n");
+	rmonPrintf("\n\nFAULT-\n");
 
 #if VERSION >= VERSION_NTSC_1_0
 	if (!g_Vars.fourmeg2player)
@@ -615,25 +614,25 @@ u32 crash_generate(OSThread *thread, u32 *callstack, s32 *tracelen)
 		// Print a stack trace in a dodgy way.
 		// It works by iterating through the stack allocation, looking for any
 		// values which could potentially be a return address, and prints them.
-		u32 *stackend = (u32 *) crash_get_stack_end(ctx->sp, thread->id);
-		rmon_printf("DodgyStackTrace: %08llx ", ctx->ra & 0xffffffff);
+		u32 *stackend = (u32 *) crashGetStackEnd(ctx->sp, thread->id);
+		rmonPrintf("DodgyStackTrace: %08llx ", ctx->ra & 0xffffffff);
 		tmpsp = (u32 *) ctx->sp;
 
 		while (tmpsp < stackend) {
-			if (crash_is_return_address((u32 *)*tmpsp)) {
-				rmon_printf("%08x ", *tmpsp);
+			if (crashIsReturnAddress((u32 *)*tmpsp)) {
+				rmonPrintf("%08x ", *tmpsp);
 			}
 
 			tmpsp++;
 		}
 
-		rmon_printf(".\n");
+		rmonPrintf(".\n");
 	}
 
 #if VERSION >= VERSION_NTSC_1_0
-	rmon_printf("%H#@! Another Perfect Crash (tm)\n");
+	rmonPrintf("%H#@! Another Perfect Crash (tm)\n");
 #else
-	rmon_printf("\nPerfect Crash (tm)\n\n");
+	rmonPrintf("\nPerfect Crash (tm)\n\n");
 #endif
 
 #if VERSION >= VERSION_NTSC_1_0
@@ -641,71 +640,71 @@ u32 crash_generate(OSThread *thread, u32 *callstack, s32 *tracelen)
 #endif
 	{
 		// Print floating point registers
-		crash_print_2_floats(0, ctx->fp0.f.f_odd, ctx->fp0.f.f_even);
-		crash_print_3_floats(2, ctx->fp2.f.f_odd, ctx->fp2.f.f_even, ctx->fp4.f.f_odd);
-		crash_print_3_floats(5, ctx->fp4.f.f_even, ctx->fp6.f.f_odd, ctx->fp6.f.f_even);
-		crash_print_3_floats(8, ctx->fp8.f.f_odd, ctx->fp8.f.f_even, ctx->fp10.f.f_odd);
-		crash_print_3_floats(11, ctx->fp10.f.f_even, ctx->fp12.f.f_odd, ctx->fp12.f.f_even);
-		crash_print_3_floats(14, ctx->fp14.f.f_odd, ctx->fp14.f.f_even, ctx->fp16.f.f_odd);
-		crash_print_3_floats(17, ctx->fp16.f.f_even, ctx->fp18.f.f_odd, ctx->fp18.f.f_even);
-		crash_print_3_floats(20, ctx->fp20.f.f_odd, ctx->fp20.f.f_even, ctx->fp22.f.f_odd);
-		crash_print_3_floats(23, ctx->fp22.f.f_even, ctx->fp24.f.f_odd, ctx->fp24.f.f_even);
-		crash_print_3_floats(26, ctx->fp26.f.f_odd, ctx->fp26.f.f_even, ctx->fp28.f.f_odd);
-		crash_print_3_floats(29, ctx->fp28.f.f_even, ctx->fp30.f.f_odd, ctx->fp30.f.f_even);
+		crashPrint2Floats(0, ctx->fp0.f.f_odd, ctx->fp0.f.f_even);
+		crashPrint3Floats(2, ctx->fp2.f.f_odd, ctx->fp2.f.f_even, ctx->fp4.f.f_odd);
+		crashPrint3Floats(5, ctx->fp4.f.f_even, ctx->fp6.f.f_odd, ctx->fp6.f.f_even);
+		crashPrint3Floats(8, ctx->fp8.f.f_odd, ctx->fp8.f.f_even, ctx->fp10.f.f_odd);
+		crashPrint3Floats(11, ctx->fp10.f.f_even, ctx->fp12.f.f_odd, ctx->fp12.f.f_even);
+		crashPrint3Floats(14, ctx->fp14.f.f_odd, ctx->fp14.f.f_even, ctx->fp16.f.f_odd);
+		crashPrint3Floats(17, ctx->fp16.f.f_even, ctx->fp18.f.f_odd, ctx->fp18.f.f_even);
+		crashPrint3Floats(20, ctx->fp20.f.f_odd, ctx->fp20.f.f_even, ctx->fp22.f.f_odd);
+		crashPrint3Floats(23, ctx->fp22.f.f_even, ctx->fp24.f.f_odd, ctx->fp24.f.f_even);
+		crashPrint3Floats(26, ctx->fp26.f.f_odd, ctx->fp26.f.f_even, ctx->fp28.f.f_odd);
+		crashPrint3Floats(29, ctx->fp28.f.f_even, ctx->fp30.f.f_odd, ctx->fp30.f.f_even);
 	}
 
 	// Print integer registers
-	rmon_printf("at 0x%016llx v0 0x%016llx v1 0x%016llx\n", ctx->at, ctx->v0, ctx->v1);
-	rmon_printf("a0 0x%016llx a1 0x%016llx a2 0x%016llx\n", ctx->a0, ctx->a1, ctx->a2);
-	rmon_printf("a3 0x%016llx t0 0x%016llx t1 0x%016llx\n", ctx->a3, ctx->t0, ctx->t1);
-	rmon_printf("t2 0x%016llx t3 0x%016llx t4 0x%016llx\n", ctx->t2, ctx->t3, ctx->t4);
-	rmon_printf("t5 0x%016llx t6 0x%016llx t7 0x%016llx\n", ctx->t5, ctx->t6, ctx->t7);
-	rmon_printf("s0 0x%016llx s1 0x%016llx s2 0x%016llx\n", ctx->s0, ctx->s1, ctx->s2);
-	rmon_printf("s3 0x%016llx s4 0x%016llx s5 0x%016llx\n", ctx->s3, ctx->s4, ctx->s5);
-	rmon_printf("s6 0x%016llx s7 0x%016llx t8 0x%016llx\n", ctx->s6, ctx->s7, ctx->t8);
-	rmon_printf("t9 0x%016llx gp 0x%016llx sp 0x%016llx\n", ctx->t9, ctx->gp, ctx->sp);
-	rmon_printf("s8 0x%016llx ra 0x%016llx\n", ctx->s8, ctx->ra);
+	rmonPrintf("at 0x%016llx v0 0x%016llx v1 0x%016llx\n", ctx->at, ctx->v0, ctx->v1);
+	rmonPrintf("a0 0x%016llx a1 0x%016llx a2 0x%016llx\n", ctx->a0, ctx->a1, ctx->a2);
+	rmonPrintf("a3 0x%016llx t0 0x%016llx t1 0x%016llx\n", ctx->a3, ctx->t0, ctx->t1);
+	rmonPrintf("t2 0x%016llx t3 0x%016llx t4 0x%016llx\n", ctx->t2, ctx->t3, ctx->t4);
+	rmonPrintf("t5 0x%016llx t6 0x%016llx t7 0x%016llx\n", ctx->t5, ctx->t6, ctx->t7);
+	rmonPrintf("s0 0x%016llx s1 0x%016llx s2 0x%016llx\n", ctx->s0, ctx->s1, ctx->s2);
+	rmonPrintf("s3 0x%016llx s4 0x%016llx s5 0x%016llx\n", ctx->s3, ctx->s4, ctx->s5);
+	rmonPrintf("s6 0x%016llx s7 0x%016llx t8 0x%016llx\n", ctx->s6, ctx->s7, ctx->t8);
+	rmonPrintf("t9 0x%016llx gp 0x%016llx sp 0x%016llx\n", ctx->t9, ctx->gp, ctx->sp);
+	rmonPrintf("s8 0x%016llx ra 0x%016llx\n", ctx->s8, ctx->ra);
 
 #if VERSION >= VERSION_NTSC_1_0
-	rmon_printf("TID %d epc %08x caus %08x fp %08x badv %08x sr %08x\n",
+	rmonPrintf("TID %d epc %08x caus %08x fp %08x badv %08x sr %08x\n",
 			thread->id, ctx->pc, ctx->cause, ctx->fpcsr, ctx->badvaddr, ctx->sr);
 #else
-	rmon_printf("TID %d epc %08x cause %08x fp %08x badv %08x sr %08x\n",
+	rmonPrintf("TID %d epc %08x cause %08x fp %08x badv %08x sr %08x\n",
 			thread->id, ctx->pc, ctx->cause, ctx->fpcsr, ctx->badvaddr, ctx->sr);
 #endif
 
 	// Print the address of the faulted instruction, along with the instruction
 	// itself and the next three - presumably to help the developer locate it.
-	rmon_printf("dshex -a %08x %08x %08x %08x %08x\n", ctx->pc,
+	rmonPrintf("dshex -a %08x %08x %08x %08x %08x\n", ctx->pc,
 			((u32 *)ctx->pc)[0],
 			((u32 *)ctx->pc)[1],
 			((u32 *)ctx->pc)[2],
 			((u32 *)ctx->pc)[3]);
 
-	crash_print_description(ctx->cause, "cause", g_CrashCauseDescriptions);
-	rmon_printf(" : ");
-	crash_print_description(ctx->fpcsr, "fpcsr", g_CrashFpcsrDescriptions);
-	rmon_printf("\n");
+	crashPrintDescription(ctx->cause, "cause", g_CrashCauseDescriptions);
+	rmonPrintf(" : ");
+	crashPrintDescription(ctx->fpcsr, "fpcsr", g_CrashFpcsrDescriptions);
+	rmonPrintf("\n");
 
 	// Print a proper stack trace
 	i = 0;
 	done = false;
 	sp = (u32 *)ctx->sp;
-	stackend = (u32 *) crash_get_stack_end((uintptr_t)sp, thread->id);
-	stackstart = (u32 *) crash_get_stack_start((uintptr_t)sp, thread->id);
+	stackend = (u32 *) crashGetStackEnd((uintptr_t)sp, thread->id);
+	stackstart = (u32 *) crashGetStackStart((uintptr_t)sp, thread->id);
 	ptr = ctx->pc;
 	*tracelen = 0;
-	rmon_printf("nearl: ");
+	rmonPrintf("nearl: ");
 
 	while (!done) {
-		sp = (u32 *) crash_get_parent_stack_frame((u32 *) ptr, &_libSegmentStart, (uintptr_t)sp, regs);
-		rmon_printf(" %08x ", ptr);
+		sp = (u32 *) crashGetParentStackFrame((u32 *) ptr, &_libSegmentStart, (uintptr_t)sp, regs);
+		rmonPrintf(" %08x ", ptr);
 
 		callstack[*tracelen] = ptr;
 		*tracelen = *tracelen + 1;
 
 		if (i == 4) {
-			rmon_printf("\n       ");
+			rmonPrintf("\n       ");
 		}
 
 		if (sp == NULL) {
@@ -741,52 +740,52 @@ u32 crash_generate(OSThread *thread, u32 *callstack, s32 *tracelen)
 		g_CrashCurX = (71 - len) / 2;
 
 		for (j = 0; j < len; j++) {
-			crash_append_char(g_CrashMessage[j]);
+			crashAppendChar(g_CrashMessage[j]);
 		}
 	} else {
 		g_CrashCurX = 32;
 
-		crash_append_char('C');
-		crash_append_char('R');
-		crash_append_char('A');
-		crash_append_char('S');
-		crash_append_char('H');
-		crash_append_char('E');
-		crash_append_char('D');
+		crashAppendChar('C');
+		crashAppendChar('R');
+		crashAppendChar('A');
+		crashAppendChar('S');
+		crashAppendChar('H');
+		crashAppendChar('E');
+		crashAppendChar('D');
 	}
 #endif
 
-	rmon_printf("\n");
-	rmon_printf("\n");
+	rmonPrintf("\n");
+	rmonPrintf("\n");
 
 	return 0;
 }
 
-void crash_print_description(u32 mask, char *label, struct crashdescription *description)
+void crashPrintDescription(u32 mask, char *label, struct crashdescription *description)
 {
 	bool first = true;
 	s32 i;
 
-	rmon_printf("%s <", label);
+	rmonPrintf("%s <", label);
 
 	while (description->mask != 0) {
 		if ((description->mask & mask) == description->value) {
 			if (first) {
 				first = false;
 			} else {
-				rmon_printf(",");
+				rmonPrintf(",");
 			}
 
-			rmon_printf("%s", description->text);
+			rmonPrintf("%s", description->text);
 		}
 
 		description++;
 	}
 
-	rmon_printf(">");
+	rmonPrintf(">");
 }
 
-void crash_put_char(s32 x, s32 y, char c)
+void crashPutChar(s32 x, s32 y, char c)
 {
 	if (c == '\t' || c == '\n') {
 		c = '\0';
@@ -801,7 +800,7 @@ void crash_put_char(s32 x, s32 y, char c)
 	}
 }
 
-void crash_append_char(char c)
+void crashAppendChar(char c)
 {
 	if (c == '\0') {
 		return;
@@ -809,7 +808,7 @@ void crash_append_char(char c)
 
 	if (c == '\t') {
 		do {
-			crash_append_char(' ');
+			crashAppendChar(' ');
 		} while (g_CrashCurX & 7);
 
 		return;
@@ -821,12 +820,12 @@ void crash_append_char(char c)
 	}
 
 	if (g_CrashCurY >= MAX_LINES) {
-		crash_scroll(g_CrashCurY - MAX_LINES + 1);
+		crashScroll(g_CrashCurY - MAX_LINES + 1);
 		g_CrashCurY = MAX_LINES - 1;
 	}
 
 	if (c != '\n') {
-		crash_put_char(g_CrashCurX, g_CrashCurY, c);
+		crashPutChar(g_CrashCurX, g_CrashCurY, c);
 		g_CrashCurX++;
 
 		if (g_CrashCurX >= 71) {
@@ -836,7 +835,7 @@ void crash_append_char(char c)
 	}
 }
 
-void crash_scroll(s32 numlines)
+void crashScroll(s32 numlines)
 {
 	s32 i;
 	s32 y;
@@ -858,7 +857,7 @@ void crash_scroll(s32 numlines)
 /**
  * Render a character to the crash buffer.
  */
-void crash_render_char(s32 x, s32 y, char c)
+void crashRenderChar(s32 x, s32 y, char c)
 {
 	s32 i;
 	s32 j;
@@ -868,7 +867,7 @@ void crash_render_char(s32 x, s32 y, char c)
 	s32 tmp;
 	u32 a2;
 
-	width = vi_get_width();
+	width = viGetWidth();
 
 	if (c == '\0') {
 		c = ' ';
@@ -937,7 +936,7 @@ void crash_render_char(s32 x, s32 y, char c)
 	}
 }
 
-void crash_reset(void)
+void crashReset(void)
 {
 #ifdef DEBUG
 	g_CrashCharBuffer = var80097178nb;
@@ -958,7 +957,7 @@ void crash_reset(void)
 	}
 }
 
-void crash_render_frame(u16 *fb)
+void crashRenderFrame(u16 *fb)
 {
 	s32 width;
 	s32 height;
@@ -967,13 +966,13 @@ void crash_render_frame(u16 *fb)
 
 	g_CrashFrameBuffer = (u16 *) PHYS_TO_K1(fb);
 
-	width = (vi_get_width() - 13) / CHAR_W;
-	height = (vi_get_height() - 10) / CHAR_H - 1;
+	width = (viGetWidth() - 13) / CHAR_W;
+	height = (viGetHeight() - 10) / CHAR_H - 1;
 
 	if (g_CrashCharBuffer != NULL) {
 		for (y = 0; y < height && y < MAX_LINES; y++) {
 			for (x = 0; x < width - 5 && x < 71; x++) {
-				crash_render_char(20 + x * CHAR_W, CHAR_H + y * CHAR_H, g_CrashCharBuffer[y][x]);
+				crashRenderChar(20 + x * CHAR_W, CHAR_H + y * CHAR_H, g_CrashCharBuffer[y][x]);
 			}
 		}
 	}

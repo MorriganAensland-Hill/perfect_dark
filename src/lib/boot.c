@@ -29,7 +29,7 @@ u32 var8008dbcc;
 OSSched g_Sched;
 OSScClient g_MainSchedClient;
 #if VERSION >= VERSION_NTSC_1_0
-u32 g_SavedOsMemSize;
+u32 g_OsMemSize;
 #else
 u16 *var800902e4;
 u16 var800902e8;
@@ -54,16 +54,14 @@ extern u8 *_inflateSegmentRomStart;
 extern u8 *_inflateSegmentRomEnd;
 
 #if VERSION >= VERSION_NTSC_1_0
-s32 osGetMemSize(void)
+s32 bootGetMemSize(void)
 {
-	return g_SavedOsMemSize;
+	return g_OsMemSize;
 }
 #endif
 
 u32 __osGetFpcCsr(void);
 u32 __osSetFpcCsr(u32 arg0);
-
-void boot_create_threads(void *arg);
 
 /**
  * Prepares the inflate, .data and lib segments, then creates and starts the
@@ -89,15 +87,10 @@ void boot(void)
 	u32 flags;
 
 #if VERSION >= VERSION_NTSC_1_0
-	// In NTSC beta, libultra's osGetMemSize is used several times during boot.
-	// This function writes to the expansion area but this shouldn't be a problem...
-	// In NTSC 1.0 and later, libultra's osGetMemSize is not linked and is replaced
-	// with one which returns osMemSize. But it appears as though osMemSize is only
-	// reliable on a cold boot, because it's saved and reloaded here on a reset.
 	if (osResetType == RESETTYPE_WARM) {
-		g_SavedOsMemSize = *(u32 *) STACK_START;
+		g_OsMemSize = *(u32 *) STACK_START;
 	} else {
-		*(u32 *) STACK_START = g_SavedOsMemSize = osMemSize;
+		*(u32 *) STACK_START = g_OsMemSize = osMemSize;
 	}
 #endif
 
@@ -131,10 +124,10 @@ void boot(void)
 	}
 
 	// Inflate compressed part of lib
-	seg_inflate((void *) libzipram, (void *) libram, (void *) 0x80300000);
+	segInflate((void *) libzipram, (void *) libram, (void *) 0x80300000);
 
 	// Inflate .data
-	seg_inflate((void *) datazipram, (void *) dataram, (void *) 0x80300000);
+	segInflate((void *) datazipram, (void *) dataram, (void *) 0x80300000);
 
 #if PIRACYCHECKS
 	if (IO_READ(0xa00002e8) != 0xc86e2000) {
@@ -142,7 +135,7 @@ void boot(void)
 	}
 #endif
 
-	vm_unmap_range(1, NTLBENTRIES);
+	vmUnmapRange(1, NTLBENTRIES);
 
 	// Clear the stack allocation pointers
 	for (i = 0; i < ARRAYCOUNT(g_StackLeftAddrs); i++) {
@@ -175,7 +168,7 @@ void boot(void)
 #endif
 
 	// Create and start the main thread
-	osCreateThread(&g_MainThread, THREAD_MAIN, boot_create_threads, NULL, boot_allocate_stack(THREAD_MAIN, STACKSIZE_MAIN), THREADPRI_MAIN);
+	osCreateThread(&g_MainThread, THREAD_MAIN, bootCreateThreads, NULL, bootAllocateStack(THREAD_MAIN, STACKSIZE_MAIN), THREADPRI_MAIN);
 	osStartThread(&g_MainThread);
 }
 
@@ -194,7 +187,7 @@ void boot(void)
  * The stack is initialised with the thread's ID. This makes it easier to
  * identify in memory and detect when a stack overflow has occurred.
  */
-void *boot_allocate_stack(s32 threadid, s32 size)
+void *bootAllocateStack(s32 threadid, s32 size)
 {
 	u8 *ptr8;
 	u32 *ptr32;
@@ -228,7 +221,7 @@ void *boot_allocate_stack(s32 threadid, s32 size)
 }
 
 #if VERSION < VERSION_NTSC_1_0
-u8 *boot_get_stack_pos(void)
+u8 *bootGetStackPos(void)
 {
 	return g_StackAllocatedPos;
 }
@@ -247,19 +240,19 @@ void idleproc(void *data)
 	while (true);
 }
 
-void boot_create_idle_thread(void)
+void bootCreateIdleThread(void)
 {
-	osCreateThread(&g_IdleThread, THREAD_IDLE, idleproc, NULL, boot_allocate_stack(THREAD_IDLE, STACKSIZE_IDLE), THREADPRI_IDLE);
+	osCreateThread(&g_IdleThread, THREAD_IDLE, idleproc, NULL, bootAllocateStack(THREAD_IDLE, STACKSIZE_IDLE), THREADPRI_IDLE);
 	osStartThread(&g_IdleThread);
 }
 
-void boot_create_rmon_thread(void)
+void bootCreateRmonThread(void)
 {
-	osCreateThread(&g_RmonThread, THREAD_RMON, rmonproc, NULL, boot_allocate_stack(THREAD_RMON, STACKSIZE_RMON), THREADPRI_RMON);
+	osCreateThread(&g_RmonThread, THREAD_RMON, rmonproc, NULL, bootAllocateStack(THREAD_RMON, STACKSIZE_RMON), THREADPRI_RMON);
 	osStartThread(&g_RmonThread);
 }
 
-void boot_create_sched_thread(void)
+void bootCreateSchedThread(void)
 {
 	osCreateMesgQueue(&g_MainMesgQueue, g_MainMesgBuf, ARRAYCOUNT(g_MainMesgBuf));
 
@@ -273,24 +266,24 @@ void boot_create_sched_thread(void)
 	g_SchedCmdQ = osScGetCmdQ(&g_Sched);
 }
 
-void boot_create_threads(void *arg)
+void bootCreateThreads(void *arg)
 {
-	boot_create_idle_thread();
-	videbug_create();
-	pimgr_create();
-	boot_create_rmon_thread();
+	bootCreateIdleThread();
+	videbugCreate();
+	pimgrCreate();
+	bootCreateRmonThread();
 
-	if (args_parse_debug_args()) {
+	if (argsParseDebugArgs()) {
 		osStopThread(NULL);
 	}
 
 	osSetThreadPri(0, THREADPRI_MAIN);
-	boot_create_sched_thread();
-	main_proc();
+	bootCreateSchedThread();
+	mainProc();
 }
 
 #if VERSION < VERSION_NTSC_1_0
-void boot_count_unused_stack(void)
+void bootCountUnusedStack(void)
 {
 	s32 threadid;
 
@@ -310,7 +303,7 @@ void boot_count_unused_stack(void)
 	}
 }
 
-void boot_check_stack_overflow(void)
+void bootCheckStackOverflow(void)
 {
 	s32 threadid;
 
@@ -323,10 +316,10 @@ void boot_check_stack_overflow(void)
 				if (*ptr != 0xdeadbabe) {
 					char message[128];
 
-					boot_count_unused_stack();
+					bootCountUnusedStack();
 
 					sprintf(message, "Stack overflow thread %d", threadid);
-					crash_set_message(message);
+					crashSetMessage(message);
 					CRASH();
 				}
 

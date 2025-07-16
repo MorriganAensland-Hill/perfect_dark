@@ -5,7 +5,7 @@
 #include "constants.h"
 #include "bss.h"
 #include "lib/audiodma.h"
-#include "lib/osc.h"
+#include "lib/lib_2fc60.h"
 #include "lib/profile.h"
 #include "lib/libc/ll.h"
 #include "data.h"
@@ -43,26 +43,26 @@ void *g_AudioSp;
 u32 var8005cf90 = 0x00000000;
 u8 var8005cf94 = 1;
 
-void amgr_handle_done_msg(AudioInfo *info);
-void amgr_handle_frame_msg(AudioInfo *info, AudioInfo *previnfo);
-void amgr_main(void *arg);
+void amgrHandleDoneMsg(AudioInfo *info);
+void amgrHandleFrameMsg(AudioInfo *info, AudioInfo *previnfo);
+void amgrMain(void *arg);
 
-void amgr_init(void)
+void amgrInit(void)
 {
-	g_AudioSp = boot_allocate_stack(THREAD_AUDIO, STACKSIZE_AUDIO);
+	g_AudioSp = bootAllocateStack(THREAD_AUDIO, STACKSIZE_AUDIO);
 }
 
 #if VERSION >= VERSION_PAL_BETA
-void amgr_create(ALSynConfig *config, u32 *settings)
+void amgrCreate(ALSynConfig *config, u32 *settings)
 #else
-void amgr_create(ALSynConfig *config)
+void amgrCreate(ALSynConfig *config)
 #endif
 {
 	f32 freqpertick;
 	s32 i;
 
 	config->outputRate = osAiSetFrequency(22020);
-	config->dmaproc = adma_new;
+	config->dmaproc = admaNew;
 
 #if VERSION >= VERSION_JPN_FINAL
 	freqpertick = settings[1] * (f32)config->outputRate / 30.0f;
@@ -91,7 +91,7 @@ void amgr_create(ALSynConfig *config)
 	var800918e4 = g_AmgrFreqPerTick + 80;
 	var8005cf94 = 0;
 
-	adma_init();
+	admaInit();
 
 	osCreateMesgQueue(&g_AudioManager.audioReplyMsgQ, g_AudioManager.audioReplyMsgBuf, ARRAYCOUNT(g_AudioManager.audioFrameMsgBuf));
 	osCreateMesgQueue(&g_AudioManager.audioFrameMsgQ, g_AudioManager.audioFrameMsgBuf, ARRAYCOUNT(g_AudioManager.audioFrameMsgBuf));
@@ -114,132 +114,50 @@ void amgr_create(ALSynConfig *config)
 		g_AudioManager.audioInfo[i]->data = alHeapAlloc(&g_SndHeap, 1, PAL ? 3688 : 1024 * 3);
 	}
 
-#define ms *(((s32) ((f32) 44.1))&~0x7)
-
+#ifndef AVOID_UB // these will be used after this scope ends, triggering a big boom
 	{
-		s32 sp590[] = { 1, 132 ms,
-			// input output    fbcoef ffcoef gain   chorusrate chorusdepth filtercoef
-			0 ms,    123.8 ms, 19724, 0,     21503, 0,         0,          0,
-		};
+#endif
+		s32 sp590[] = { 0x00000001, 0x000014a0, 0x00000000, 0x00001358, 0x00004d0c, 0x00000000, 0x000053ff, 0x00000000, 0x00000000, 0x00000000 };
+		s32 sp568[] = { 0x00000001, 0x000001b8, 0x00000000, 0x00000068, 0x00004000, 0x00000000, 0x00007fff, 0x00001db0, 0x00001b58, 0x00000000 };
+		s32 sp540[] = { 0x00000001, 0x000001b8, 0x00000000, 0x00000068, 0x00000000, 0x00005fff, 0x00007fff, 0x0000017c, 0x000001f4, 0x00000000 };
+		s32 sp478[] = { 0x00000006, 0x00001868, 0x00000000, 0x00000160, 0x00002666, 0xffffd99a, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000188, 0x00000640, 0x0000235e, 0xffffd99a, 0x0000750c, 0x00000000, 0x00000000, 0x00000bca, 0x00000318, 0x000009f8, 0x00004000, 0xffffc000, 0x00006d78, 0x00000000, 0x00000000, 0x00001286, 0x00000c78, 0x000015d8, 0x0000521a, 0xffffc000, 0x0000724f, 0x00000000, 0x00000000, 0x00001650, 0x00000d28, 0x000012c0, 0x00002143, 0xffffe000, 0x00005de4, 0x00000000, 0x00000000, 0x00002286, 0x00000000, 0x00001720, 0x000032c8, 0xffffcd38, 0x00000000, 0x00000000, 0x00000000, 0x00004500 };
+		s32 sp430[] = { 0x00000002, 0x000008b0, 0x00000600, 0x00000760, 0x00007142, 0x00000000, 0x00005bff, 0x00000000, 0x00000000, 0x00007bc9, 0x00000000, 0x00000528, 0x00005f27, 0xffffb288, 0x00007ef1, 0x00000000, 0x00000001, 0x000066bb };
+		s32 sp3c8[] = { 0x00000003, 0x00000b40, 0x00000000, 0x00000160, 0x00002666, 0xffffd99a, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000188, 0x00000640, 0x0000235e, 0xffffd99a, 0x000016f2, 0x00000000, 0x00000000, 0x00000bca, 0x00000318, 0x000009f8, 0x00004000, 0xffffc000, 0x0000186b, 0x00000000, 0x00000000, 0x00001286 };
+		s32 sp360[] = { 0x00000003, 0x00000b40, 0x00000000, 0x00000160, 0x00002666, 0xffffd99a, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000188, 0x00000640, 0x0000235e, 0xffffd99a, 0x000016f2, 0x00000000, 0x00000000, 0x00000bca, 0x00000318, 0x000009f8, 0x00004000, 0xffffc000, 0x0000186b, 0x00000000, 0x00000000, 0x00001286 };
+		s32 sp2f8[] = { 0x00000003, 0x00000898, 0x00000000, 0x000004a0, 0x00002666, 0xffffd99a, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000001a0, 0x00000340, 0x00000ccc, 0xfffff334, 0x00003fff, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000528, 0x00001388, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00005000 };
+		s32 sp270[] = { 0x00000004, 0x00000898, 0x00000000, 0x000005a8, 0x00002666, 0xffffd99a, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000001e0, 0x000004a0, 0x00000ccc, 0xfffff334, 0x00003fff, 0x00000000, 0x00000000, 0x00000000, 0x000005a8, 0x000007d0, 0x00000ccc, 0xfffff334, 0x00003fff, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000810, 0x00001f40, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00005000 };
+		s32 sp248[] = { 0x00000001, 0x00001130, 0x00000000, 0x00000f60, 0x00002ee0, 0x00000000, 0x00007fff, 0x00000000, 0x00000000, 0x00000000 };
+		s32 sp1c0[] = { 0x00000004, 0x00000e98, 0x000000c0, 0x00000188, 0x00002666, 0xffffd99a, 0x00003484, 0x00000000, 0x00000000, 0x00000000, 0x000001b8, 0x00000580, 0x00004000, 0xffffc000, 0x000019eb, 0x00000000, 0x00000000, 0x00000000, 0x00000a50, 0x00000b98, 0x00002000, 0xffffe000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000cb8, 0x00004650, 0xffffb9b0, 0x00000000, 0x0000017c, 0x0000000a, 0x00000000 };
+		s32 sp198[] = { 0x00000001, 0x00000528, 0x00000000, 0x00000448, 0x00003334, 0x00000000, 0x00007335, 0x00000000, 0x00000000, 0x00000000 };
+		s32 sp090[] = { 0x00000008, 0x00001b80, 0x00000000, 0x000000c0, 0x00002666, 0xffffd99a, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000000c0, 0x00000188, 0x00002666, 0xffffd99a, 0x00002b84, 0x00000000, 0x00000000, 0x00000000, 0x00000370, 0x00000b00, 0x00004000, 0xffffc000, 0x000011eb, 0x00000000, 0x00000000, 0x00000000, 0x00000420, 0x00000840, 0x00002000, 0xffffe000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000dc0, 0x00001810, 0x00004000, 0xffffc000, 0x000011eb, 0x00000000, 0x00000000, 0x00000000, 0x00000e70, 0x000014a0, 0x00002000, 0xffffe000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000014a0, 0x00001738, 0x00002000, 0xffffe000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00001970, 0x000032c8, 0xffffcd38, 0x00000000, 0x0000017c, 0x0000000a, 0x00000000 };
+		s32 sp068[] = { 0x00000001, 0x00000a50, 0x00000000, 0x00000898, 0x00003334, 0x00000000, 0x00007335, 0x00000000, 0x00000000, 0x00000000 };
+		s32 sp040[] = { 0x00000001, 0x00000148, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000 };
 
-		s32 sp568[] = { 1, 11 ms,
-			// input output  fbcoef ffcoef gain   chorusrate chorusdepth filtercoef
-			0 ms,    2.6 ms, 16384, 0,     32767, 7600,      7000,       0
-		};
-
-		s32 sp540[] = { 1, 11 ms,
-			// input output  fbcoef ffcoef gain   chorusrate chorusdepth filtercoef
-			0 ms,    2.6 ms, 0,     24575, 32767, 380,       500,        0,
-		};
-
-		s32 sp478[] = { 6, 156.2 ms,
-			// input output    fbcoef ffcoef  gain   chorusrate chorusdepth filtercoef
-			0 ms,    8.8 ms,   9830,  -9830,  0,     0,         0,          0,
-			9.8 ms,  40 ms,    9054,  -9830,  29964, 0,         0,          3018,
-			19.8 ms, 63.8 ms,  16384, -16384, 28024, 0,         0,          4742,
-			79.8 ms, 139.8 ms, 21018, -16384, 29263, 0,         0,          5712,
-			84.2 ms, 120 ms,   8515,  -8192,  24036, 0,         0,          8838,
-			0 ms,    148 ms,   13000, -13000, 0,     0,         0,          17664,
-		};
-
-		s32 sp430[] = { 2, 55.6 ms,
-			// input output   fbcoef ffcoef  gain   chorusrate chorusdepth filtercoef
-			38.4 ms, 47.2 ms, 28994, 0,      23551, 0,         0,          31689,
-			0 ms,    33 ms,   24359, -19832, 32497, 0,         1,          26299,
-		};
-
-		s32 sp3c8[] = { 3, 72 ms,
-			// input output   fbcoef ffcoef  gain  chorusrate chorusdepth filtercoef
-			0 ms,    8.8 ms,  9830,  -9830,  0,    0,         0,          0,
-			9.8 ms,  40 ms,   9054,  -9830,  5874, 0,         0,          3018,
-			19.8 ms, 63.8 ms, 16384, -16384, 6251, 0,         0,          4742,
-		};
-
-		s32 sp360[] = { 3, 72 ms,
-			// input output   fbcoef ffcoef  gain  chorusrate chorusdepth filtercoef
-			0 ms,    8.8 ms,  9830,  -9830,  0,    0,         0,          0,
-			9.8 ms,  40 ms,   9054,  -9830,  5874, 0,         0,          3018,
-			19.8 ms, 63.8 ms, 16384, -16384, 6251, 0,         0,          4742,
-		};
-
-		s32 sp2f8[] = { 3, 55 ms,
-			// input output   fbcoef ffcoef gain   chorusrate chorusdepth filtercoef
-			0 ms,    29.6 ms, 9830,  -9830, 0,     0,         0,          0,
-			10.4 ms, 20.8 ms, 3276,  -3276, 16383, 0,         0,          0,
-			0 ms,    33 ms,   5000,  0,     0,     0,         0,          20480,
-		};
-
-		s32 sp270[] = { 4, 55 ms,
-			// input output   fbcoef ffcoef gain   chorusrate chorusdepth filtercoef
-			0 ms,    36.2 ms, 9830,  -9830, 0,     0,         0,          0,
-			12 ms,   29.6 ms, 3276,  -3276, 16383, 0,         0,          0,
-			36.2 ms, 50 ms,   3276,  -3276, 16383, 0,         0,          0,
-			0 ms,    51.6 ms, 8000,  0,     0,     0,         0,          20480,
-		};
-
-		s32 sp248[] = { 1, 110 ms,
-			// input output   fbcoef ffcoef gain   chorusrate chorusdepth filtercoef
-			0 ms,    98.4 ms, 12000, 0,     32767, 0,         0,          0,
-		};
-
-		s32 params_bus0_4mb[] = { 4, 93.4 ms,
-			// input output  fbcoef ffcoef  gain   chorusrate chorusdepth filtercoef
-			4.8 ms, 9.8 ms,  9830,  -9830,  13444, 0,         0,          0,
-			11 ms,  35.2 ms, 16384, -16384, 6635,  0,         0,          0,
-			66 ms,  74.2 ms, 8192,  -8192,  0,     0,         0,          0,
-			0 ms,   81.4 ms, 18000, -18000, 0,     380,       10,         0,
-		};
-
-		s32 params_bus1_4mb[] = { 1, 33 ms,
-			// input output   fbcoef ffcoef gain   chorusrate chorusdepth filtercoef
-			0 ms,    27.4 ms, 13108, 0,     29493, 0,         0,          0,
-		};
-
-		s32 params_bus0_8mb[] = { 8, 176 ms,
-			// input output    fbcoef ffcoef  gain   chorusrate chorusdepth filtercoef
-			0 ms,    4.8 ms,   9830,  -9830,  0,     0,         0,          0,
-			4.8 ms,  9.8 ms,   9830,  -9830,  11140, 0,         0,          0,
-			22 ms,   70.4 ms,  16384, -16384, 4587,  0,         0,          0,
-			26.4 ms, 52.8 ms,  8192,  -8192,  0,     0,         0,          0,
-			88 ms,   154 ms,   16384, -16384, 4587,  0,         0,          0,
-			92.4 ms, 132 ms,   8192,  -8192,  0,     0,         0,          0,
-			132 ms,  148.6 ms, 8192,  -8192,  0,     0,         0,          0,
-			0 ms,    162.8 ms, 13000, -13000, 0,     380,       10,         0,
-		};
-
-		s32	params_bus1_8mb[] = { 1, 66 ms,
-			// input output fbcoef ffcoef gain   chorusrate chorusdepth filtercoef
-			0 ms,    55 ms,  13108, 0,     29493, 0,         0,          0,
-		};
-
-		s32	sp040[] = { 1, 8.2 ms,
-			// input output fbcoef ffcoef gain chorusrate chorusdepth filtercoef
-			0 ms,    0 ms,  0,     0,     0,   0,         0,          0,
-		};
-
-		config->params[0] = (s32 *) (IS4MB() ? params_bus0_4mb : params_bus0_8mb);
+		config->params[0] = (s32 *) (IS4MB() ? sp1c0 : sp090);
 
 		if (g_SndMaxFxBusses >= 2) {
 			for (i = 1; i < g_SndMaxFxBusses; i++) {
-				config->params[i] = (s32 *) (IS4MB() ? params_bus1_4mb : params_bus1_8mb);
+				config->params[i] = (s32 *) (IS4MB() ? sp198 : sp068);
 			}
 		}
+#ifndef AVOID_UB
 	}
+#endif
 
 	n_alInit(&g_AudioManager.g, config);
-	osc_build_linkedlist(0, 60);
-	osCreateThread(&g_AudioManager.thread, THREAD_AUDIO, &amgr_main, 0, g_AudioSp, THREADPRI_AUDIO);
+	func00030bfc(0, 60);
+	osCreateThread(&g_AudioManager.thread, THREAD_AUDIO, &amgrMain, 0, g_AudioSp, THREADPRI_AUDIO);
 }
 
 s8 g_AudioIsThreadRunning = false;
 
-void amgr_start_thread(void)
+void amgrStartThread(void)
 {
 	osStartThread(&g_AudioManager.thread);
 	g_AudioIsThreadRunning = true;
 }
 
-OSMesgQueue *amgr_get_frame_mesg_queue(void)
+OSMesgQueue *amgrGetFrameMesgQueue(void)
 {
 	return &g_AudioManager.audioFrameMsgQ;
 }
@@ -249,7 +167,7 @@ OSMesgQueue *amgr_get_frame_mesg_queue(void)
  * this is only called when resetting the console, and when that happens the
  * variable is likely reset too.
  */
-void amgr_stop_thread(void)
+void amgrStopThread(void)
 {
 	if (g_AudioIsThreadRunning) {
 		osStopThread(&g_AudioManager.thread);
@@ -258,7 +176,7 @@ void amgr_stop_thread(void)
 
 extern u32 g_AdmaCurFrame;
 
-void amgr_main(void *arg)
+void amgrMain(void *arg)
 {
 	s32 count = 0;
 	bool done = false;
@@ -282,12 +200,12 @@ void amgr_main(void *arg)
 		switch (*msg) {
 		case OS_SC_RSP_MSG:
 			var80091588 = osGetTime();
-			profile_set_marker(PROFILE_AUDIOFRAME_START);
-			amgr_handle_frame_msg(g_AudioManager.audioInfo[g_AdmaCurFrame % 3], info);
-			adma_receive_all();
+			profileSetMarker(PROFILE_AUDIOFRAME_START);
+			amgrHandleFrameMsg(g_AudioManager.audioInfo[g_AdmaCurFrame % 3], info);
+			admaReceiveAll();
 
 			count++;
-			profile_set_marker(PROFILE_AUDIOFRAME_END);
+			profileSetMarker(PROFILE_AUDIOFRAME_END);
 
 			var80091590 = osGetTime();
 			var80091570 = var80091590 - var80091588;
@@ -308,7 +226,7 @@ void amgr_main(void *arg)
 			}
 
 			var8005d514 = 0;
-			amgr_handle_done_msg(info);
+			amgrHandleDoneMsg(info);
 			break;
 		case OS_SC_PRE_NMI_MSG:
 			done = true;
@@ -322,7 +240,7 @@ void amgr_main(void *arg)
 	n_alClose(&g_AudioManager.g);
 }
 
-void amgr_handle_frame_msg(AudioInfo *info, AudioInfo *previnfo)
+void amgrHandleFrameMsg(AudioInfo *info, AudioInfo *previnfo)
 {
 	u32 somevalue;
 	s16 *outbuffer;
@@ -335,12 +253,20 @@ void amgr_handle_frame_msg(AudioInfo *info, AudioInfo *previnfo)
 	extern u8 aspDataStart;
 
 	if (g_AmgrCurrentCmdList) {
-		sched_submit_task(&g_Sched, g_AmgrCurrentCmdList);
+		schedSubmitTask(&g_Sched, g_AmgrCurrentCmdList);
 	}
 
-	adma_begin_frame();
+	admaBeginFrame();
 
+#ifdef PLATFORM_N64
 	somevalue = IO_READ(OS_PHYSICAL_TO_K1(AI_LEN_REG)) / 4;
+#else
+	somevalue = osAiGetLength() / 4;
+	// HACK: only allow small frames if really needed
+	if (somevalue < 1100) {
+		somevalue = 248;
+	}
+#endif
 	datastart = g_AudioManager.ACMDList[var8005cf90];
 	outbuffer = (s16 *) osVirtualToPhysical(info->data);
 
@@ -369,12 +295,14 @@ void amgr_handle_frame_msg(AudioInfo *info, AudioInfo *previnfo)
 	g_AmgrCurrentCmdList->flags = OS_SC_NEEDS_RSP;
 	g_AmgrCurrentCmdList->list.t.type = M_AUDTASK;
 	g_AmgrCurrentCmdList->list.t.flags = 0;
+#ifdef PLATFORM_N64
 	g_AmgrCurrentCmdList->list.t.ucode_boot = (u64 *) &rspbootTextStart;
 	g_AmgrCurrentCmdList->list.t.ucode_boot_size = (uintptr_t) &rspbootTextEnd - (uintptr_t) &rspbootTextStart;
 	g_AmgrCurrentCmdList->list.t.ucode = (u64 *) &aspTextStart;
 	g_AmgrCurrentCmdList->list.t.ucode_data = (u64 *) &aspDataStart;
 	g_AmgrCurrentCmdList->list.t.ucode_size = SP_UCODE_SIZE;
 	g_AmgrCurrentCmdList->list.t.ucode_data_size = SP_UCODE_DATA_SIZE;
+#endif
 	g_AmgrCurrentCmdList->list.t.data_ptr = (u64 *) datastart;
 	g_AmgrCurrentCmdList->list.t.data_size = (cmd - datastart) * sizeof(Acmd);
 	g_AmgrCurrentCmdList->list.t.yield_data_ptr = NULL;
@@ -383,7 +311,7 @@ void amgr_handle_frame_msg(AudioInfo *info, AudioInfo *previnfo)
 	var8005cf90 ^= 1;
 }
 
-void amgr_handle_done_msg(AudioInfo *info)
+void amgrHandleDoneMsg(AudioInfo *info)
 {
 	static bool firsttime = true;
 
@@ -391,3 +319,62 @@ void amgr_handle_done_msg(AudioInfo *info)
 		firsttime = false;
 	}
 }
+
+#ifndef PLATFORM_N64
+void amgrFrame(void)
+{
+	static AudioInfo *previnfo = NULL;
+	static s32 count = 0;
+
+	var80091588 = osGetTime();
+
+	AudioInfo *info = g_AudioManager.audioInfo[g_AdmaCurFrame % 3];
+
+	admaBeginFrame();
+
+	const s32 somevalue = osAiGetLength() / 4;
+	Acmd *datastart = g_AudioManager.ACMDList[var8005cf90];
+	s16 *outbuffer = (s16 *) osVirtualToPhysical(info->data);
+
+	if (previnfo) {
+		osAiSetNextBuffer(previnfo->data, previnfo->frameSamples * 4);
+	}
+
+	if (somevalue > 1100 && var8005cf94 == 0) {
+		// already a lot queued, render 1 naudio frame (184 samples) this frame
+		info->frameSamples = 184;
+		var8005cf94 = 2;
+	} else {
+		// have space in audio queue, render 2 naudio frames this frame (and 1 extra on PAL)
+		info->frameSamples = 368 + PAL * 184;
+
+		if (var8005cf94 != 0) {
+			var8005cf94--;
+		}
+	}
+
+	Acmd *cmd = n_alAudioFrame(datastart, &var800918e8, outbuffer, info->frameSamples);
+
+	var8005cf90 ^= 1;
+
+	admaReceiveAll();
+
+	previnfo = info;
+
+	count++;
+
+	var80091590 = osGetTime();
+	var80091570 = var80091590 - var80091588;
+
+	if (count % 240 == 0) {
+		var80091578 = var80091580 / 240;
+		var80091580 = 0; var80091568 = 0;
+	} else {
+		var80091580 = (var80091580 + var80091590) - var80091588;
+	}
+
+	if (var80091568 < var80091590 - var80091588) {
+		var80091568 = var80091590 - var80091588;
+	}
+}
+#endif

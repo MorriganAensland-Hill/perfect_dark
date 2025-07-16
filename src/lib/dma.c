@@ -15,7 +15,7 @@ OSMesgQueue g_DmaMesgQueue;
 
 u8 g_LoadType = 0;
 
-void dma_init(void)
+void dmaInit(void)
 {
 	s32 i;
 
@@ -28,21 +28,22 @@ void dma_init(void)
 	osCreateMesgQueue(&g_DmaMesgQueue, g_DmaMesgs, ARRAYCOUNT(g_DmaMesgs));
 }
 
-void dma_start(void *memaddr, u32 romaddr, u32 len, bool priority)
+void dmaStart(void *memaddr, romptr_t romaddr, u32 len, bool priority)
 {
+#ifdef PLATFORM_N64
 	u32 numiterations;
 	u32 remainder;
 	s32 i;
 
 #if VERSION < VERSION_NTSC_1_0
 	if (romaddr >= ROM_SIZE * 1024 * 1024) {
-		crash_set_message("DMA : Off the end of the rom");
+		crashSetMessage("DMA : Off the end of the rom");
 		CRASH();
 	}
 #endif
 
 	if (g_DmaNumSlotsBusy) {
-		dma_wait();
+		dmaWait();
 	}
 
 	if (len < 0x4000 * ARRAYCOUNT(g_DmaIoMsgs)) {
@@ -73,15 +74,18 @@ void dma_start(void *memaddr, u32 romaddr, u32 len, bool priority)
 
 		osPiStartDma(&g_DmaIoMsgs[i], priority, 0, romaddr, memaddr, remainder, &g_DmaMesgQueue);
 	}
+#else // PLATFORM_N64
+	bcopy((const void *)romaddr, memaddr, len);
+#endif // PLATFORM_N64
 }
 
 #if VERSION >= VERSION_NTSC_1_0
-u32 xor_deadbeef(u32 value)
+u32 xorDeadbeef(u32 value)
 {
 	return value ^ 0xdeadbeef;
 }
 
-u32 xor_deadbabe(u32 value)
+u32 xorDeadbabe(u32 value)
 {
 	return value ^ 0xdeadbabe;
 }
@@ -91,11 +95,11 @@ u32 xor_deadbabe(u32 value)
  * 0x0330c820, then reads a value from the boot loader (0x340 in ROM) which
  * should be the same value, and xors the memory again with that value.
  */
-void dma_check_piracy(void *memaddr, u32 len)
+void dmaCheckPiracy(void *memaddr, u32 len)
 {
 	if (g_LoadType != LOADTYPE_NONE && len > 128) {
 #if PIRACYCHECKS
-		u32 value = xor_deadbeef((PAL ? 0x0109082b : 0x0330c820) ^ 0xdeadbeef);
+		u32 value = xorDeadbeef((PAL ? 0x0109082b : 0x0330c820) ^ 0xdeadbeef);
 		u32 *ptr = (u32 *)memaddr;
 		u32 data;
 		u32 devaddr;
@@ -105,7 +109,7 @@ void dma_check_piracy(void *memaddr, u32 len)
 			ptr[i] ^= value;
 		}
 
-		devaddr = xor_deadbabe((PAL ? 0xb0000454 : 0xb0000340) ^ 0xdeadbabe);
+		devaddr = xorDeadbabe((PAL ? 0xb0000454 : 0xb0000340) ^ 0xdeadbabe);
 
 		osPiReadIo(devaddr, &data);
 
@@ -113,14 +117,16 @@ void dma_check_piracy(void *memaddr, u32 len)
 			ptr[i] ^= data;
 		}
 #endif
-
+#ifdef PLATFORM_N64 // we're actually using g_LoadType for something on pc, the value gets reset later
 		g_LoadType = LOADTYPE_NONE;
+#endif
 	}
 }
 #endif
 
-void dma_wait(void)
+void dmaWait(void)
 {
+#ifdef PLATFORM_N64
 	u32 stack;
 	OSIoMesg *msg;
 	s32 i;
@@ -137,23 +143,24 @@ void dma_wait(void)
 		g_DmaSlotsBusy[i] = false;
 		g_DmaNumSlotsBusy--;
 	}
-}
-
-void dma_exec(void *memaddr, u32 romaddr, u32 len)
-{
-	dma_start(memaddr, romaddr, len, false);
-	dma_wait();
-#if VERSION >= VERSION_NTSC_1_0
-	dma_check_piracy(memaddr, len);
 #endif
 }
 
-void dma_exec_high_priority(void *memaddr, u32 romaddr, u32 len)
+void dmaExec(void *memaddr, romptr_t romaddr, u32 len)
 {
-	dma_start(memaddr, romaddr, len, true);
-	dma_wait();
+	dmaStart(memaddr, romaddr, len, false);
+	dmaWait();
 #if VERSION >= VERSION_NTSC_1_0
-	dma_check_piracy(memaddr, len);
+	dmaCheckPiracy(memaddr, len);
+#endif
+}
+
+void dmaExecHighPriority(void *memaddr, romptr_t romaddr, u32 len)
+{
+	dmaStart(memaddr, romaddr, len, true);
+	dmaWait();
+#if VERSION >= VERSION_NTSC_1_0
+	dmaCheckPiracy(memaddr, len);
 #endif
 }
 
@@ -172,10 +179,10 @@ void dma_exec_high_priority(void *memaddr, u32 romaddr, u32 len)
  * If a length of zero is passed, no DMA is done. This can be used to retrieve
  * the memory address that would have been returned.
  */
-void *dma_exec_with_auto_align(void *memaddr, u32 romaddr, u32 len)
+void *dmaExecWithAutoAlign(void *memaddr, romptr_t romaddr, u32 len)
 {
-	u32 alignedrom = ALIGN2(romaddr);
-	u32 alignedmem = ALIGN16((uintptr_t) memaddr);
+	uintptr_t alignedrom = ALIGN2(romaddr);
+	uintptr_t alignedmem = ALIGN16((uintptr_t) memaddr);
 	u32 offset = romaddr - alignedrom; // 0 or 1
 	u32 alignedlen = ALIGN16(offset + len);
 
@@ -183,7 +190,7 @@ void *dma_exec_with_auto_align(void *memaddr, u32 romaddr, u32 len)
 		return (void *)(alignedmem + offset);
 	}
 
-	dma_exec((void *)alignedmem, alignedrom, alignedlen);
+	dmaExec((void *)alignedmem, alignedrom, alignedlen);
 
 	return (void *)(alignedmem + offset);
 }
