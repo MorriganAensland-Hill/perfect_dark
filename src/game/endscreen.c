@@ -8,7 +8,7 @@
 #include "game/objectives.h"
 #include "game/bondgun.h"
 #include "game/debug.h"
-#include "game/game_0b0fd0.h"
+#include "game/gset.h"
 #include "game/player.h"
 #include "game/savebuffer.h"
 #include "game/menugfx.h"
@@ -31,20 +31,36 @@
 #include "data.h"
 #include "types.h"
 
-MenuItemHandlerResult endscreenHandleDeclineMission(s32 operation, struct menuitem *item, union handlerdata *data)
+#define CHEATINFO_TIMED_EXISTS       0x000100
+#define CHEATINFO_TIMED_UNLOCKING    0x000200
+#define CHEATINFO_TIMED_PREVUNLOCKED 0x000400
+#define CHEATINFO_COMPL_UNLOCKING    0x000800
+#define CHEATINFO_COMPL_EXISTS       0x001000
+
+#define CHEATINFO_GET_TIMED_CHEATNUM(info)     ((info) & 0xff)
+#define CHEATINFO_GET_COMPL_CHEATNUM(info)     (((info) >> 16) & 0xff)
+#define CHEATINFO_SET_TIMED_CHEATNUM(cheatnum) (cheatnum)
+#define CHEATINFO_SET_COMPL_CHEATNUM(cheatnum) ((cheatnum) << 16)
+
+void endscreen_continue(s32 context);
+char *endscreen_menu_text_target_time(struct menuitem *item);
+char *endscreen_menu_text_timed_cheat_name(struct menuitem *item);
+char *endscreen_menu_text_completion_cheat_name(struct menuitem *item);
+
+MenuItemHandlerResult endscreen_handle_decline_mission(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_SET) {
-		menuPopDialog();
-		menuPopDialog();
+	if (operation == MENUOP_CONFIRM) {
+		menu_pop_dialog();
+		menu_pop_dialog();
 	}
 
 	return 0;
 }
 
-MenuDialogHandlerResult endscreenHandleRetryMission(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult endscreen_handle_retry_mission(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
 	switch (operation) {
-	case MENUOP_TICK:
+	case MENUOP_ON_TICK:
 		{
 			/**
 			 * NTSC Final adds this check to make sure the given dialog is
@@ -61,8 +77,8 @@ MenuDialogHandlerResult endscreenHandleRetryMission(s32 operation, struct menudi
 					bool accept = false;
 
 					if (inputs->back) {
-						menuPopDialog();
-						menuPopDialog();
+						menu_pop_dialog();
+						menu_pop_dialog();
 					}
 
 					inputs->back = false;
@@ -83,7 +99,7 @@ MenuDialogHandlerResult endscreenHandleRetryMission(s32 operation, struct menudi
 
 					if (accept) {
 						union handlerdata data2;
-						menuhandlerAcceptMission(MENUOP_SET, &dialogdef->items[1], &data2);
+						menuhandler_accept_mission(MENUOP_CONFIRM, &dialogdef->items[1], &data2);
 					}
 #if VERSION >= VERSION_NTSC_FINAL
 				}
@@ -92,51 +108,51 @@ MenuDialogHandlerResult endscreenHandleRetryMission(s32 operation, struct menudi
 		}
 	}
 
-	return menudialog00103608(operation, dialogdef, data);
+	return menudialog_accept_mission(operation, dialogdef, data);
 }
 
-char *endscreenMenuTitleRetryMission(struct menudialogdef *dialogdef)
+char *endscreen_menu_title_retry_mission(struct menudialogdef *dialogdef)
 {
 	char *name;
 	char *prefix;
 
 	if (g_Menus[g_MpPlayerNum].curdialog->definition != dialogdef) {
-		return langGet(L_OPTIONS_300); // "Objectives"
+		return lang_get(L_OPTIONS_300); // "Objectives"
 	}
 
-	prefix = langGet(L_OPTIONS_296); // "Retry"
-	name = langGet(g_SoloStages[g_MissionConfig.stageindex].name3);
+	prefix = lang_get(L_OPTIONS_296); // "Retry"
+	name = lang_get(g_SoloStages[g_MissionConfig.stageindex].name3);
 
 	sprintf(g_StringPointer, "%s: %s\n", prefix, name);
 
 	return g_StringPointer;
 }
 
-char *endscreenMenuTitleNextMission(struct menudialogdef *dialogdef)
+char *endscreen_menu_title_next_mission(struct menudialogdef *dialogdef)
 {
 	char *name;
 	char *prefix;
 
 	if (g_Menus[g_MpPlayerNum].curdialog->definition != dialogdef) {
-		return langGet(L_OPTIONS_300); // "Objectives"
+		return lang_get(L_OPTIONS_300); // "Objectives"
 	}
 
-	prefix = langGet(L_OPTIONS_297); // "Next Mission"
-	name = langGet(g_SoloStages[g_MissionConfig.stageindex].name3);
+	prefix = lang_get(L_OPTIONS_297); // "Next Mission"
+	name = lang_get(g_SoloStages[g_MissionConfig.stageindex].name3);
 
 	sprintf(g_StringPointer, "%s: %s\n", prefix, name);
 
 	return g_StringPointer;
 }
 
-MenuItemHandlerResult endscreenHandleReplayPreviousMission(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult endscreen_handle_replay_previous_mission(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_SET) {
+	if (operation == MENUOP_CONFIRM) {
 		g_MissionConfig.stageindex--;
 		g_MissionConfig.stagenum = g_SoloStages[g_MissionConfig.stageindex].stagenum;
 	}
 
-	return menuhandlerAcceptMission(operation, NULL, data);
+	return menuhandler_accept_mission(operation, NULL, data);
 }
 
 struct menuitem g_RetryMissionMenuItems[] = {
@@ -154,7 +170,7 @@ struct menuitem g_RetryMissionMenuItems[] = {
 		0,
 		L_OPTIONS_298, // "Accept"
 		0,
-		menuhandlerAcceptMission,
+		menuhandler_accept_mission,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -162,16 +178,16 @@ struct menuitem g_RetryMissionMenuItems[] = {
 		0,
 		L_OPTIONS_299, // "Decline"
 		0,
-		endscreenHandleDeclineMission,
+		endscreen_handle_decline_mission,
 	},
 	{ MENUITEMTYPE_END },
 };
 
 struct menudialogdef g_RetryMissionMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
-	(uintptr_t)&endscreenMenuTitleRetryMission,
+	(uintptr_t)&endscreen_menu_title_retry_mission,
 	g_RetryMissionMenuItems,
-	endscreenHandleRetryMission,
+	endscreen_handle_retry_mission,
 	MENUDIALOGFLAG_STARTSELECTS | MENUDIALOGFLAG_DISABLEITEMSCROLL,
 	&g_PreAndPostMissionBriefingMenuDialog,
 };
@@ -191,7 +207,7 @@ struct menuitem g_NextMissionMenuItems[] = {
 		0,
 		L_OPTIONS_298, // "Accept"
 		0,
-		menuhandlerAcceptMission,
+		menuhandler_accept_mission,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -199,7 +215,7 @@ struct menuitem g_NextMissionMenuItems[] = {
 		0,
 		L_OPTIONS_299, // "Decline"
 		0,
-		endscreenHandleDeclineMission,
+		endscreen_handle_decline_mission,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -215,66 +231,66 @@ struct menuitem g_NextMissionMenuItems[] = {
 		0,
 		L_MISC_470, // "Replay Previous Mission"
 		0,
-		endscreenHandleReplayPreviousMission,
+		endscreen_handle_replay_previous_mission,
 	},
 	{ MENUITEMTYPE_END },
 };
 
 struct menudialogdef g_NextMissionMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
-	(uintptr_t)&endscreenMenuTitleNextMission,
+	(uintptr_t)&endscreen_menu_title_next_mission,
 	g_NextMissionMenuItems,
-	endscreenHandleRetryMission,
+	endscreen_handle_retry_mission,
 	MENUDIALOGFLAG_STARTSELECTS | MENUDIALOGFLAG_DISABLEITEMSCROLL,
 	&g_PreAndPostMissionBriefingMenuDialog,
 };
 
-char *endscreenMenuTextNumKills(struct menuitem *item)
+char *endscreen_menu_text_num_kills(struct menuitem *item)
 {
-	sprintf(g_StringPointer, "%d", mpstatsGetPlayerKillCount());
+	sprintf(g_StringPointer, "%d", mpstats_get_player_kill_count());
 	return g_StringPointer;
 }
 
-char *endscreenMenuTextNumShots(struct menuitem *item)
+char *endscreen_menu_text_num_shots(struct menuitem *item)
 {
-	sprintf(g_StringPointer, "%d", mpstatsGetPlayerShotCountByRegion(SHOTREGION_TOTAL));
+	sprintf(g_StringPointer, "%d", mpstats_get_player_shotcount_by_region(SHOTREGION_TOTAL));
 	return g_StringPointer;
 }
 
-char *endscreenMenuTextNumHeadShots(struct menuitem *item)
+char *endscreen_menu_text_num_head_shots(struct menuitem *item)
 {
-	sprintf(g_StringPointer, "%d", mpstatsGetPlayerShotCountByRegion(SHOTREGION_HEAD));
+	sprintf(g_StringPointer, "%d", mpstats_get_player_shotcount_by_region(SHOTREGION_HEAD));
 	return g_StringPointer;
 }
 
-char *endscreenMenuTextNumBodyShots(struct menuitem *item)
+char *endscreen_menu_text_num_body_shots(struct menuitem *item)
 {
-	sprintf(g_StringPointer, "%d", mpstatsGetPlayerShotCountByRegion(SHOTREGION_BODY));
+	sprintf(g_StringPointer, "%d", mpstats_get_player_shotcount_by_region(SHOTREGION_BODY));
 	return g_StringPointer;
 }
 
-char *endscreenMenuTextNumLimbShots(struct menuitem *item)
+char *endscreen_menu_text_num_limb_shots(struct menuitem *item)
 {
-	sprintf(g_StringPointer, "%d", mpstatsGetPlayerShotCountByRegion(SHOTREGION_LIMB));
+	sprintf(g_StringPointer, "%d", mpstats_get_player_shotcount_by_region(SHOTREGION_LIMB));
 	return g_StringPointer;
 }
 
-char *endscreenMenuTextNumOtherShots(struct menuitem *item)
+char *endscreen_menu_text_num_other_shots(struct menuitem *item)
 {
-	u32 total = mpstatsGetPlayerShotCountByRegion(SHOTREGION_GUN) + mpstatsGetPlayerShotCountByRegion(SHOTREGION_HAT);
+	u32 total = mpstats_get_player_shotcount_by_region(SHOTREGION_GUN) + mpstats_get_player_shotcount_by_region(SHOTREGION_HAT);
 	sprintf(g_StringPointer, "%d", total);
 	return g_StringPointer;
 }
 
-char *endscreenMenuTextAccuracy(struct menuitem *item)
+char *endscreen_menu_text_accuracy(struct menuitem *item)
 {
-	s32 total = mpstatsGetPlayerShotCountByRegion(SHOTREGION_TOTAL);
-	s32 numhead = mpstatsGetPlayerShotCountByRegion(SHOTREGION_HEAD);
-	s32 numbody = mpstatsGetPlayerShotCountByRegion(SHOTREGION_BODY);
-	s32 numlimb = mpstatsGetPlayerShotCountByRegion(SHOTREGION_LIMB);
-	s32 numgun = mpstatsGetPlayerShotCountByRegion(SHOTREGION_GUN);
-	s32 numhat = mpstatsGetPlayerShotCountByRegion(SHOTREGION_HAT);
-	s32 numobject = mpstatsGetPlayerShotCountByRegion(SHOTREGION_OBJECT);
+	s32 total = mpstats_get_player_shotcount_by_region(SHOTREGION_TOTAL);
+	s32 numhead = mpstats_get_player_shotcount_by_region(SHOTREGION_HEAD);
+	s32 numbody = mpstats_get_player_shotcount_by_region(SHOTREGION_BODY);
+	s32 numlimb = mpstats_get_player_shotcount_by_region(SHOTREGION_LIMB);
+	s32 numgun = mpstats_get_player_shotcount_by_region(SHOTREGION_GUN);
+	s32 numhat = mpstats_get_player_shotcount_by_region(SHOTREGION_HAT);
+	s32 numobject = mpstats_get_player_shotcount_by_region(SHOTREGION_OBJECT);
 	f32 accuracy;
 
 	if (total > 0) {
@@ -292,135 +308,135 @@ char *endscreenMenuTextAccuracy(struct menuitem *item)
 	return g_StringPointer;
 }
 
-char *endscreenMenuTextMissionStatus(struct menuitem *item)
+char *endscreen_menu_text_mission_status(struct menuitem *item)
 {
 	if (g_CheatsActiveBank0 || g_CheatsActiveBank1) {
-		return langGet(L_MPWEAPONS_135); // "Cheated"
+		return lang_get(L_MPWEAPONS_135); // "Cheated"
 	}
 
 	if (g_Vars.coopplayernum >= 0) {
 		if (g_Vars.bond->aborted || g_Vars.coop->aborted) {
-			return langGet(L_OPTIONS_295); // "Aborted"
+			return lang_get(L_OPTIONS_295); // "Aborted"
 		}
 
 		if (g_Vars.bond->isdead && g_Vars.coop->isdead) {
-			return langGet(L_OPTIONS_293); // "Failed"
+			return lang_get(L_OPTIONS_293); // "Failed"
 		}
 	} else if (g_Vars.antiplayernum >= 0) {
 		if (g_Vars.currentplayer == g_Vars.bond) {
 			if (g_Vars.bond->aborted) {
-				return langGet(L_OPTIONS_295); // "Aborted"
+				return lang_get(L_OPTIONS_295); // "Aborted"
 			}
 
 			if (g_Vars.anti->aborted) {
-				return langGet(L_OPTIONS_295); // "Aborted"
+				return lang_get(L_OPTIONS_295); // "Aborted"
 			}
 
 			if (g_Vars.bond->isdead) {
-				return langGet(L_OPTIONS_293); // "Failed"
+				return lang_get(L_OPTIONS_293); // "Failed"
 			}
 		} else {
 			if (g_Vars.anti->aborted) {
-				return langGet(L_OPTIONS_295); // "Aborted"
+				return lang_get(L_OPTIONS_295); // "Aborted"
 			}
 
 			if (!g_Vars.bond->aborted && !g_Vars.bond->isdead) {
-				return langGet(L_OPTIONS_293); // "Failed"
+				return lang_get(L_OPTIONS_293); // "Failed"
 			}
 		}
 	} else {
 		if (g_Vars.bond->aborted) {
-			return langGet(L_OPTIONS_295); // "Aborted"
+			return lang_get(L_OPTIONS_295); // "Aborted"
 		}
 
 		if (g_Vars.bond->isdead) {
-			return langGet(L_OPTIONS_293); // "Failed"
+			return lang_get(L_OPTIONS_293); // "Failed"
 		}
 	}
 
-	if (objectiveIsAllComplete() == false) {
-		return langGet(L_OPTIONS_293); // "Failed"
+	if (objective_is_all_complete() == false) {
+		return lang_get(L_OPTIONS_293); // "Failed"
 	}
 
 	if (g_StageIndex == STAGEINDEX_DEFENSE) {
-		return langGet(L_MPWEAPONS_062); // "Unknown"
+		return lang_get(L_MPWEAPONS_062); // "Unknown"
 	}
 
-	return langGet(L_OPTIONS_294); // "Completed"
+	return lang_get(L_OPTIONS_294); // "Completed"
 }
 
-char *endscreenMenuTextAgentStatus(struct menuitem *item)
+char *endscreen_menu_text_agent_status(struct menuitem *item)
 {
 	if (g_CheatsActiveBank0 || g_CheatsActiveBank1) {
-		return langGet(L_MPWEAPONS_134); // "Dishonored"
+		return lang_get(L_MPWEAPONS_134); // "Dishonored"
 	}
 
 	if (g_Vars.currentplayer->aborted) {
-		return langGet(L_OPTIONS_292); // "Disavowed"
+		return lang_get(L_OPTIONS_292); // "Disavowed"
 	}
 
 	if (g_Vars.currentplayer->isdead) {
-		return langGet(L_OPTIONS_290); // "Deceased"
+		return lang_get(L_OPTIONS_290); // "Deceased"
 	}
 
 	if (g_StageIndex == STAGEINDEX_DEFENSE) {
-		return langGet(L_MPWEAPONS_063); // "Missing"
+		return lang_get(L_MPWEAPONS_063); // "Missing"
 	}
 
-	return langGet(L_OPTIONS_291); // "Active"
+	return lang_get(L_OPTIONS_291); // "Active"
 }
 
-char *endscreenMenuTitleStageCompleted(struct menuitem *item)
+char *endscreen_menu_title_stage_completed(struct menuitem *item)
 {
 #if VERSION >= VERSION_NTSC_1_0
 	sprintf(g_StringPointer, "%s: %s\n",
-			langGet(g_SoloStages[g_Menus[g_MpPlayerNum].endscreen.stageindex].name3),
-			langGet(L_OPTIONS_276)); // "Completed"
+			lang_get(g_SoloStages[g_Menus[g_MpPlayerNum].endscreen.stageindex].name3),
+			lang_get(L_OPTIONS_276)); // "Completed"
 #else
 	sprintf(g_StringPointer, "%s: %s\n",
-			langGet(g_SoloStages[g_MissionConfig.stageindex].name3),
-			langGet(L_OPTIONS_276)); // "Completed"
+			lang_get(g_SoloStages[g_MissionConfig.stageindex].name3),
+			lang_get(L_OPTIONS_276)); // "Completed"
 #endif
 
 	return g_StringPointer;
 }
 
 #if VERSION >= VERSION_NTSC_1_0
-char *endscreenMenuTextCurrentStageName3(struct menuitem *item)
+char *endscreen_menu_text_current_stage_name3(struct menuitem *item)
 {
-	char *name = langGet(g_SoloStages[g_MissionConfig.stageindex].name3);
+	char *name = lang_get(g_SoloStages[g_MissionConfig.stageindex].name3);
 	sprintf(g_StringPointer, "%s\n", name);
 
 	return g_StringPointer;
 }
 #endif
 
-char *endscreenMenuTitleStageFailed(struct menuitem *item)
+char *endscreen_menu_title_stage_failed(struct menuitem *item)
 {
 	sprintf(g_StringPointer, "%s: %s\n",
-			langGet(g_SoloStages[g_MissionConfig.stageindex].name3),
-			langGet(L_OPTIONS_277)); // "Failed"
+			lang_get(g_SoloStages[g_MissionConfig.stageindex].name3),
+			lang_get(L_OPTIONS_277)); // "Failed"
 
 	return g_StringPointer;
 }
 
-char *endscreenMenuTextMissionTime(struct menuitem *item)
+char *endscreen_menu_text_mission_time(struct menuitem *item)
 {
-	formatTime(g_StringPointer, playerGetMissionTime(), TIMEPRECISION_SECONDS);
+	format_time(g_StringPointer, player_get_mission_time(), TIMEPRECISION_SECONDS);
 	strcat(g_StringPointer, "\n");
 
 	return g_StringPointer;
 }
 
-struct menudialogdef *endscreenAdvance(void)
+struct menudialogdef *endscreen_advance(void)
 {
 #if VERSION < VERSION_NTSC_1_0
 	if (g_MissionConfig.stagenum == STAGE_SKEDARRUINS) {
 		g_MissionConfig.stagenum = STAGE_CREDITS;
-		titleSetNextStage(g_MissionConfig.stagenum);
-		lvSetDifficulty(g_MissionConfig.difficulty);
-		titleSetNextMode(TITLEMODE_SKIP);
-		mainChangeToStage(g_MissionConfig.stagenum);
+		title_set_next_stage(g_MissionConfig.stagenum);
+		lv_set_difficulty(g_MissionConfig.difficulty);
+		title_set_next_mode(TITLEMODE_SKIP);
+		main_change_to_stage(g_MissionConfig.stagenum);
 
 		return NULL;
 	}
@@ -432,27 +448,27 @@ struct menudialogdef *endscreenAdvance(void)
 	return &g_NextMissionMenuDialog;
 }
 
-void endscreenResetModels(void)
+void endscreen_reset_models(void)
 {
-	menuResetModel(&g_Menus[0].menumodel, bgunCalculateGunMemCapacity() - menugfxGetParticleArraySize(), false);
-	g_Menus[0].menumodel.allocstart = bgunGetGunMem() + menugfxGetParticleArraySize();
+	menu_reset_model(&g_Menus[0].menumodel, bgun_calculate_gun_mem_capacity() - menugfx_get_particle_array_size(), false);
+	g_Menus[0].menumodel.allocstart = bgun_get_gun_mem() + menugfx_get_particle_array_size();
 
-	menuResetModel(&g_Menus[1].menumodel, bgunCalculateGunMemCapacity() - menugfxGetParticleArraySize(), false);
-	g_Menus[1].menumodel.allocstart = bgunGetGunMem() + menugfxGetParticleArraySize();
+	menu_reset_model(&g_Menus[1].menumodel, bgun_calculate_gun_mem_capacity() - menugfx_get_particle_array_size(), false);
+	g_Menus[1].menumodel.allocstart = bgun_get_gun_mem() + menugfx_get_particle_array_size();
 
-	menuResetModel(&g_Menus[2].menumodel, bgunCalculateGunMemCapacity() - menugfxGetParticleArraySize(), false);
-	g_Menus[2].menumodel.allocstart = bgunGetGunMem() + menugfxGetParticleArraySize();
+	menu_reset_model(&g_Menus[2].menumodel, bgun_calculate_gun_mem_capacity() - menugfx_get_particle_array_size(), false);
+	g_Menus[2].menumodel.allocstart = bgun_get_gun_mem() + menugfx_get_particle_array_size();
 
-	menuResetModel(&g_Menus[3].menumodel, bgunCalculateGunMemCapacity() - menugfxGetParticleArraySize(), false);
-	g_Menus[3].menumodel.allocstart = bgunGetGunMem() + menugfxGetParticleArraySize();
+	menu_reset_model(&g_Menus[3].menumodel, bgun_calculate_gun_mem_capacity() - menugfx_get_particle_array_size(), false);
+	g_Menus[3].menumodel.allocstart = bgun_get_gun_mem() + menugfx_get_particle_array_size();
 }
 
 #if VERSION >= VERSION_NTSC_1_0
-MenuItemHandlerResult endscreenHandleReplayLastLevel(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult endscreen_handle_replay_last_level(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_SET) {
+	if (operation == MENUOP_CONFIRM) {
 		g_MissionConfig.stagenum = g_SoloStages[g_MissionConfig.stageindex].stagenum;
-		return menuhandlerAcceptMission(operation, NULL, data);
+		return menuhandler_accept_mission(operation, NULL, data);
 	}
 
 	return 0;
@@ -519,7 +535,7 @@ struct menudialogdef g_SoloEndscreenObjectivesFailedMenuDialog = {
 	MENUDIALOGTYPE_DANGER,
 	L_OPTIONS_300, // "Objectives"
 	g_SoloEndscreenObjectivesMenuItems,
-	soloMenuDialogPauseStatus,
+	solo_menu_dialog_pause_status,
 	MENUDIALOGFLAG_DISABLEITEMSCROLL | MENUDIALOGFLAG_SMOOTHSCROLLABLE,
 	NULL,
 };
@@ -528,7 +544,7 @@ struct menudialogdef g_SoloEndscreenObjectivesCompletedMenuDialog = {
 	MENUDIALOGTYPE_SUCCESS,
 	L_OPTIONS_300, // "Objectives"
 	g_SoloEndscreenObjectivesMenuItems,
-	soloMenuDialogPauseStatus,
+	solo_menu_dialog_pause_status,
 	MENUDIALOGFLAG_DISABLEITEMSCROLL | MENUDIALOGFLAG_SMOOTHSCROLLABLE,
 	NULL,
 };
@@ -537,7 +553,7 @@ struct menudialogdef g_2PMissionEndscreenObjectivesFailedVMenuDialog = {
 	MENUDIALOGTYPE_DANGER,
 	L_OPTIONS_300, // "Objectives"
 	g_2PMissionEndscreenObjectivesVMenuItems,
-	soloMenuDialogPauseStatus,
+	solo_menu_dialog_pause_status,
 	MENUDIALOGFLAG_DISABLEITEMSCROLL | MENUDIALOGFLAG_SMOOTHSCROLLABLE,
 	NULL,
 };
@@ -546,7 +562,7 @@ struct menudialogdef g_2PMissionEndscreenObjectivesCompletedVMenuDialog = {
 	MENUDIALOGTYPE_SUCCESS,
 	L_OPTIONS_300, // "Objectives"
 	g_2PMissionEndscreenObjectivesVMenuItems,
-	soloMenuDialogPauseStatus,
+	solo_menu_dialog_pause_status,
 	MENUDIALOGFLAG_DISABLEITEMSCROLL | MENUDIALOGFLAG_SMOOTHSCROLLABLE,
 	NULL,
 };
@@ -555,10 +571,10 @@ struct menudialogdef g_2PMissionEndscreenObjectivesCompletedVMenuDialog = {
 /**
  * Displayed after Defense and Skedar Ruins completion screens.
  */
-MenuItemHandlerResult endscreenHandleContinueMission(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult endscreen_handle_continue_mission(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_SET) {
-		endscreenContinue(2);
+	if (operation == MENUOP_CONFIRM) {
+		endscreen_continue(2);
 	}
 
 	return 0;
@@ -573,7 +589,7 @@ struct menuitem g_MissionContinueOrReplyMenuItems[] = {
 		MENUITEMFLAG_SELECTABLE_CENTRE,
 		L_MPWEAPONS_244, // "Continue"
 		0,
-		endscreenHandleContinueMission,
+		endscreen_handle_continue_mission,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -581,14 +597,14 @@ struct menuitem g_MissionContinueOrReplyMenuItems[] = {
 		MENUITEMFLAG_SELECTABLE_CENTRE,
 		L_MPWEAPONS_245, // "Replay Last Level"
 		0,
-		endscreenHandleReplayLastLevel,
+		endscreen_handle_replay_last_level,
 	},
 	{ MENUITEMTYPE_END },
 };
 
 struct menudialogdef g_MissionContinueOrReplyMenuDialog = {
 	MENUDIALOGTYPE_DEFAULT,
-	(uintptr_t)&endscreenMenuTextCurrentStageName3,
+	(uintptr_t)&endscreen_menu_text_current_stage_name3,
 	g_MissionContinueOrReplyMenuItems,
 	NULL,
 	MENUDIALOGFLAG_STARTSELECTS,
@@ -601,98 +617,98 @@ struct menudialogdef g_MissionContinueOrReplyMenuDialog = {
  * Context is:
  *
  * 0 when closing a completed endscreen
- * 1 unsure - is invoked directly by menuTick
+ * 1 unsure - is invoked directly by menu_tick
  * 2 when pressing continue
  */
-void endscreenContinue(s32 context)
+void endscreen_continue(s32 context)
 {
 	if (g_Vars.antiplayernum >= 0) {
-		menuPopDialog();
+		menu_pop_dialog();
 	} else if (g_Vars.coopplayernum >= 0 && PLAYERCOUNT() >= 2 && context == 0) {
-		menuPopDialog();
+		menu_pop_dialog();
 	} else {
 		if (g_Vars.stagenum == STAGE_DEEPSEA || g_Vars.stagenum == STAGE_SKEDARRUINS) {
 			if (context == 2 || g_Menus[g_MpPlayerNum].endscreen.isfirstcompletion) {
 				// Pressed continue
 				if (g_Vars.stagenum == STAGE_DEEPSEA) {
-					if (!isStageDifficultyUnlocked(g_MissionConfig.stageindex + 1, g_MissionConfig.difficulty)) {
-						menuPopDialog();
-						menuPopDialog();
+					if (!is_stage_difficulty_unlocked(g_MissionConfig.stageindex + 1, g_MissionConfig.difficulty)) {
+						menu_pop_dialog();
+						menu_pop_dialog();
 					} else {
 						// Commit to starting next stage
 						g_MissionConfig.stageindex++;
 						g_MissionConfig.stagenum = g_SoloStages[g_MissionConfig.stageindex].stagenum;
 
-						titleSetNextStage(g_MissionConfig.stagenum);
+						title_set_next_stage(g_MissionConfig.stagenum);
 
 						if (g_MissionConfig.iscoop) {
 							if (g_Vars.numaibuddies == 0) {
 								g_Vars.bondplayernum = 0;
 								g_Vars.coopplayernum = 1;
 								g_Vars.antiplayernum = -1;
-								setNumPlayers(2);
+								set_num_players(2);
 							} else {
 								g_Vars.bondplayernum = 0;
 								g_Vars.coopplayernum = -1;
 								g_Vars.antiplayernum = -1;
-								setNumPlayers(1);
+								set_num_players(1);
 							}
 						} else {
 							g_Vars.bondplayernum = 0;
 							g_Vars.coopplayernum = -1;
 							g_Vars.antiplayernum = -1;
-							setNumPlayers(1);
+							set_num_players(1);
 						}
 
-						lvSetDifficulty(g_MissionConfig.difficulty);
-						titleSetNextMode(TITLEMODE_SKIP);
-						mainChangeToStage(g_MissionConfig.stagenum);
-						viBlack(true);
+						lv_set_difficulty(g_MissionConfig.difficulty);
+						title_set_next_mode(TITLEMODE_SKIP);
+						main_change_to_stage(g_MissionConfig.stagenum);
+						vi_black(true);
 					}
 				} else if (g_Vars.stagenum == STAGE_SKEDARRUINS) {
 					// Commit to starting credits
 					g_MissionConfig.stagenum = STAGE_CREDITS;
-					titleSetNextStage(g_MissionConfig.stagenum);
-					lvSetDifficulty(g_MissionConfig.difficulty);
-					titleSetNextMode(TITLEMODE_SKIP);
-					mainChangeToStage(g_MissionConfig.stagenum);
-					viBlack(true);
+					title_set_next_stage(g_MissionConfig.stagenum);
+					lv_set_difficulty(g_MissionConfig.difficulty);
+					title_set_next_mode(TITLEMODE_SKIP);
+					main_change_to_stage(g_MissionConfig.stagenum);
+					vi_black(true);
 				}
 			} else {
 				if (context == 1) {
-					menuPushRootDialog(&g_MissionContinueOrReplyMenuDialog, MENUROOT_COOPCONTINUE);
+					menu_push_root_dialog(&g_MissionContinueOrReplyMenuDialog, MENUROOT_COOPCONTINUE);
 				} else {
-					menuPushDialog(&g_MissionContinueOrReplyMenuDialog);
+					menu_push_dialog(&g_MissionContinueOrReplyMenuDialog);
 				}
 			}
 		} else {
 			if (context == 2) {
-				menuPopDialog();
+				menu_pop_dialog();
 			}
 
-			if (isStageDifficultyUnlocked(g_MissionConfig.stageindex + 1, g_MissionConfig.difficulty) == 0) {
+			if (is_stage_difficulty_unlocked(g_MissionConfig.stageindex + 1, g_MissionConfig.difficulty) == 0) {
 				if (context == 2) {
-					menuPopDialog();
-					menuPopDialog();
+					menu_pop_dialog();
+					menu_pop_dialog();
 				} else {
-					menuPushDialog(&g_MissionContinueOrReplyMenuDialog);
+					menu_push_dialog(&g_MissionContinueOrReplyMenuDialog);
 				}
-			} else if (stageGetIndex(g_MissionConfig.stagenum) < 0
+			} else if (stage_get_index(g_MissionConfig.stagenum) < 0
 						|| g_Vars.stagenum == STAGE_CITRAINING
 						|| g_MissionConfig.stageindex >= SOLOSTAGEINDEX_MBR) {
 				if (context == 2) {
-					menuPopDialog();
-					menuPopDialog();
+					menu_pop_dialog();
+					menu_pop_dialog();
 				} else {
-					menuPushDialog(&g_MissionContinueOrReplyMenuDialog);
+					menu_push_dialog(&g_MissionContinueOrReplyMenuDialog);
 				}
 			} else {
-				endscreenResetModels();
+				endscreen_reset_models();
 
 				if (context == 1) {
-					menuPushRootDialog(endscreenAdvance(), MENUROOT_COOPCONTINUE);
+					menu_push_root_dialog(endscreen_advance(), MENUROOT_COOPCONTINUE);
 				} else {
-					menuPushDialog(endscreenAdvance());
+					menu_push_dialog(endscreen_advance());
 				}
 			}
 		}
@@ -700,13 +716,13 @@ void endscreenContinue(s32 context)
 }
 #endif
 
-MenuDialogHandlerResult endscreenHandle2PCompleted(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult endscreen_handle_2p_completed(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
-	if (operation == MENUOP_OPEN) {
+	if (operation == MENUOP_ON_OPEN) {
 		g_Menus[g_MpPlayerNum].endscreen.unke1c = 0;
 	}
 
-	if (operation == MENUOP_TICK) {
+	if (operation == MENUOP_ON_TICK) {
 		if (g_Menus[g_MpPlayerNum].curdialog) {
 			if (g_Menus[g_MpPlayerNum].curdialog->definition == dialogdef
 					|| (dialogdef->nextsibling && dialogdef->nextsibling == g_Menus[g_MpPlayerNum].curdialog->definition)) {
@@ -723,31 +739,31 @@ MenuDialogHandlerResult endscreenHandle2PCompleted(s32 operation, struct menudia
 
 					if (g_Menus[g_MpPlayerNum].endscreen.unke1c == 0) {
 #if VERSION >= VERSION_NTSC_1_0
-						endscreenContinue(0);
+						endscreen_continue(0);
 #else
 						if (g_Vars.stagenum == STAGE_DEEPSEA) {
 							if (g_Vars.antiplayernum >= 0 || (g_Vars.coopplayernum >= 0 && PLAYERCOUNT() >= 2)) {
-								menuPopDialog();
+								menu_pop_dialog();
 							} else {
 								g_MissionConfig.stageindex++;
 								g_MissionConfig.stagenum = g_SoloStages[g_MissionConfig.stageindex].stagenum;
 
-								titleSetNextStage(g_MissionConfig.stagenum);
-								lvSetDifficulty(g_MissionConfig.difficulty);
-								titleSetNextMode(TITLEMODE_SKIP);
-								mainChangeToStage(g_MissionConfig.stagenum);
+								title_set_next_stage(g_MissionConfig.stagenum);
+								lv_set_difficulty(g_MissionConfig.difficulty);
+								title_set_next_mode(TITLEMODE_SKIP);
+								main_change_to_stage(g_MissionConfig.stagenum);
 							}
 						} else if (g_Vars.antiplayernum >= 0
 								|| (g_Vars.coopplayernum >= 0 && PLAYERCOUNT() >= 2)
-								|| (stageGetIndex(g_MissionConfig.stagenum) < 0
+								|| (stage_get_index(g_MissionConfig.stagenum) < 0
 									|| g_Vars.stagenum == STAGE_CITRAINING
 									|| g_MissionConfig.stageindex > SOLOSTAGEINDEX_SKEDARRUINS
 									|| ((g_CheatsActiveBank0 || g_CheatsActiveBank1)
-										&& !isStageDifficultyUnlocked(g_MissionConfig.stageindex + 1, g_MissionConfig.difficulty)))) {
-							menuPopDialog();
+										&& !is_stage_difficulty_unlocked(g_MissionConfig.stageindex + 1, g_MissionConfig.difficulty)))) {
+							menu_pop_dialog();
 						} else {
-							endscreenResetModels();
-							menuPushDialog(endscreenAdvance());
+							endscreen_reset_models();
+							menu_push_dialog(endscreen_advance());
 						}
 #endif
 					}
@@ -761,13 +777,13 @@ MenuDialogHandlerResult endscreenHandle2PCompleted(s32 operation, struct menudia
 	return 0;
 }
 
-MenuDialogHandlerResult endscreenHandle2PFailed(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult endscreen_handle_2p_failed(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
-	if (operation == MENUOP_OPEN) {
+	if (operation == MENUOP_ON_OPEN) {
 		g_Menus[g_MpPlayerNum].endscreen.unke1c = 0;
 	}
 
-	if (operation == MENUOP_TICK) {
+	if (operation == MENUOP_ON_TICK) {
 		if (g_Menus[g_MpPlayerNum].curdialog) {
 			if (g_Menus[g_MpPlayerNum].curdialog->definition == dialogdef
 					|| (dialogdef->nextsibling && dialogdef->nextsibling == g_Menus[g_MpPlayerNum].curdialog->definition)) {
@@ -785,12 +801,12 @@ MenuDialogHandlerResult endscreenHandle2PFailed(s32 operation, struct menudialog
 					if (g_Menus[g_MpPlayerNum].endscreen.unke1c == 0) {
 						if (g_Vars.antiplayernum >= 0
 								|| (g_Vars.coopplayernum >= 0 && PLAYERCOUNT() >= 2)
-								|| stageGetIndex(g_MissionConfig.stagenum) < 0
+								|| stage_get_index(g_MissionConfig.stagenum) < 0
 								|| g_Vars.stagenum == STAGE_CITRAINING) {
-							menuPopDialog();
+							menu_pop_dialog();
 						} else {
-							endscreenResetModels();
-							menuPushDialog(&g_RetryMissionMenuDialog);
+							endscreen_reset_models();
+							menu_push_dialog(&g_RetryMissionMenuDialog);
 						}
 					}
 				}
@@ -816,7 +832,7 @@ struct menuitem g_2PMissionEndscreenVMenuItems[] = {
 		MENUITEMTYPE_LABEL,
 		0,
 		MENUITEMFLAG_SELECTABLE_CENTRE,
-		(uintptr_t)&endscreenMenuTextMissionStatus,
+		(uintptr_t)&endscreen_menu_text_mission_status,
 		0,
 		NULL,
 	},
@@ -832,7 +848,7 @@ struct menuitem g_2PMissionEndscreenVMenuItems[] = {
 		MENUITEMTYPE_LABEL,
 		0,
 		MENUITEMFLAG_SELECTABLE_CENTRE,
-		(uintptr_t)&endscreenMenuTextAgentStatus,
+		(uintptr_t)&endscreen_menu_text_agent_status,
 		0,
 		NULL,
 	},
@@ -848,7 +864,7 @@ struct menuitem g_2PMissionEndscreenVMenuItems[] = {
 		MENUITEMTYPE_LABEL,
 		0,
 		MENUITEMFLAG_SELECTABLE_CENTRE,
-		(uintptr_t)&endscreenMenuTextMissionTime,
+		(uintptr_t)&endscreen_menu_text_mission_time,
 		0,
 		NULL,
 	},
@@ -864,7 +880,7 @@ struct menuitem g_2PMissionEndscreenVMenuItems[] = {
 		MENUITEMTYPE_LABEL,
 		0,
 		MENUITEMFLAG_SELECTABLE_CENTRE,
-		(uintptr_t)soloMenuTextDifficulty,
+		(uintptr_t)solo_menu_text_difficulty,
 		0,
 		NULL,
 	},
@@ -888,7 +904,7 @@ struct menuitem g_2PMissionEndscreenVMenuItems[] = {
 		MENUITEMTYPE_LABEL,
 		0,
 		MENUITEMFLAG_SELECTABLE_CENTRE,
-		(uintptr_t)&mpMenuTextWeaponOfChoiceName,
+		(uintptr_t)&mp_menu_text_weapon_of_choice_name,
 		0,
 		NULL,
 	},
@@ -905,7 +921,7 @@ struct menuitem g_2PMissionEndscreenVMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_282, // "Kills:"
-		(uintptr_t)&endscreenMenuTextNumKills,
+		(uintptr_t)&endscreen_menu_text_num_kills,
 		NULL,
 	},
 	{
@@ -913,7 +929,7 @@ struct menuitem g_2PMissionEndscreenVMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_283, // "Accuracy:"
-		(uintptr_t)&endscreenMenuTextAccuracy,
+		(uintptr_t)&endscreen_menu_text_accuracy,
 		NULL,
 	},
 	{
@@ -929,7 +945,7 @@ struct menuitem g_2PMissionEndscreenVMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_284, // "Shot Total:"
-		(uintptr_t)&endscreenMenuTextNumShots,
+		(uintptr_t)&endscreen_menu_text_num_shots,
 		NULL,
 	},
 	{
@@ -937,7 +953,7 @@ struct menuitem g_2PMissionEndscreenVMenuItems[] = {
 		0,
 		MENUITEMFLAG_SMALLFONT,
 		L_OPTIONS_285, // "Head Shots:"
-		(uintptr_t)&endscreenMenuTextNumHeadShots,
+		(uintptr_t)&endscreen_menu_text_num_head_shots,
 		NULL,
 	},
 	{
@@ -945,7 +961,7 @@ struct menuitem g_2PMissionEndscreenVMenuItems[] = {
 		0,
 		MENUITEMFLAG_SMALLFONT,
 		L_OPTIONS_286, // "Body Shots:"
-		(uintptr_t)&endscreenMenuTextNumBodyShots,
+		(uintptr_t)&endscreen_menu_text_num_body_shots,
 		NULL,
 	},
 	{
@@ -953,7 +969,7 @@ struct menuitem g_2PMissionEndscreenVMenuItems[] = {
 		0,
 		MENUITEMFLAG_SMALLFONT,
 		L_OPTIONS_287, // "Limb Shots:"
-		(uintptr_t)&endscreenMenuTextNumLimbShots,
+		(uintptr_t)&endscreen_menu_text_num_limb_shots,
 		NULL,
 	},
 	{
@@ -961,7 +977,7 @@ struct menuitem g_2PMissionEndscreenVMenuItems[] = {
 		0,
 		MENUITEMFLAG_SMALLFONT,
 		L_OPTIONS_288, // "Others:"
-		(uintptr_t)&endscreenMenuTextNumOtherShots,
+		(uintptr_t)&endscreen_menu_text_num_other_shots,
 		NULL,
 	},
 	{
@@ -996,62 +1012,61 @@ struct menuitem g_2PMissionEndscreenVMenuItems[] = {
  * 5 = timed cheat name
  * 6 = limb shots
  */
-MenuItemHandlerResult endscreenHandleCheatInfo(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult endscreen_handle_cheat_info(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	static u32 cheatcolour = 0xff7f7fff;
 
-	if (operation == MENUOP_GETCOLOUR
-			&& ((g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0x200) || item->param == 5)) {
-		// Timed cheat just got unlocked, and this item is the timed cheat name
-		u32 weight = menuGetSinOscFrac(40) * 255;
+	if (operation == MENUOP_GET_LABEL_COLOURS
+			&& ((g_Menus[g_MpPlayerNum].endscreen.cheatinfo & CHEATINFO_TIMED_UNLOCKING) || item->param == 5)) {
+		// Timed cheat just got unlocked, or this item is the timed cheat name
+		u32 weight = menu_get_sin_osc_frac(40) * 255;
 
-		mainOverrideVariable("ctcol", &cheatcolour);
+		main_override_variable("ctcol", &cheatcolour);
 
 		if (item->param == 0
-				&& cheatGetTime(g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0xff) == 0) {
+				&& cheat_get_time(CHEATINFO_GET_TIMED_CHEATNUM(g_Menus[g_MpPlayerNum].endscreen.cheatinfo)) == 0) {
 			return 0;
 		}
 
-		data->label.colour2 = colourBlend(data->label.colour2, cheatcolour, weight);
+		data->label.colour2 = colour_blend(data->label.colour2, cheatcolour, weight);
 
 		if (item->param == 3) { // completion cheat name
-			data->label.colour1 = colourBlend(data->label.colour1, cheatcolour, weight);
+			data->label.colour1 = colour_blend(data->label.colour1, cheatcolour, weight);
 		}
 
 		if (item->param == 5) { // timed cheat name
-			data->label.colour1 = colourBlend(data->label.colour1, cheatcolour, weight);
+			data->label.colour1 = colour_blend(data->label.colour1, cheatcolour, weight);
 		}
 	}
 
-	if (operation == MENUOP_CHECKHIDDEN) {
+	if (operation == MENUOP_IS_HIDDEN) {
 		if (item->param == 1) { // target time
 			u32 info = g_Menus[g_MpPlayerNum].endscreen.cheatinfo;
 
-			if (info & 0x800) { // completion cheat just got unlocked
+			if (info & CHEATINFO_COMPL_UNLOCKING) {
 				return true;
 			}
 
-			// (has timed cheat)
-			// and (timed cheat just got unlocked or timed cheat already unlocked) == 0
-			// and cheat has a target time configured
-			if ((info & 0x100) && (info & 0x600) == 0 && cheatGetTime(info & 0xff) > 0) {
+			if ((info & CHEATINFO_TIMED_EXISTS)
+					&& (info & (CHEATINFO_TIMED_UNLOCKING | CHEATINFO_TIMED_PREVUNLOCKED)) == 0
+					&& cheat_get_time(CHEATINFO_GET_TIMED_CHEATNUM(info)) > 0) {
 				return false;
 			}
 
 			return true;
-		} else if (item->param == 2 && (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0xa00) == 0) {
+		} else if (item->param == 2 && (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & (CHEATINFO_TIMED_UNLOCKING | CHEATINFO_COMPL_UNLOCKING)) == 0) {
 			// new cheat available
 			return true;
-		} else if (item->param == 3 && (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0x200) == 0) {
+		} else if (item->param == 3 && (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & CHEATINFO_TIMED_UNLOCKING) == 0) {
 			// completion cheat name
 			return true;
-		} else if (item->param == 4 && (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0xa00)) {
+		} else if (item->param == 4 && (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & (CHEATINFO_TIMED_UNLOCKING | CHEATINFO_COMPL_UNLOCKING))) {
 			// others (shots)
 			return true;
-		} else if (item->param == 6 && (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0xa00) == 0xa00) {
+		} else if (item->param == 6 && (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & (CHEATINFO_TIMED_UNLOCKING | CHEATINFO_COMPL_UNLOCKING)) == (CHEATINFO_TIMED_UNLOCKING | CHEATINFO_COMPL_UNLOCKING)) {
 			// limb shots
 			return true;
-		} else if (item->param == 5 && (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0x800) == 0) {
+		} else if (item->param == 5 && (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & CHEATINFO_COMPL_UNLOCKING) == 0) {
 			// timed cheat name
 			return true;
 		}
@@ -1067,7 +1082,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_278, // "Mission Status:"
-		(uintptr_t)&endscreenMenuTextMissionStatus,
+		(uintptr_t)&endscreen_menu_text_mission_status,
 		NULL,
 	},
 	{
@@ -1075,7 +1090,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_279, // "Agent Status:"
-		(uintptr_t)&endscreenMenuTextAgentStatus,
+		(uintptr_t)&endscreen_menu_text_agent_status,
 		NULL,
 	},
 #if VERSION >= VERSION_NTSC_1_0
@@ -1084,23 +1099,23 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		MENUITEMFLAG_LABEL_CUSTOMCOLOUR,
 		L_OPTIONS_280, // "Mission Time:"
-		(uintptr_t)&endscreenMenuTextMissionTime,
-		endscreenHandleCheatInfo,
+		(uintptr_t)&endscreen_menu_text_mission_time,
+		endscreen_handle_cheat_info,
 	},
 	{
 		MENUITEMTYPE_LABEL,
 		1,
 		MENUITEMFLAG_LABEL_CUSTOMCOLOUR,
 		L_MPWEAPONS_242, // "Target Time:"
-		(uintptr_t)&endscreenMenuTextTargetTime,
-		endscreenHandleCheatInfo,
+		(uintptr_t)&endscreen_menu_text_target_time,
+		endscreen_handle_cheat_info,
 	},
 	{
 		MENUITEMTYPE_LABEL,
 		0,
 		0,
 		L_MPWEAPONS_129, // "Difficulty:"
-		(uintptr_t)&soloMenuTextDifficulty,
+		(uintptr_t)&solo_menu_text_difficulty,
 		NULL,
 	},
 	{
@@ -1109,7 +1124,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		0,
-		endscreenHandleCheatInfo,
+		endscreen_handle_cheat_info,
 	},
 	{
 		MENUITEMTYPE_LABEL,
@@ -1117,23 +1132,23 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		L_MPWEAPONS_243, // "New Cheat Available!:"
 		0,
-		endscreenHandleCheatInfo,
+		endscreen_handle_cheat_info,
 	},
 	{
 		MENUITEMTYPE_LABEL,
 		3,
 		MENUITEMFLAG_SELECTABLE_CENTRE | MENUITEMFLAG_LABEL_CUSTOMCOLOUR,
-		(uintptr_t)&endscreenMenuTextTimedCheatName,
+		(uintptr_t)&endscreen_menu_text_timed_cheat_name,
 		0,
-		endscreenHandleCheatInfo,
+		endscreen_handle_cheat_info,
 	},
 	{
 		MENUITEMTYPE_LABEL,
 		5,
 		MENUITEMFLAG_SELECTABLE_CENTRE | MENUITEMFLAG_LABEL_CUSTOMCOLOUR,
-		(uintptr_t)&endscreenMenuTextCompletionCheatName,
+		(uintptr_t)&endscreen_menu_text_completion_cheat_name,
 		0,
-		endscreenHandleCheatInfo,
+		endscreen_handle_cheat_info,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,
@@ -1148,7 +1163,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_281, // "Weapon of Choice:"
-		(uintptr_t)&mpMenuTextWeaponOfChoiceName,
+		(uintptr_t)&mp_menu_text_weapon_of_choice_name,
 		NULL,
 	},
 	{
@@ -1156,7 +1171,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_282, // "Kills:"
-		(uintptr_t)&endscreenMenuTextNumKills,
+		(uintptr_t)&endscreen_menu_text_num_kills,
 		NULL,
 	},
 	{
@@ -1164,7 +1179,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_283, // "Accuracy:"
-		(uintptr_t)&endscreenMenuTextAccuracy,
+		(uintptr_t)&endscreen_menu_text_accuracy,
 		NULL,
 	},
 	{
@@ -1180,7 +1195,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_284, // "Shot Total:"
-		(uintptr_t)&endscreenMenuTextNumShots,
+		(uintptr_t)&endscreen_menu_text_num_shots,
 		NULL,
 	},
 	{
@@ -1188,7 +1203,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_285, // "Head Shots:"
-		(uintptr_t)&endscreenMenuTextNumHeadShots,
+		(uintptr_t)&endscreen_menu_text_num_head_shots,
 		NULL,
 	},
 	{
@@ -1196,7 +1211,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_286, // "Body Shots:"
-		(uintptr_t)&endscreenMenuTextNumBodyShots,
+		(uintptr_t)&endscreen_menu_text_num_body_shots,
 		NULL,
 	},
 	{
@@ -1204,16 +1219,16 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		6,
 		0,
 		L_OPTIONS_287, // "Limb Shots:"
-		(uintptr_t)&endscreenMenuTextNumLimbShots,
-		endscreenHandleCheatInfo,
+		(uintptr_t)&endscreen_menu_text_num_limb_shots,
+		endscreen_handle_cheat_info,
 	},
 	{
 		MENUITEMTYPE_LABEL,
 		4,
 		0,
 		L_OPTIONS_288, // "Others:"
-		(uintptr_t)&endscreenMenuTextNumOtherShots,
-		endscreenHandleCheatInfo,
+		(uintptr_t)&endscreen_menu_text_num_other_shots,
+		endscreen_handle_cheat_info,
 	},
 #else
 	// NTSC beta's endscreen dialog lacks cheat information
@@ -1222,7 +1237,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_280, // "Mission Time:"
-		(uintptr_t)&endscreenMenuTextMissionTime,
+		(uintptr_t)&endscreen_menu_text_mission_time,
 		NULL,
 	},
 	{
@@ -1230,7 +1245,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_MPWEAPONS_129, // "Difficulty:"
-		(uintptr_t)&soloMenuTextDifficulty,
+		(uintptr_t)&solo_menu_text_difficulty,
 		NULL,
 	},
 	{
@@ -1246,7 +1261,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_281, // "Weapon of Choice:"
-		(uintptr_t)&mpMenuTextWeaponOfChoiceName,
+		(uintptr_t)&mp_menu_text_weapon_of_choice_name,
 		NULL,
 	},
 	{
@@ -1254,7 +1269,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_282, // "Kills:"
-		(uintptr_t)&endscreenMenuTextNumKills,
+		(uintptr_t)&endscreen_menu_text_num_kills,
 		NULL,
 	},
 	{
@@ -1262,7 +1277,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_283, // "Accuracy:"
-		(uintptr_t)&endscreenMenuTextAccuracy,
+		(uintptr_t)&endscreen_menu_text_accuracy,
 		NULL,
 	},
 	{
@@ -1278,7 +1293,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_284, // "Shot Total:"
-		(uintptr_t)&endscreenMenuTextNumShots,
+		(uintptr_t)&endscreen_menu_text_num_shots,
 		NULL,
 	},
 	{
@@ -1286,7 +1301,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_285, // "Head Shots:"
-		(uintptr_t)&endscreenMenuTextNumHeadShots,
+		(uintptr_t)&endscreen_menu_text_num_head_shots,
 		NULL,
 	},
 	{
@@ -1294,7 +1309,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_286, // "Body Shots:"
-		(uintptr_t)&endscreenMenuTextNumBodyShots,
+		(uintptr_t)&endscreen_menu_text_num_body_shots,
 		NULL,
 	},
 	{
@@ -1302,7 +1317,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_287, // "Limb Shots:"
-		(uintptr_t)&endscreenMenuTextNumLimbShots,
+		(uintptr_t)&endscreen_menu_text_num_limb_shots,
 		NULL,
 	},
 	{
@@ -1310,7 +1325,7 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 		0,
 		0,
 		L_OPTIONS_288, // "Others:"
-		(uintptr_t)&endscreenMenuTextNumOtherShots,
+		(uintptr_t)&endscreen_menu_text_num_other_shots,
 		NULL,
 	},
 #endif
@@ -1334,10 +1349,10 @@ struct menuitem g_MissionEndscreenMenuItems[] = {
 };
 
 #if VERSION >= VERSION_NTSC_1_0
-char *endscreenMenuTextTimedCheatName(struct menuitem *item)
+char *endscreen_menu_text_timed_cheat_name(struct menuitem *item)
 {
-	if (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0x00000300) {
-		return cheatGetName(g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0xff);
+	if (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & (CHEATINFO_TIMED_EXISTS | CHEATINFO_TIMED_UNLOCKING)) {
+		return cheat_get_name(CHEATINFO_GET_TIMED_CHEATNUM(g_Menus[g_MpPlayerNum].endscreen.cheatinfo));
 	}
 
 	return NULL;
@@ -1345,10 +1360,10 @@ char *endscreenMenuTextTimedCheatName(struct menuitem *item)
 #endif
 
 #if VERSION >= VERSION_NTSC_1_0
-char *endscreenMenuTextCompletionCheatName(struct menuitem *item)
+char *endscreen_menu_text_completion_cheat_name(struct menuitem *item)
 {
-	if (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0x00000800) {
-		return cheatGetName((g_Menus[g_MpPlayerNum].endscreen.cheatinfo >> 16) & 0xff);
+	if (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & CHEATINFO_COMPL_UNLOCKING) {
+		return cheat_get_name(CHEATINFO_GET_COMPL_CHEATNUM(g_Menus[g_MpPlayerNum].endscreen.cheatinfo));
 	}
 
 	return NULL;
@@ -1356,29 +1371,28 @@ char *endscreenMenuTextCompletionCheatName(struct menuitem *item)
 #endif
 
 #if VERSION >= VERSION_NTSC_1_0
-char *endscreenMenuTextTargetTime(struct menuitem *item)
+char *endscreen_menu_text_target_time(struct menuitem *item)
 {
 	s32 time;
-	s32 time2;
 
-	if ((g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0x00000100) == 0) {
+	if ((g_Menus[g_MpPlayerNum].endscreen.cheatinfo & CHEATINFO_TIMED_EXISTS) == 0) {
 		return NULL;
 	}
 
-	time = g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0xff;
-	time = cheatGetTime(time);
+	time = CHEATINFO_GET_TIMED_CHEATNUM(g_Menus[g_MpPlayerNum].endscreen.cheatinfo);
+	time = cheat_get_time(time);
 
 	if (!time) {
 		return NULL;
 	}
 
-	formatTime(g_StringPointer, time * 60, TIMEPRECISION_SECONDS);
+	format_time(g_StringPointer, time * 60, TIMEPRECISION_SECONDS);
 	strcat(g_StringPointer, "\n");
 	return g_StringPointer;
 }
 #endif
 
-void endscreenSetCoopCompleted(void)
+void endscreen_set_coop_completed(void)
 {
 	if (g_CheatsActiveBank0 == 0 && g_CheatsActiveBank1 == 0) {
 #if VERSION >= VERSION_NTSC_1_0
@@ -1393,18 +1407,18 @@ void endscreenSetCoopCompleted(void)
 
 struct menudialogdef g_SoloMissionEndscreenCompletedMenuDialog = {
 	MENUDIALOGTYPE_SUCCESS,
-	(uintptr_t)&endscreenMenuTitleStageCompleted,
+	(uintptr_t)&endscreen_menu_title_stage_completed,
 	g_MissionEndscreenMenuItems,
-	endscreenHandle2PCompleted,
+	endscreen_handle_2p_completed,
 	MENUDIALOGFLAG_DISABLEITEMSCROLL | MENUDIALOGFLAG_SMOOTHSCROLLABLE,
 	&g_SoloEndscreenObjectivesCompletedMenuDialog,
 };
 
 struct menudialogdef g_SoloMissionEndscreenFailedMenuDialog = {
 	MENUDIALOGTYPE_DANGER,
-	(uintptr_t)&endscreenMenuTitleStageFailed,
+	(uintptr_t)&endscreen_menu_title_stage_failed,
 	g_MissionEndscreenMenuItems,
-	endscreenHandle2PFailed,
+	endscreen_handle_2p_failed,
 	MENUDIALOGFLAG_DISABLEITEMSCROLL | MENUDIALOGFLAG_SMOOTHSCROLLABLE,
 	&g_SoloEndscreenObjectivesFailedMenuDialog,
 };
@@ -1416,7 +1430,7 @@ struct menudialogdef g_SoloMissionEndscreenFailedMenuDialog = {
  * NTSC beta doesn't have cheats implemented, and has a different autostageindex
  * and thumbnail calculation.
  */
-void endscreenPrepare(void)
+void endscreen_prepare(void)
 {
 	s32 timedcheatid;
 	s32 complcheatid;
@@ -1442,15 +1456,15 @@ void endscreenPrepare(void)
 		if (g_MissionConfig.iscoop == false
 				&& g_MissionConfig.isanti == false
 				&& g_MissionConfig.pdmode == false) {
-			timedcheatid = cheatGetByTimedStageIndex(g_MissionConfig.stageindex, g_MissionConfig.difficulty);
-			complcheatid = cheatGetByCompletedStageIndex(g_MissionConfig.stageindex);
+			timedcheatid = cheat_get_by_timed_stage_index(g_MissionConfig.stageindex, g_MissionConfig.difficulty);
+			complcheatid = cheat_get_by_completed_stage_index(g_MissionConfig.stageindex);
 
 			if (timedcheatid >= 0) {
-				g_Menus[g_MpPlayerNum].endscreen.cheatinfo = 0x0100 | timedcheatid;
+				g_Menus[g_MpPlayerNum].endscreen.cheatinfo = CHEATINFO_TIMED_EXISTS | CHEATINFO_SET_TIMED_CHEATNUM(timedcheatid);
 			}
 
 			if (complcheatid >= 0) {
-				g_Menus[g_MpPlayerNum].endscreen.cheatinfo |= 0x1000 | (complcheatid << 16);
+				g_Menus[g_MpPlayerNum].endscreen.cheatinfo |= CHEATINFO_COMPL_EXISTS | CHEATINFO_SET_COMPL_CHEATNUM(complcheatid);
 			}
 		}
 #else
@@ -1459,17 +1473,17 @@ void endscreenPrepare(void)
 
 		// Push the endscreen
 #if VERSION >= VERSION_NTSC_1_0 && defined(DEBUG)
-		if ((g_Vars.currentplayer->isdead || g_Vars.currentplayer->aborted || !objectiveIsAllComplete()) && !debugIsSetCompleteEnabled())
+		if ((g_Vars.currentplayer->isdead || g_Vars.currentplayer->aborted || !objective_is_all_complete()) && !debug_is_set_complete_enabled())
 #else
-		if (g_Vars.currentplayer->isdead || g_Vars.currentplayer->aborted || !objectiveIsAllComplete())
+		if (g_Vars.currentplayer->isdead || g_Vars.currentplayer->aborted || !objective_is_all_complete())
 #endif
 		{
-			menuPushRootDialog(&g_SoloMissionEndscreenFailedMenuDialog, MENUROOT_ENDSCREEN);
+			menu_push_root_dialog(&g_SoloMissionEndscreenFailedMenuDialog, MENUROOT_ENDSCREEN);
 		} else {
-			menuPushRootDialog(&g_SoloMissionEndscreenCompletedMenuDialog, MENUROOT_ENDSCREEN);
+			menu_push_root_dialog(&g_SoloMissionEndscreenCompletedMenuDialog, MENUROOT_ENDSCREEN);
 
 			if (g_MissionConfig.iscoop) {
-				endscreenSetCoopCompleted();
+				endscreen_set_coop_completed();
 			}
 		}
 
@@ -1478,25 +1492,24 @@ void endscreenPrepare(void)
 			timedalreadyunlocked = false;
 			complalreadyunlocked = false;
 
-			// If there's a timed cheat for this stage + difficulty
-			if (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0x100) {
-				timedalreadyunlocked = cheatIsUnlocked(g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0xff);
+			if (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & CHEATINFO_TIMED_EXISTS) {
+				timedalreadyunlocked = cheat_is_unlocked(CHEATINFO_GET_TIMED_CHEATNUM(g_Menus[g_MpPlayerNum].endscreen.cheatinfo));
 
 				if (timedalreadyunlocked) {
-					g_Menus[g_MpPlayerNum].endscreen.cheatinfo |= 0x400;
+					g_Menus[g_MpPlayerNum].endscreen.cheatinfo |= CHEATINFO_TIMED_PREVUNLOCKED;
 				}
 			}
 
 			// If there's a completion cheat for this stage (ie. not a special stage)
-			if (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0x1000) {
-				complalreadyunlocked = cheatIsUnlocked((g_Menus[g_MpPlayerNum].endscreen.cheatinfo >> 16) & 0xff);
+			if (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & CHEATINFO_COMPL_EXISTS) {
+				complalreadyunlocked = cheat_is_unlocked(CHEATINFO_GET_COMPL_CHEATNUM(g_Menus[g_MpPlayerNum].endscreen.cheatinfo));
 			}
 #else
-			playerGetMissionTime();
+			player_get_mission_time();
 #endif
 
 			// Update total mission time
-			secs = playerGetMissionTime() / 60;
+			secs = player_get_mission_time() / 60;
 
 			if (secs != 0) {
 				if (secs >= S32_MAX || S32_MAX - secs <= g_GameFile.totaltime) {
@@ -1515,24 +1528,24 @@ void endscreenPrepare(void)
 					&& g_MissionConfig.pdmode == false
 					&& ((g_Vars.currentplayer->isdead == false
 							&& g_Vars.currentplayer->aborted == false
-							&& objectiveIsAllComplete())
-						|| debugIsSetCompleteEnabled()))
+							&& objective_is_all_complete())
+						|| debug_is_set_complete_enabled()))
 #elif VERSION >= VERSION_NTSC_1_0
 			if (g_CheatsActiveBank0 == 0
 					&& g_CheatsActiveBank1 == 0
 					&& g_MissionConfig.pdmode == false
 					&& g_Vars.currentplayer->isdead == false
 					&& g_Vars.currentplayer->aborted == false
-					&& objectiveIsAllComplete())
+					&& objective_is_all_complete())
 #else
 			if (g_Vars.currentplayer->isdead == false
 					&& g_Vars.currentplayer->aborted == false
-					&& objectiveIsAllComplete()
+					&& objective_is_all_complete()
 					&& g_CheatsActiveBank0 == 0
 					&& g_CheatsActiveBank1 == 0)
 #endif
 			{
-				secs = playerGetMissionTime() / 60;
+				secs = player_get_mission_time() / 60;
 
 				// The save file allows 12 bits per time, which is up to
 				// 1h 8m 16s. If the timer is higher than this, reduce it.
@@ -1584,23 +1597,22 @@ void endscreenPrepare(void)
 					}
 				}
 
-				if (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0x100) {
-					nowunlocked = cheatIsUnlocked(g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0xff);
+				if (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & CHEATINFO_TIMED_EXISTS) {
+					nowunlocked = cheat_is_unlocked(CHEATINFO_GET_TIMED_CHEATNUM(g_Menus[g_MpPlayerNum].endscreen.cheatinfo));
 
 					if (!timedalreadyunlocked && nowunlocked) {
-						g_Menus[g_MpPlayerNum].endscreen.cheatinfo |= 0x0200;
+						g_Menus[g_MpPlayerNum].endscreen.cheatinfo |= CHEATINFO_TIMED_UNLOCKING;
 					}
 				}
 
-				if (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & 0x1000) {
-					nowunlocked = cheatIsUnlocked((g_Menus[g_MpPlayerNum].endscreen.cheatinfo >> 16) & 0xff);
+				if (g_Menus[g_MpPlayerNum].endscreen.cheatinfo & CHEATINFO_COMPL_EXISTS) {
+					nowunlocked = cheat_is_unlocked(CHEATINFO_GET_COMPL_CHEATNUM(g_Menus[g_MpPlayerNum].endscreen.cheatinfo));
 
 					if (!complalreadyunlocked && nowunlocked) {
-						g_Menus[g_MpPlayerNum].endscreen.cheatinfo |= 0x0800;
+						g_Menus[g_MpPlayerNum].endscreen.cheatinfo |= CHEATINFO_COMPL_UNLOCKING;
 					}
 				}
 #else
-				// 154
 				if (g_MissionConfig.stageindex <= SOLOSTAGEINDEX_SKEDARRUINS) {
 					g_GameFile.autostageindex = g_MissionConfig.stageindex + 1;
 
@@ -1612,7 +1624,7 @@ void endscreenPrepare(void)
 				}
 #endif
 
-				challengeDetermineUnlockedFeatures();
+				challenge_determine_unlocked_features();
 
 				if (g_MissionConfig.stagenum == STAGE_SKEDARRUINS && g_AltTitleUnlocked == false) {
 					g_AltTitleUnlocked = true;
@@ -1621,34 +1633,34 @@ void endscreenPrepare(void)
 #else
 					g_AltTitleEnabled = true;
 #endif
-					bossfileSave();
+					bossfile_save();
 				}
 			}
 		}
 
-		filemgrSaveOrLoad(&g_GameFileGuid, FILEOP_SAVE_GAME_000, 0);
+		filemgr_save_or_load(&g_GameFileGuid, FILEOP_SAVE_GAME_000, 0);
 	}
 
 	if (g_MenuData.root == MENUROOT_ENDSCREEN) {
-		lvSetPaused(true);
+		lv_set_paused(true);
 		g_Vars.currentplayer->pausemode = PAUSEMODE_PAUSED;
 	}
 }
 
 struct menudialogdef g_2PMissionEndscreenCompletedHMenuDialog = {
 	MENUDIALOGTYPE_SUCCESS,
-	(uintptr_t)&endscreenMenuTitleStageCompleted,
+	(uintptr_t)&endscreen_menu_title_stage_completed,
 	g_MissionEndscreenMenuItems,
-	endscreenHandle2PCompleted,
+	endscreen_handle_2p_completed,
 	MENUDIALOGFLAG_DISABLEITEMSCROLL | MENUDIALOGFLAG_SMOOTHSCROLLABLE,
 	&g_SoloEndscreenObjectivesCompletedMenuDialog,
 };
 
 struct menudialogdef g_2PMissionEndscreenFailedHMenuDialog = {
 	MENUDIALOGTYPE_DANGER,
-	(uintptr_t)&endscreenMenuTitleStageFailed,
+	(uintptr_t)&endscreen_menu_title_stage_failed,
 	g_MissionEndscreenMenuItems,
-	endscreenHandle2PFailed,
+	endscreen_handle_2p_failed,
 	MENUDIALOGFLAG_DISABLEITEMSCROLL | MENUDIALOGFLAG_SMOOTHSCROLLABLE,
 	&g_SoloEndscreenObjectivesFailedMenuDialog,
 };
@@ -1657,7 +1669,7 @@ struct menudialogdef g_2PMissionEndscreenCompletedVMenuDialog = {
 	MENUDIALOGTYPE_SUCCESS,
 	L_OPTIONS_276, // "Completed"
 	g_2PMissionEndscreenVMenuItems,
-	endscreenHandle2PCompleted,
+	endscreen_handle_2p_completed,
 	MENUDIALOGFLAG_DISABLEITEMSCROLL | MENUDIALOGFLAG_SMOOTHSCROLLABLE,
 	&g_2PMissionEndscreenObjectivesCompletedVMenuDialog,
 };
@@ -1666,16 +1678,16 @@ struct menudialogdef g_2PMissionEndscreenFailedVMenuDialog = {
 	MENUDIALOGTYPE_DANGER,
 	L_OPTIONS_277, // "Failed"
 	g_2PMissionEndscreenVMenuItems,
-	endscreenHandle2PFailed,
+	endscreen_handle_2p_failed,
 	MENUDIALOGFLAG_DISABLEITEMSCROLL | MENUDIALOGFLAG_SMOOTHSCROLLABLE,
 	&g_2PMissionEndscreenObjectivesFailedVMenuDialog,
 };
 
-void endscreenPushCoop(void)
+void endscreen_push_coop(void)
 {
 	u32 prevplayernum = g_MpPlayerNum;
 
-	lvSetPaused(true);
+	lv_set_paused(true);
 
 	g_MpPlayerNum = g_Vars.currentplayerstats->mpindex;
 
@@ -1691,33 +1703,33 @@ void endscreenPushCoop(void)
 	if (((g_Vars.bond->isdead && g_Vars.coop->isdead)
 			|| g_Vars.bond->aborted
 			|| g_Vars.coop->aborted
-			|| !objectiveIsAllComplete()) && !debugIsSetCompleteEnabled())
+			|| !objective_is_all_complete()) && !debug_is_set_complete_enabled())
 #else
 	if ((g_Vars.bond->isdead && g_Vars.coop->isdead)
 			|| g_Vars.bond->aborted
 			|| g_Vars.coop->aborted
-			|| !objectiveIsAllComplete())
+			|| !objective_is_all_complete())
 #endif
 	{
 		// Failed or aborted
-		if (optionsGetScreenSplit() == SCREENSPLIT_VERTICAL) {
-			menuPushRootDialog(&g_2PMissionEndscreenFailedVMenuDialog, MENUROOT_MPENDSCREEN);
+		if (options_get_screen_split() == SCREENSPLIT_VERTICAL) {
+			menu_push_root_dialog(&g_2PMissionEndscreenFailedVMenuDialog, MENUROOT_MPENDSCREEN);
 		} else {
-			menuPushRootDialog(&g_2PMissionEndscreenFailedHMenuDialog, MENUROOT_MPENDSCREEN);
+			menu_push_root_dialog(&g_2PMissionEndscreenFailedHMenuDialog, MENUROOT_MPENDSCREEN);
 		}
 	} else {
 		// Completed
-		if (optionsGetScreenSplit() == SCREENSPLIT_VERTICAL) {
-			menuPushRootDialog(&g_2PMissionEndscreenCompletedVMenuDialog, MENUROOT_MPENDSCREEN);
+		if (options_get_screen_split() == SCREENSPLIT_VERTICAL) {
+			menu_push_root_dialog(&g_2PMissionEndscreenCompletedVMenuDialog, MENUROOT_MPENDSCREEN);
 		} else {
-			menuPushRootDialog(&g_2PMissionEndscreenCompletedHMenuDialog, MENUROOT_MPENDSCREEN);
+			menu_push_root_dialog(&g_2PMissionEndscreenCompletedHMenuDialog, MENUROOT_MPENDSCREEN);
 		}
 
-		endscreenSetCoopCompleted();
+		endscreen_set_coop_completed();
 	}
 
 	if (g_Vars.currentplayer == g_Vars.bond) {
-		filemgrSaveOrLoad(&g_GameFileGuid, FILEOP_SAVE_GAME_000, 0);
+		filemgr_save_or_load(&g_GameFileGuid, FILEOP_SAVE_GAME_000, 0);
 	}
 
 	g_MpPlayerNum = prevplayernum;
@@ -1728,9 +1740,9 @@ void endscreenPushCoop(void)
  * (ie. retry, next mission or continue), and it looks like it might be for coop
  * only but I'm not 100% sure.
  *
- * This function is only called from menuTick, which is a bit weird...
+ * This function is only called from menu_tick, which is a bit weird...
  */
-void endscreenPushSolo(void)
+void endscreen_push_solo(void)
 {
 	u32 prevplayernum = g_MpPlayerNum;
 
@@ -1741,27 +1753,27 @@ void endscreenPushSolo(void)
 	if (((g_Vars.bond->isdead && g_Vars.coop->isdead)
 			|| g_Vars.bond->aborted
 			|| g_Vars.coop->aborted
-			|| !objectiveIsAllComplete()) && !debugIsSetCompleteEnabled())
+			|| !objective_is_all_complete()) && !debug_is_set_complete_enabled())
 #else
 	if ((g_Vars.bond->isdead && g_Vars.coop->isdead)
 			|| g_Vars.bond->aborted
 			|| g_Vars.coop->aborted
-			|| !objectiveIsAllComplete())
+			|| !objective_is_all_complete())
 #endif
 	{
 		// Failed or aborted
-		endscreenResetModels();
-		menuPushRootDialog(&g_RetryMissionMenuDialog, MENUROOT_COOPCONTINUE);
+		endscreen_reset_models();
+		menu_push_root_dialog(&g_RetryMissionMenuDialog, MENUROOT_COOPCONTINUE);
 	} else {
 		// Completed
 #if VERSION >= VERSION_NTSC_1_0
-		endscreenContinue(1);
+		endscreen_continue(1);
 #else
-		struct menudialogdef *definition = endscreenAdvance();
+		struct menudialogdef *definition = endscreen_advance();
 
 		if (definition) {
-			endscreenResetModels();
-			menuPushRootDialog(definition, MENUROOT_COOPCONTINUE);
+			endscreen_reset_models();
+			menu_push_root_dialog(definition, MENUROOT_COOPCONTINUE);
 		}
 #endif
 	}
@@ -1769,11 +1781,11 @@ void endscreenPushSolo(void)
 	g_MpPlayerNum = prevplayernum;
 }
 
-void endscreenPushAnti(void)
+void endscreen_push_anti(void)
 {
 	u32 prevplayernum = g_MpPlayerNum;
 
-	lvSetPaused(true);
+	lv_set_paused(true);
 
 	g_MpPlayerNum = g_Vars.currentplayerstats->mpindex;
 
@@ -1787,46 +1799,46 @@ void endscreenPushAnti(void)
 
 	if (g_Vars.currentplayer == g_Vars.bond) {
 #if VERSION >= VERSION_NTSC_1_0 && defined(DEBUG)
-		if (!g_Vars.anti->aborted && (g_Vars.bond->isdead || g_Vars.bond->aborted || !objectiveIsAllComplete()) && !debugIsSetCompleteEnabled())
+		if (!g_Vars.anti->aborted && (g_Vars.bond->isdead || g_Vars.bond->aborted || !objective_is_all_complete()) && !debug_is_set_complete_enabled())
 #else
-		if (!g_Vars.anti->aborted && (g_Vars.bond->isdead || g_Vars.bond->aborted || !objectiveIsAllComplete()))
+		if (!g_Vars.anti->aborted && (g_Vars.bond->isdead || g_Vars.bond->aborted || !objective_is_all_complete()))
 #endif
 		{
 			// Bond - failed or aborted
-			if (optionsGetScreenSplit() == SCREENSPLIT_VERTICAL) {
-				menuPushRootDialog(&g_2PMissionEndscreenFailedVMenuDialog, MENUROOT_MPENDSCREEN);
+			if (options_get_screen_split() == SCREENSPLIT_VERTICAL) {
+				menu_push_root_dialog(&g_2PMissionEndscreenFailedVMenuDialog, MENUROOT_MPENDSCREEN);
 			} else {
-				menuPushRootDialog(&g_2PMissionEndscreenFailedHMenuDialog, MENUROOT_MPENDSCREEN);
+				menu_push_root_dialog(&g_2PMissionEndscreenFailedHMenuDialog, MENUROOT_MPENDSCREEN);
 			}
 		} else {
 			// Bond - completed
-			if (optionsGetScreenSplit() == SCREENSPLIT_VERTICAL) {
-				menuPushRootDialog(&g_2PMissionEndscreenCompletedVMenuDialog, MENUROOT_MPENDSCREEN);
+			if (options_get_screen_split() == SCREENSPLIT_VERTICAL) {
+				menu_push_root_dialog(&g_2PMissionEndscreenCompletedVMenuDialog, MENUROOT_MPENDSCREEN);
 			} else {
-				menuPushRootDialog(&g_2PMissionEndscreenCompletedHMenuDialog, MENUROOT_MPENDSCREEN);
+				menu_push_root_dialog(&g_2PMissionEndscreenCompletedHMenuDialog, MENUROOT_MPENDSCREEN);
 			}
 		}
 
-		filemgrSaveOrLoad(&g_GameFileGuid, FILEOP_SAVE_GAME_000, 0);
+		filemgr_save_or_load(&g_GameFileGuid, FILEOP_SAVE_GAME_000, 0);
 	} else {
 #if VERSION >= VERSION_NTSC_1_0 && defined(DEBUG)
-		if (!g_Vars.anti->aborted && (g_Vars.bond->isdead || g_Vars.bond->aborted || !objectiveIsAllComplete()) && !debugIsSetCompleteEnabled())
+		if (!g_Vars.anti->aborted && (g_Vars.bond->isdead || g_Vars.bond->aborted || !objective_is_all_complete()) && !debug_is_set_complete_enabled())
 #else
-		if (!g_Vars.anti->aborted && (g_Vars.bond->isdead || g_Vars.bond->aborted || !objectiveIsAllComplete()))
+		if (!g_Vars.anti->aborted && (g_Vars.bond->isdead || g_Vars.bond->aborted || !objective_is_all_complete()))
 #endif
 		{
 			// Anti - completed
-			if (optionsGetScreenSplit() == SCREENSPLIT_VERTICAL) {
-				menuPushRootDialog(&g_2PMissionEndscreenCompletedVMenuDialog, MENUROOT_MPENDSCREEN);
+			if (options_get_screen_split() == SCREENSPLIT_VERTICAL) {
+				menu_push_root_dialog(&g_2PMissionEndscreenCompletedVMenuDialog, MENUROOT_MPENDSCREEN);
 			} else {
-				menuPushRootDialog(&g_2PMissionEndscreenCompletedHMenuDialog, MENUROOT_MPENDSCREEN);
+				menu_push_root_dialog(&g_2PMissionEndscreenCompletedHMenuDialog, MENUROOT_MPENDSCREEN);
 			}
 		} else {
 			// Anti - failed or aborted
-			if (optionsGetScreenSplit() == SCREENSPLIT_VERTICAL) {
-				menuPushRootDialog(&g_2PMissionEndscreenFailedVMenuDialog, MENUROOT_MPENDSCREEN);
+			if (options_get_screen_split() == SCREENSPLIT_VERTICAL) {
+				menu_push_root_dialog(&g_2PMissionEndscreenFailedVMenuDialog, MENUROOT_MPENDSCREEN);
 			} else {
-				menuPushRootDialog(&g_2PMissionEndscreenFailedHMenuDialog, MENUROOT_MPENDSCREEN);
+				menu_push_root_dialog(&g_2PMissionEndscreenFailedHMenuDialog, MENUROOT_MPENDSCREEN);
 			}
 		}
 	}
