@@ -342,7 +342,7 @@ char *endscreenMenuTextMissionStatus(struct menuitem *item)
 		return langGet(L_OPTIONS_293); // "Failed"
 	}
 
-	if (g_StageIndex == STAGEINDEX_DEFENSE) {
+	if (g_StageIndex == STAGEINDEX_AIRFORCEONE || g_StageIndex == STAGEINDEX_DEFENSE) {
 		return langGet(L_MPWEAPONS_062); // "Unknown"
 	}
 
@@ -363,7 +363,7 @@ char *endscreenMenuTextAgentStatus(struct menuitem *item)
 		return langGet(L_OPTIONS_290); // "Deceased"
 	}
 
-	if (g_StageIndex == STAGEINDEX_DEFENSE) {
+	if (g_StageIndex == STAGEINDEX_AIRFORCEONE || g_StageIndex == STAGEINDEX_DEFENSE) {
 		return langGet(L_MPWEAPONS_063); // "Missing"
 	}
 
