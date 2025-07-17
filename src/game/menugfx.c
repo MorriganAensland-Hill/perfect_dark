@@ -1811,7 +1811,7 @@ Gfx *menugfxRenderBgSuccess(Gfx *gdl)
 	f32 speed = 5.0f;
 	bool gray = false;
 
-	if (g_StageIndex == STAGEINDEX_DEFENSE) {
+	if (g_StageIndex == STAGEINDEX_AIRFORCEONE || g_StageIndex == STAGEINDEX_DEFENSE) {
 		speed = 2.0f;
 		gray = true;
 	}
