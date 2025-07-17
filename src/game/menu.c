@@ -3976,7 +3976,7 @@ void dialog_tick(struct menudialog *dialog, struct menuinputs *inputs, u32 tickf
 					transitiontotype = MENUDIALOGTYPE_DEFAULT;
 				}
 
-				if (g_StageIndex == STAGEINDEX_DEFENSE
+				if ((g_StageIndex == STAGEINDEX_AIRFORCEONE || g_StageIndex == STAGEINDEX_DEFENSE)
 						&& g_MenuData.bg != MENUBG_FAILURE
 						&& g_MenuData.nextbg != MENUBG_FAILURE) {
 					transitiontotype = MENUDIALOGTYPE_WHITE;
@@ -3997,7 +3997,7 @@ void dialog_tick(struct menudialog *dialog, struct menuinputs *inputs, u32 tickf
 	} else {
 		// Mid-transition
 		if (g_MenuData.root == MENUROOT_ENDSCREEN
-				&& g_StageIndex == STAGEINDEX_DEFENSE
+				&& (g_StageIndex == STAGEINDEX_AIRFORCEONE || g_StageIndex == STAGEINDEX_DEFENSE)
 				&& g_MenuData.bg != MENUBG_FAILURE
 				&& g_MenuData.nextbg != MENUBG_FAILURE
 				&& dialog->type2 != 0) {
@@ -5515,7 +5515,7 @@ u32 menu_choose_music(void)
 {
 	s32 missionsuccess = MUSIC_MISSION_SUCCESS;
 
-	if (g_StageIndex == STAGEINDEX_DEFENSE) {
+	if (g_StageIndex == STAGEINDEX_AIRFORCEONE || g_StageIndex == STAGEINDEX_DEFENSE) {
 		missionsuccess = MUSIC_MISSION_UNKNOWN;
 	}
 
