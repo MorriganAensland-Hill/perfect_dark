@@ -18,7 +18,7 @@
 #include "game/filelist.h"
 #include "game/filemgr.h"
 #include "game/credits.h"
-#include "game/text.h"
+#include "game/game_1531a0.h"
 #include "game/file.h"
 #include "game/lv.h"
 #include "game/mplayer/setup.h"
@@ -48,6 +48,14 @@
 #include "lib/lib_317f0.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "video.h"
+#include "input.h"
+#include "platform.h"
+#define BLUR_OFS 10
+#else
+#define BLUR_OFS 30
+#endif
 
 #if VERSION >= VERSION_PAL_FINAL
 char g_CheatMarqueeString[300];
@@ -130,11 +138,43 @@ char *g_StringPointer2 = &g_CheatMarqueeString[VERSION >= VERSION_PAL_FINAL ? 15
 
 s32 g_MpPlayerNum = 0;
 
-void dialog_calculate_position(struct menudialog *dialog);
-void menu_close(void);
-void dialog_init_items(struct menudialog *dialog);
+#ifndef PLATFORM_N64
+s32 g_MenuMouseControl = true;
+s32 g_MenuUsingMouse = false;
+s32 g_MenuKeyboardPlayer = -1;
+s32 g_AllowMouseHeld = true;
+s32 g_MouseDimmedMode = false;
+s32 g_MouseEndDeferredSlider = false;
+#endif
 
-void menu_play_sound(s32 menusound)
+s32 menuAlt1Pressed(s32 playerNum)
+{
+	const s32 rshoulderKey = VK_JOY1_RSHOULDER + playerNum * INPUT_MAX_CONTROLLER_BUTTONS;
+
+	if (playerNum == 0) {
+		return inputKeyJustPressed(VK_LCTRL) || inputKeyJustPressed(rshoulderKey);
+	}
+
+	return inputKeyJustPressed(rshoulderKey);
+}
+
+s32 menuAlt2Pressed(s32 playerNum)
+{
+	const s32 lshoulderKey = VK_JOY1_LSHOULDER + playerNum * INPUT_MAX_CONTROLLER_BUTTONS;
+
+	if (playerNum == 0) {
+		return inputKeyJustPressed(VK_LALT) || inputKeyJustPressed(lshoulderKey);
+	}
+
+	return inputKeyJustPressed(lshoulderKey);
+}
+
+s32 menuAltAnyPressed(s32 playerNum)
+{
+	return menuAlt1Pressed(playerNum) || menuAlt2Pressed(playerNum);
+}
+
+void menuPlaySound(s32 menusound)
 {
 	s32 sound = -1;
 	s32 setpitch = false;
@@ -143,42 +183,42 @@ void menu_play_sound(s32 menusound)
 
 	switch (menusound) {
 	case MENUSOUND_SWIPE:
-		sound = SFXNUM_05BB_MENU_SWIPE;
+		sound = SFX_MENU_SWIPE;
 		break;
 	case MENUSOUND_OPENDIALOG:
-		sound = SFXNUM_05BC_MENU_OPENDIALOG;
+		sound = SFX_MENU_OPENDIALOG;
 		break;
 	case MENUSOUND_FOCUS:
-		sound = SFXNUM_0441_MENU_FOCUS;
+		sound = SFX_MENU_FOCUS;
 		break;
 	case MENUSOUND_SELECT:
-		sound = SFXNUM_05DD_MENU_SELECT;
+		sound = SFX_MENU_SELECT;
 		break;
 	case MENUSOUND_ERROR:
 		pitch = 0.4f;
-		sound = SFXMAP_8040_MENU_ERROR;
+		sound = SFX_MENU_ERROR;
 		setpitch = true;
 		break;
 	case MENUSOUND_EXPLOSION:
-		sound = SFXMAP_8098_EXPLOSION;
+		sound = SFX_EXPLOSION_8098;
 		break;
 	case MENUSOUND_TOGGLEON:
-		sound = SFXNUM_05DD_MENU_SELECT;
+		sound = SFX_MENU_SELECT;
 		break;
 	case MENUSOUND_TOGGLEOFF:
-		sound = SFXNUM_043E_MENU_SUBFOCUS;
+		sound = SFX_MENU_SUBFOCUS;
 		break;
 	case MENUSOUND_SUBFOCUS:
-		sound = SFXNUM_043E_MENU_SUBFOCUS;
+		sound = SFX_MENU_SUBFOCUS;
 		break;
 	case MENUSOUND_KEYBOARDFOCUS:
-		sound = SFXNUM_00EA_PICKUP_AMMO;
+		sound = SFX_PICKUP_AMMO;
 		setpitch = true;
 		setvol = true;
 		pitch = 3.5f;
 		break;
 	case MENUSOUND_KEYBOARDCANCEL:
-		sound = SFXNUM_002B_MENU_CANCEL;
+		sound = SFX_MENU_CANCEL;
 		setpitch = true;
 		pitch = 0.41904801130295f;
 		break;
@@ -192,14 +232,14 @@ void menu_play_sound(s32 menusound)
 		osSetThreadPri(0, osGetThreadPri(&g_AudioManager.thread) + 1);
 #endif
 
-		handle = snd_start(var80095200, sound, NULL, -1, -1, -1, -1, -1);
+		handle = sndStart(var80095200, sound, NULL, -1, -1, -1, -1, -1);
 
 		if (handle && setpitch) {
-			sndp_post_event(handle, AL_SNDP_PITCH_EVT, *(s32 *)&pitch);
+			audioPostEvent(handle, AL_SNDP_PITCH_EVT, *(s32 *)&pitch);
 		}
 
 		if (handle && setvol) {
-			sndp_post_event(handle, AL_SNDP_VOL_EVT, 0x4000);
+			audioPostEvent(handle, AL_SNDP_VOL_EVT, 0x4000);
 		}
 
 #if VERSION >= VERSION_NTSC_1_0
@@ -208,7 +248,7 @@ void menu_play_sound(s32 menusound)
 	}
 }
 
-bool menu_is_solo_mission_or_mp(void)
+bool menuIsSoloMissionOrMp(void)
 {
 	switch (g_MenuData.root) {
 	case MENUROOT_MAINMENU:
@@ -225,11 +265,11 @@ bool menu_is_solo_mission_or_mp(void)
 	return false;
 }
 
-bool current_player_is_menu_open_in_solo_or_mp(void)
+bool currentPlayerIsMenuOpenInSoloOrMp(void)
 {
 	s32 mpindex = g_Vars.currentplayerstats->mpindex;
 
-	if (menu_is_solo_mission_or_mp()) {
+	if (menuIsSoloMissionOrMp()) {
 		if (mpindex >= 4) {
 			mpindex -= 4;
 		}
@@ -242,7 +282,7 @@ bool current_player_is_menu_open_in_solo_or_mp(void)
 	return false;
 }
 
-bool menu_has_no_background(void)
+bool func0f0f0c68(void)
 {
 	if (g_MenuData.bg || g_MenuData.nextbg != 255) {
 		return false;
@@ -251,7 +291,7 @@ bool menu_has_no_background(void)
 	return true;
 }
 
-void menu_set_banner(s32 bannernum, bool allplayers)
+void menuSetBanner(s32 bannernum, bool allplayers)
 {
 	if (allplayers) {
 		g_MenuData.bannernum = bannernum;
@@ -262,9 +302,9 @@ void menu_set_banner(s32 bannernum, bool allplayers)
 }
 
 #if VERSION >= VERSION_NTSC_1_0
-Gfx *menu_render_banner(Gfx *gdl, s32 x1, s32 y1, s32 x2, s32 y2, bool big, s32 msgnum, s32 arg7, s32 arg8)
+Gfx *menuRenderBanner(Gfx *gdl, s32 x1, s32 y1, s32 x2, s32 y2, bool big, s32 msgnum, s32 arg7, s32 arg8)
 #else
-Gfx *menu_render_banner(Gfx *gdl, s32 x1, s32 y1, s32 x2, s32 y2, bool big, s32 msgnum)
+Gfx *menuRenderBanner(Gfx *gdl, s32 x1, s32 y1, s32 x2, s32 y2, bool big, s32 msgnum)
 #endif
 {
 	s32 midx;
@@ -317,10 +357,10 @@ Gfx *menu_render_banner(Gfx *gdl, s32 x1, s32 y1, s32 x2, s32 y2, bool big, s32 
 
 	y = (y1 + y2) / 2;
 
-	text_measure(&textheight, &textwidth, lang_get(msgs[msgnum]), chars, font, 0);
+	textMeasure(&textheight, &textwidth, langGet(msgs[msgnum]), chars, font, 0);
 
 	// "Please Wait..."
-	text_measure(&waitheight, &waitwidth, lang_get(L_MPMENU_495), chars, font, 0);
+	textMeasure(&waitheight, &waitwidth, langGet(L_MPMENU_495), chars, font, 0);
 
 #if VERSION >= VERSION_NTSC_1_0 && VERSION < VERSION_JPN_FINAL
 	if (msgs[msgnum] == L_MPMENU_491) { // "Checking Controller Pak"
@@ -335,128 +375,128 @@ Gfx *menu_render_banner(Gfx *gdl, s32 x1, s32 y1, s32 x2, s32 y2, bool big, s32 
 	bannerbottom = y + textheight + waitheight + 7;
 
 	// Black fill
-	gdl = text_begin_boxmode(gdl, 0x0000007f);
+	gdl = textSetPrimColour(gdl, 0x0000007f);
 	gDPFillRectangleScaled(gdl++, x1, y1, x2, y2);
-	gdl = text_end_boxmode(gdl);
+	gdl = text0f153838(gdl);
 
 	// Dark blue fill
-	gdl = text_begin_boxmode(gdl, 0x00007f7f);
+	gdl = textSetPrimColour(gdl, 0x00007f7f);
 	gDPFillRectangleScaled(gdl++, x1, bannertop, x2, bannerbottom);
-	gdl = text_end_boxmode(gdl);
+	gdl = text0f153838(gdl);
 
 	// Top and bottom borders (light blue)
-	gdl = text_begin_boxmode(gdl, 0x7f7fff7f);
+	gdl = textSetPrimColour(gdl, 0x7f7fff7f);
 	gDPFillRectangleScaled(gdl++, x1, bannerbottom + 2, x2, bannerbottom + 4);
 	gDPFillRectangleScaled(gdl++, x1, bannertop - 4, x2, bannertop - 2);
-	gdl = text_end_boxmode(gdl);
+	gdl = text0f153838(gdl);
 
-	gdl = text_begin(gdl);
+	gdl = text0f153628(gdl);
 
 	// Render the selected message's shadow
 	x = midx - textwidth / 2 + 2;
 	y += 2;
-	gdl = text_render_v2(gdl, &x, &y, lang_get(msgs[msgnum]),
-			chars, font, 0x000000ff, vi_get_width(), vi_get_width(), 0, 0);
+	gdl = textRenderProjected(gdl, &x, &y, langGet(msgs[msgnum]),
+			chars, font, 0x000000ff, viGetWidth(), viGetWidth(), 0, 0);
 
 	// Render "Please Wait..." shadow
 	x = midx - waitwidth / 2 + 2;
 	y += 3;
-	gdl = text_render_v2(gdl, &x, &y, lang_get(L_MPMENU_495),
-			chars, font, 0x000000ff, vi_get_width(), vi_get_width(), 0, 0);
+	gdl = textRenderProjected(gdl, &x, &y, langGet(L_MPMENU_495),
+			chars, font, 0x000000ff, viGetWidth(), viGetWidth(), 0, 0);
 
 	// Render the selected message proper
 	x = midx - textwidth / 2;
 	y = texttop;
-	gdl = text_render_v2(gdl, &x, &y, lang_get(msgs[msgnum]),
-			chars, font, 0xbfbfffff, vi_get_width(), vi_get_width(), 0, 0);
+	gdl = textRenderProjected(gdl, &x, &y, langGet(msgs[msgnum]),
+			chars, font, 0xbfbfffff, viGetWidth(), viGetWidth(), 0, 0);
 
 	// Render "Please Wait..." proper
 	x = midx - waitwidth / 2;
 	y += 3;
-	gdl = text_render_v2(gdl, &x, &y, lang_get(L_MPMENU_495),
-			chars, font, 0xbfbfffff, vi_get_width(), vi_get_width(), 0, 0);
+	gdl = textRenderProjected(gdl, &x, &y, langGet(L_MPMENU_495),
+			chars, font, 0xbfbfffff, viGetWidth(), viGetWidth(), 0, 0);
 
 #if VERSION >= VERSION_NTSC_1_0 && VERSION < VERSION_JPN_FINAL
 	if (msgs[msgnum] == L_MPMENU_491) { // "Checking Controller Pak"
 		// Render "TM"
 		y = texttop - 1;
 		x = textwidth / 2 + midx - 7;
-		gdl = text_render_v2(gdl, &x, &y, "TM",
-				g_CharsHandelGothicXs, g_FontHandelGothicXs, 0xbfbfffff, vi_get_width(), vi_get_width(), 0, 0);
+		gdl = textRenderProjected(gdl, &x, &y, "TM",
+				g_CharsHandelGothicXs, g_FontHandelGothicXs, 0xbfbfffff, viGetWidth(), viGetWidth(), 0, 0);
 	}
 #endif
 
-	gdl = text_end(gdl);
+	gdl = text0f153780(gdl);
 
 	return gdl;
 }
 
 u32 var80071464 = 0;
 
-struct menuitemredrawinfo *menu_find_item_redraw_info(struct menuitem *item)
+struct menudfc *func0f0f1338(struct menuitem *item)
 {
 	s32 i;
 
-	for (i = 0; i < ARRAYCOUNT(g_Menus[0].itemredrawinfo); i++) {
-		if (g_Menus[g_MpPlayerNum].itemredrawinfo[i].item == item) {
-			return &g_Menus[g_MpPlayerNum].itemredrawinfo[i];
+	for (i = 0; i < ARRAYCOUNT(g_Menus[0].unkdfc); i++) {
+		if (g_Menus[g_MpPlayerNum].unkdfc[i].item == item) {
+			return &g_Menus[g_MpPlayerNum].unkdfc[i];
 		}
 	}
 
 	return NULL;
 }
 
-void menu_set_item_redraw_timer(struct menuitem *item, f32 timer60)
+void func0f0f139c(struct menuitem *item, f32 arg1)
 {
-	struct menuitemredrawinfo *thing = menu_find_item_redraw_info(item);
+	struct menudfc *thing = func0f0f1338(item);
 
 	if (thing) {
-		thing->timer60 = timer60;
+		thing->unk04 = arg1;
 		return;
 	}
 
-	thing = menu_find_item_redraw_info(NULL);
+	thing = func0f0f1338(NULL);
 
 	if (thing) {
 		thing->item = item;
-		thing->timer60 = timer60;
+		thing->unk04 = arg1;
 	}
 }
 
-void menu_remove_item_redraw_info(struct menuitem *item)
+void func0f0f13ec(struct menuitem *item)
 {
-	struct menuitemredrawinfo *thing = menu_find_item_redraw_info(item);
+	struct menudfc *thing = func0f0f1338(item);
 
 	if (thing) {
 		thing->item = NULL;
 	}
 }
 
-void menu_increment_item_redraw_timers(void)
+void func0f0f1418(void)
 {
 	s32 i;
 
-	for (i = 0; i < ARRAYCOUNT(g_Menus[0].itemredrawinfo); i++) {
-		if (g_Menus[g_MpPlayerNum].itemredrawinfo[i].item) {
+	for (i = 0; i < ARRAYCOUNT(g_Menus[0].unkdfc); i++) {
+		if (g_Menus[g_MpPlayerNum].unkdfc[i].item) {
 #if VERSION >= VERSION_PAL_BETA
-			g_Menus[g_MpPlayerNum].itemredrawinfo[i].timer60 += g_Vars.diffframe60freal / 60.0f;
+			g_Menus[g_MpPlayerNum].unkdfc[i].unk04 += g_Vars.diffframe60freal / 60.0f;
 #else
-			g_Menus[g_MpPlayerNum].itemredrawinfo[i].timer60 += g_Vars.diffframe60f / 60.0f;
+			g_Menus[g_MpPlayerNum].unkdfc[i].unk04 += g_Vars.diffframe60f / 60.0f;
 #endif
 		}
 	}
 }
 
-void menu_remove_all_item_redraw_info(void)
+void func0f0f1494(void)
 {
 	s32 i;
 
-	for (i = 0; i < ARRAYCOUNT(g_Menus[0].itemredrawinfo); i++) {
-		g_Menus[g_MpPlayerNum].itemredrawinfo[i].item = NULL;
+	for (i = 0; i < ARRAYCOUNT(g_Menus[0].unkdfc); i++) {
+		g_Menus[g_MpPlayerNum].unkdfc[i].item = NULL;
 	}
 }
 
-char *menu_resolve_text(uintptr_t thing, void *dialogoritem)
+char *menuResolveText(uintptr_t thing, void *dialogoritem)
 {
 	char *(*handler)(void *dialogoritem) = (void *)thing;
 
@@ -467,15 +507,17 @@ char *menu_resolve_text(uintptr_t thing, void *dialogoritem)
 
 	// Text ID
 	if (thing < 0x5a00) {
-		return lang_get((u32)thing);
+		return langGet((uintptr_t)thing);
 	}
 
+#ifdef PLATFORM_N64 // unreliable otherwise, the above check should be enough?
 	if (thing > (uintptr_t)func0f1a78b0) {
 #if VERSION < VERSION_NTSC_1_0
 		CRASH();
 #endif
 		return NULL;
 	}
+#endif
 
 	// Function pointer
 	if (handler) {
@@ -485,17 +527,27 @@ char *menu_resolve_text(uintptr_t thing, void *dialogoritem)
 	return "";
 }
 
-char *menu_resolve_param2_text(struct menuitem *item)
+char *menuResolveParam2Text(struct menuitem *item)
 {
-	return menu_resolve_text(item->param2, item);
+#ifndef PLATFORM_N64
+	if (item->flags & MENUITEMFLAG_LITERAL_TEXT) {
+		return (const char *)item->param2;
+	}
+#endif
+	return menuResolveText(item->param2, item);
 }
 
-char *menu_resolve_dialog_title(struct menudialogdef *dialogdef)
+char *menuResolveDialogTitle(struct menudialogdef *dialogdef)
 {
-	return menu_resolve_text(dialogdef->title, dialogdef);
+#ifndef PLATFORM_N64
+	if (dialogdef->flags & MENUDIALOGFLAG_LITERAL_TEXT) {
+		return (const char *)dialogdef->title;
+	}
+#endif
+	return menuResolveText(dialogdef->title, dialogdef);
 }
 
-void menu_get_item_blocks_required(struct menuitem *item, s32 *numwords)
+void menuGetItemBlocksRequired(struct menuitem *item, s32 *numwords)
 {
 	switch (item->type) {
 	case MENUITEMTYPE_SLIDER:
@@ -532,7 +584,7 @@ void menu_get_item_blocks_required(struct menuitem *item, s32 *numwords)
 	}
 }
 
-void menu_calculate_item_size(struct menuitem *item, s16 *width, s16 *height, struct menudialog *dialog)
+void menuCalculateItemSize(struct menuitem *item, s16 *width, s16 *height, struct menudialog *dialog)
 {
 	char *text;
 	s32 textwidth;
@@ -545,9 +597,9 @@ void menu_calculate_item_size(struct menuitem *item, s16 *width, s16 *height, st
 	char *text2;
 	s32 numobjectives;
 
-	// Check if item's handler handles MENUOP_IS_HIDDEN
+	// Check if item's handler handles MENUOP_CHECKHIDDEN
 	if (item->handler && (item->flags & MENUITEMFLAG_SELECTABLE_OPENSDIALOG) == 0) {
-		if (item->handler(MENUOP_IS_HIDDEN, item, &handlerdata)) {
+		if (item->handler(MENUOP_CHECKHIDDEN, item, &handlerdata)) {
 			*width = 0;
 			*height = 0;
 			return;
@@ -581,7 +633,11 @@ void menu_calculate_item_size(struct menuitem *item, s16 *width, s16 *height, st
 		break;
 	case MENUITEMTYPE_KEYBOARD:
 		*width = 130;
+#ifndef PLATFORM_N64
+		*height = 84;
+#else
 		*height = 73;
+#endif
 		break;
 	case MENUITEMTYPE_LIST:
 		if (item->param2 > 0) {
@@ -607,7 +663,7 @@ void menu_calculate_item_size(struct menuitem *item, s16 *width, s16 *height, st
 #endif
 		break;
 	case MENUITEMTYPE_DROPDOWN:
-		text = menu_resolve_param2_text(item);
+		text = menuResolveParam2Text(item);
 
 		if (text && strcmp(text, "") == 0) {
 			*width = 0;
@@ -617,7 +673,7 @@ void menu_calculate_item_size(struct menuitem *item, s16 *width, s16 *height, st
 			textheight = 0;
 
 			if (text != NULL) {
-				text_measure(&textheight, &textwidth, text, g_CharsHandelGothicSm, g_FontHandelGothicSm, 0);
+				textMeasure(&textheight, &textwidth, text, g_CharsHandelGothicSm, g_FontHandelGothicSm, 0);
 			}
 
 			*width = textwidth + 20;
@@ -625,10 +681,10 @@ void menu_calculate_item_size(struct menuitem *item, s16 *width, s16 *height, st
 
 			if (item->handler) {
 				handlerdata2.dropdown.value = 0;
-				item->handler(MENUOP_GET_SELECTED_INDEX, item, &handlerdata2);
+				item->handler(MENUOP_GETSELECTEDINDEX, item, &handlerdata2);
 				handlerdata2.dropdown.unk04 = 0;
-				text2 = (char *)item->handler(MENUOP_GET_OPTION_TEXT, item, &handlerdata2);
-				text_measure(&textheight, &textwidth, text2, g_CharsHandelGothicSm, g_FontHandelGothicSm, 0);
+				text2 = (char *)item->handler(MENUOP_GETOPTIONTEXT, item, &handlerdata2);
+				textMeasure(&textheight, &textwidth, text2, g_CharsHandelGothicSm, g_FontHandelGothicSm, 0);
 
 #if VERSION >= VERSION_PAL_FINAL
 				if ((item->flags & MENUITEMFLAG_ADJUSTWIDTH) == 0) {
@@ -659,6 +715,9 @@ void menu_calculate_item_size(struct menuitem *item, s16 *width, s16 *height, st
 		if (item->flags & MENUITEMFLAG_SLIDER_ALTSIZE) {
 			*height = 22;
 			*width = 120;
+		} else if (item->flags & MENUITEMFLAG_SLIDER_WIDE) {
+			*width = 200;
+			*height = VERSION == VERSION_JPN_FINAL ? 14 : 12;
 		}
 		break;
 	case MENUITEMTYPE_CHECKBOX:
@@ -667,7 +726,7 @@ void menu_calculate_item_size(struct menuitem *item, s16 *width, s16 *height, st
 			font = g_FontHandelGothicXs;
 		}
 
-		text = menu_resolve_param2_text(item);
+		text = menuResolveParam2Text(item);
 
 		if (text == NULL) {
 			*width = 120;
@@ -675,7 +734,7 @@ void menu_calculate_item_size(struct menuitem *item, s16 *width, s16 *height, st
 			*width = 0;
 			*height = 0;
 		} else {
-			text_measure(&textheight, &textwidth, text, chars, font, 0);
+			textMeasure(&textheight, &textwidth, text, chars, font, 0);
 			*width = (s16)textwidth + 34;
 		}
 		*height = VERSION == VERSION_JPN_FINAL ? 14 : 12;
@@ -705,7 +764,7 @@ void menu_calculate_item_size(struct menuitem *item, s16 *width, s16 *height, st
 		break;
 	case MENUITEMTYPE_LABEL:
 	case MENUITEMTYPE_SELECTABLE:
-		text = menu_resolve_param2_text(item);
+		text = menuResolveParam2Text(item);
 
 		if (text == NULL) {
 			*width = 0;
@@ -727,7 +786,7 @@ void menu_calculate_item_size(struct menuitem *item, s16 *width, s16 *height, st
 			*height = 0;
 			*width = *height;
 		} else {
-			text_measure(&textheight, &textwidth, text, chars, font, 0);
+			textMeasure(&textheight, &textwidth, text, chars, font, 0);
 			*width = (s16)textwidth + 8;
 
 			if ((item->flags & (MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_ADJUSTWIDTH)) == 0) {
@@ -745,11 +804,16 @@ void menu_calculate_item_size(struct menuitem *item, s16 *width, s16 *height, st
 #endif
 
 			if ((item->flags & (MENUITEMFLAG_LABEL_HASRIGHTTEXT | MENUITEMFLAG_BIGFONT)) == 0) {
-				text = menu_resolve_text(item->param3, item);
+#ifndef PLATFORM_N64
+				if (item->flags & MENUITEMFLAG_LITERAL_TEXT) {
+					text = (const char *)item->param3;
+				} else
+#endif
+				text = menuResolveText(item->param3, item);
 
 				// @bug: This is not how you check for an empty string
 				if (text != NULL && text != "") {
-					text_measure(&textheight, &textwidth, text, chars, font, 0);
+					textMeasure(&textheight, &textwidth, text, chars, font, 0);
 					*width += textwidth + 5;
 
 					if (item->flags & MENUITEMFLAG_ADJUSTWIDTH) {
@@ -760,7 +824,7 @@ void menu_calculate_item_size(struct menuitem *item, s16 *width, s16 *height, st
 		}
 
 		if (item->flags & MENUITEMFLAG_BIGFONT) {
-			*height = 28;
+			*height = 26;
 			*width += 36;
 		}
 
@@ -777,7 +841,7 @@ void menu_calculate_item_size(struct menuitem *item, s16 *width, s16 *height, st
 		*width = 240;
 
 		for (i = 0; i < ARRAYCOUNT(g_Briefing.objectivenames); i++) {
-			if (g_Briefing.objectivenames[i] && (g_Briefing.objectivedifficulties[i] & (1 << lv_get_difficulty()))) {
+			if (g_Briefing.objectivenames[i] && (g_Briefing.objectivedifficulties[i] & (1 << lvGetDifficulty()))) {
 				numobjectives++;
 			}
 		}
@@ -857,7 +921,7 @@ const char var7f1b25a8[] = "IG:) style %d gbHead:%d\n";
 const char var7f1b25c4[] = "GRABBED GUN MEM!\n";
 const char var7f1b25d8[] = "Freeing challenge mem\n";
 
-void dialog_init_blocks(struct menudialogdef *dialogdef, struct menudialog *dialog, struct menu *menu)
+void func0f0f1d6c(struct menudialogdef *dialogdef, struct menudialog *dialog, struct menu *menu)
 {
 	s32 colindex = menu->colend - 1;
 	s32 rowindex = menu->rowend;
@@ -892,7 +956,7 @@ void dialog_init_blocks(struct menudialogdef *dialogdef, struct menudialog *dial
 			}
 
 			numblocksthisitem = -1;
-			menu_get_item_blocks_required(item, &numblocksthisitem);
+			menuGetItemBlocksRequired(item, &numblocksthisitem);
 
 			if (numblocksthisitem != -1) {
 				menu->rows[rowindex].blockindex = blockindex;
@@ -914,7 +978,7 @@ void dialog_init_blocks(struct menudialogdef *dialogdef, struct menudialog *dial
 	menu->blockend = blockindex;
 }
 
-void dialog_tick_height(struct menudialog *dialog)
+void dialog0f0f1ef4(struct menudialog *dialog)
 {
 	s32 bodyheight = dialog->height - LINEHEIGHT - 1;
 	s32 itemheight;
@@ -967,7 +1031,7 @@ void dialog_tick_height(struct menudialog *dialog)
 	}
 }
 
-void dialog_calculate_content_size(struct menudialogdef *dialogdef, struct menudialog *dialog, struct menu *menu)
+void dialogCalculateContentSize(struct menudialogdef *dialogdef, struct menudialog *dialog, struct menu *menu)
 {
 	s32 contentheight;
 	s32 rowindex;
@@ -1000,7 +1064,7 @@ void dialog_calculate_content_size(struct menudialogdef *dialogdef, struct menud
 				rowindex = menu->cols[colindex].rowstart;
 			}
 
-			menu_calculate_item_size(item, &width, &height, dialog);
+			menuCalculateItemSize(item, &width, &height, dialog);
 
 			if (width > menu->cols[colindex].width) {
 				menu->cols[colindex].width = width;
@@ -1029,7 +1093,7 @@ void dialog_calculate_content_size(struct menudialogdef *dialogdef, struct menud
 #if VERSION == VERSION_JPN_FINAL
 	contentheight += 15;
 
-	if ((dialog->definition->flags & MENUDIALOGFLAG_LESSHEIGHT) == 0) {
+	if ((dialog->definition->flags & MENUDIALOGFLAG_1000) == 0) {
 		contentheight += 2;
 	}
 #else
@@ -1039,7 +1103,7 @@ void dialog_calculate_content_size(struct menudialogdef *dialogdef, struct menud
 	// Calculate and consider the title width.
 	// Some of the multiplayer dialogs have a player number
 	// in the top right, so extra space is considered for those.
-	text_measure(&textheight, &textwidth, menu_resolve_dialog_title(dialog->definition), g_CharsHandelGothicSm, g_FontHandelGothicSm, 0);
+	textMeasure(&textheight, &textwidth, menuResolveDialogTitle(dialog->definition), g_CharsHandelGothicSm, g_FontHandelGothicSm, 0);
 
 	titleextra = 8;
 
@@ -1064,7 +1128,7 @@ void dialog_calculate_content_size(struct menudialogdef *dialogdef, struct menud
  * Find the given item in the given dialog, and write its column and row indices
  * to the given pointers. Return the y value of the item relative to the dialog.
  */
-s32 dialog_find_item(struct menudialog *dialog, struct menuitem *item, s32 *rowindex, s32 *colindex)
+s32 dialogFindItem(struct menudialog *dialog, struct menuitem *item, s32 *rowindex, s32 *colindex)
 {
 	for (*colindex = dialog->colstart; *colindex < dialog->colstart + dialog->numcols; *colindex += 1) {
 		s32 y = 0;
@@ -1092,7 +1156,7 @@ s32 dialog_find_item(struct menudialog *dialog, struct menuitem *item, s32 *rowi
  * If this returns true, the scrollable is rendered with less padding and
  * scrolling is disabled.
  */
-bool menu_is_scrollable_unscrollable(struct menuitem *item)
+bool menuIsScrollableUnscrollable(struct menuitem *item)
 {
 	if (item->type == MENUITEMTYPE_SCROLLABLE) {
 		if (item->param == DESCRIPTION_MPCONFIG
@@ -1107,7 +1171,7 @@ bool menu_is_scrollable_unscrollable(struct menuitem *item)
 	return false;
 }
 
-bool menu_is_item_disabled(struct menuitem *item, struct menudialog *dialog)
+bool menuIsItemDisabled(struct menuitem *item, struct menudialog *dialog)
 {
 	union handlerdata sp30;
 	s16 width;
@@ -1118,21 +1182,21 @@ bool menu_is_item_disabled(struct menuitem *item, struct menudialog *dialog)
 		return true;
 	}
 
-	if (mp_is_player_locked_out(g_MpPlayerNum) && item->flags & MENUITEMFLAG_LOCKABLEMAJOR) {
+	if (mpIsPlayerLockedOut(g_MpPlayerNum) && item->flags & MENUITEMFLAG_LOCKABLEMAJOR) {
 		return true;
 	}
 
-	if (menu_is_scrollable_unscrollable(item)) {
+	if (menuIsScrollableUnscrollable(item)) {
 		return true;
 	}
 
 	if (item->handler
 			&& (item->flags & MENUITEMFLAG_SELECTABLE_OPENSDIALOG) == 0
-			&& item->handler(MENUOP_IS_DISABLED, item, &sp30)) {
+			&& item->handler(MENUOP_CHECKDISABLED, item, &sp30)) {
 		return true;
 	}
 
-	menu_calculate_item_size(item, &width, &height, dialog);
+	menuCalculateItemSize(item, &width, &height, dialog);
 
 	if (height == 0) {
 		return true;
@@ -1141,7 +1205,7 @@ bool menu_is_item_disabled(struct menuitem *item, struct menudialog *dialog)
 	return false;
 }
 
-bool menu_is_item_focusable(struct menuitem *item, struct menudialog *dialog, s32 arg2)
+bool menuIsItemFocusable(struct menuitem *item, struct menudialog *dialog, s32 arg2)
 {
 	s32 rowindex;
 	s32 colindex;
@@ -1156,22 +1220,25 @@ bool menu_is_item_focusable(struct menuitem *item, struct menudialog *dialog, s3
 	case MENUITEMTYPE_METER:
 	case MENUITEMTYPE_MARQUEE:
 	case MENUITEMTYPE_CONTROLLER:
+#ifndef PLATFORM_N64
+	case MENUITEMTYPE_COLORBOX:
+#endif
 		return false;
 	case MENUITEMTYPE_10:
 	case MENUITEMTYPE_14:
 	case MENUITEMTYPE_16:
 	case MENUITEMTYPE_18:
-		dialog_find_item(dialog, item, &rowindex, &colindex);
+		dialogFindItem(dialog, item, &rowindex, &colindex);
 	}
 
-	if (menu_is_item_disabled(item, dialog)) {
+	if (menuIsItemDisabled(item, dialog)) {
 		return false;
 	}
 
 	return true;
 }
 
-struct menuitem *dialog_find_item_at_col_y(s32 targety, s32 colindex, struct menudialogdef *dialogdef, s32 *rowindexptr, struct menudialog *dialog)
+struct menuitem *dialogFindItemAtColY(s32 targety, s32 colindex, struct menudialogdef *dialogdef, s32 *rowindexptr, struct menudialog *dialog)
 {
 	struct menuitem *result = NULL;
 	bool done = false;
@@ -1182,7 +1249,7 @@ struct menuitem *dialog_find_item_at_col_y(s32 targety, s32 colindex, struct men
 	for (i = 0, y = 0; !done && i < g_Menus[g_MpPlayerNum].cols[colindex].numrows; rowindex++, i++) {
 		struct menuitem *item = &dialogdef->items[g_Menus[g_MpPlayerNum].rows[rowindex].itemindex];
 
-		if (menu_is_item_focusable(item, dialog, 1)) {
+		if (menuIsItemFocusable(item, dialog, 1)) {
 			result = item;
 
 			if (y >= targety) {
@@ -1198,14 +1265,14 @@ struct menuitem *dialog_find_item_at_col_y(s32 targety, s32 colindex, struct men
 	return result;
 }
 
-struct menuitem *dialog_find_first_item(struct menudialog *dialog)
+struct menuitem *dialogFindFirstItem(struct menudialog *dialog)
 {
 	s32 i;
 	s32 colindex = dialog->colstart;
 	s32 rowindex;
 
 	for (i = 0; i < dialog->numcols; i++) {
-		struct menuitem *item = dialog_find_item_at_col_y(0, colindex, dialog->definition, &rowindex, dialog);
+		struct menuitem *item = dialogFindItemAtColY(0, colindex, dialog->definition, &rowindex, dialog);
 
 		if (item != NULL) {
 			return item;
@@ -1214,19 +1281,19 @@ struct menuitem *dialog_find_first_item(struct menudialog *dialog)
 		colindex++;
 	}
 
-	menu_resolve_dialog_title(dialog->definition);
+	menuResolveDialogTitle(dialog->definition);
 
 	return dialog->definition->items;
 }
 
-struct menuitem *dialog_find_first_item_right(struct menudialog *dialog)
+struct menuitem *dialogFindFirstItemRight(struct menudialog *dialog)
 {
 	s32 i;
 	s32 colindex = dialog->colstart + dialog->numcols - 1;
 	s32 rowindex;
 
 	for (i = 0; i < dialog->numcols; i++) {
-		struct menuitem *item = dialog_find_item_at_col_y(0, colindex, dialog->definition, &rowindex, dialog);
+		struct menuitem *item = dialogFindItemAtColY(0, colindex, dialog->definition, &rowindex, dialog);
 
 		if (item != NULL) {
 			return item;
@@ -1235,12 +1302,12 @@ struct menuitem *dialog_find_first_item_right(struct menudialog *dialog)
 		colindex--;
 	}
 
-	menu_resolve_dialog_title(dialog->definition);
+	menuResolveDialogTitle(dialog->definition);
 
 	return dialog->definition->items;
 }
 
-void dialog_change_item_focus_vertically(struct menudialog *dialog, s32 updown)
+void dialogChangeItemFocusVertically(struct menudialog *dialog, s32 updown)
 {
 	s32 rowindex;
 	s32 colindex;
@@ -1250,7 +1317,7 @@ void dialog_change_item_focus_vertically(struct menudialog *dialog, s32 updown)
 	s32 start;
 	s32 end;
 
-	dialog_find_item(dialog, dialog->focuseditem, &rowindex, &colindex);
+	dialogFindItem(dialog, dialog->focuseditem, &rowindex, &colindex);
 
 	startrowindex = rowindex;
 
@@ -1269,7 +1336,7 @@ void dialog_change_item_focus_vertically(struct menudialog *dialog, s32 updown)
 
 		item = &dialog->definition->items[g_Menus[g_MpPlayerNum].rows[rowindex].itemindex];
 
-		if (menu_is_item_focusable(item, dialog, updown)) {
+		if (menuIsItemFocusable(item, dialog, updown)) {
 			done = true;
 		}
 
@@ -1281,13 +1348,13 @@ void dialog_change_item_focus_vertically(struct menudialog *dialog, s32 updown)
 	dialog->focuseditem = item;
 }
 
-s32 dialog_change_item_focus_horizontally(struct menudialog *dialog, s32 leftright)
+s32 dialogChangeItemFocusHorizontally(struct menudialog *dialog, s32 leftright)
 {
 	s32 rowindex;
 	s32 colindex;
 	bool done = false;
 	s32 swipedir = 0;
-	s32 y = dialog_find_item(dialog, dialog->focuseditem, &rowindex, &colindex);
+	s32 y = dialogFindItem(dialog, dialog->focuseditem, &rowindex, &colindex);
 	s32 startcolindex = colindex;
 	struct menuitem *item;
 
@@ -1304,7 +1371,7 @@ s32 dialog_change_item_focus_horizontally(struct menudialog *dialog, s32 leftrig
 			colindex = dialog->colstart + dialog->numcols - 1;
 		}
 
-		item = dialog_find_item_at_col_y(y, colindex, dialog->definition, &rowindex, dialog);
+		item = dialogFindItemAtColY(y, colindex, dialog->definition, &rowindex, dialog);
 
 		if (item) {
 			done = true;
@@ -1322,27 +1389,75 @@ s32 dialog_change_item_focus_horizontally(struct menudialog *dialog, s32 leftrig
 	return swipedir;
 }
 
-s32 dialog_change_item_focus(struct menudialog *dialog, s32 leftright, s32 updown)
+#ifndef PLATFORM_N64
+
+bool dialogChangeItemFocusWithMouse(struct menudialog *dialog, s32 mx, s32 my)
+{
+	struct menu *menu = &g_Menus[g_MpPlayerNum];
+	s32 col, row;
+	s32 curx, cury;
+	s32 colwidth = 0;
+
+	// only allow mouse control of player 1 menus; ignore mouse if navigating with keyboard
+	if (menu->playernum != 0 || !g_MenuUsingMouse) {
+		return false;
+	}
+
+	curx = dialog->x;
+
+	for (col = 0; col < dialog->numcols; col++, curx += colwidth) {
+		s32 colindex = dialog->colstart + col;
+		colwidth = menu->cols[colindex].width;
+		if (mx <= curx || mx >= curx + colwidth) {
+			continue;
+		}
+
+		cury = dialog->y + LINEHEIGHT + 1 + dialog->scroll;
+		for (row = 0; row < menu->cols[colindex].numrows; row++) {
+			s32 rowindex = menu->cols[colindex].rowstart + row;
+			s32 rowheight = menu->rows[rowindex].height;
+			struct menuitem *item = &dialog->definition->items[menu->rows[rowindex].itemindex];
+			if (my > cury && my < cury + rowheight &&
+					item != dialog->focuseditem && menuIsItemFocusable(item, dialog, 0)) {
+				dialog->focuseditem = item;
+				return true;
+			}
+			cury += rowheight;
+		}
+	}
+
+	return false;
+}
+
+#endif
+
+s32 dialogChangeItemFocus(struct menudialog *dialog, struct menuinputs *inputs)
 {
 	s32 swipedir = 0;
 
-	if (leftright == 0 && updown == 0) {
+	if (inputs->leftright == 0 && inputs->updown == 0) {
+#ifndef PLATFORM_N64
+		if (!dialogChangeItemFocusWithMouse(dialog, inputs->mousex, inputs->mousey)) {
+			return 0;
+		}
+#else
 		return 0;
+#endif
 	}
 
-	if (updown != 0) {
-		dialog_change_item_focus_vertically(dialog, updown);
+	if (inputs->updown != 0) {
+		dialogChangeItemFocusVertically(dialog, inputs->updown);
 	}
 
-	if (leftright != 0) {
-		swipedir = dialog_change_item_focus_horizontally(dialog, leftright);
+	if (inputs->leftright != 0) {
+		swipedir = dialogChangeItemFocusHorizontally(dialog, inputs->leftright);
 	}
 
 	if (dialog->focuseditem != 0) {
 		if (dialog->focuseditem->handler != NULL) {
 			if ((dialog->focuseditem->flags & MENUITEMFLAG_SELECTABLE_OPENSDIALOG) == 0) {
 				union handlerdata data;
-				dialog->focuseditem->handler(MENUOP_ON_FOCUS, dialog->focuseditem, &data);
+				dialog->focuseditem->handler(MENUOP_FOCUS, dialog->focuseditem, &data);
 			}
 		}
 	}
@@ -1350,7 +1465,7 @@ s32 dialog_change_item_focus(struct menudialog *dialog, s32 leftright, s32 updow
 	return swipedir;
 }
 
-void menu_open_dialog(struct menudialogdef *dialogdef, struct menudialog *dialog, struct menu *menu)
+void menuOpenDialog(struct menudialogdef *dialogdef, struct menudialog *dialog, struct menu *menu)
 {
 	union handlerdata data3;
 	struct menuitem *item;
@@ -1371,13 +1486,13 @@ void menu_open_dialog(struct menudialogdef *dialogdef, struct menudialog *dialog
 		break;
 	}
 
-	dialog_init_blocks(dialogdef, dialog, menu);
-	dialog_init_items(dialog);
+	func0f0f1d6c(dialogdef, dialog, menu);
+	dialogInitItems(dialog);
 
 	dialog->type = dialogdef->type;
 	dialog->transitionfrac = -1;
 	dialog->redrawtimer = 0;
-	dialog->unk4c = DTOR(360) * RANDOMFRAC();
+	dialog->unk4c = RANDOMFRAC() * M_TAU;
 
 	g_Menus[g_MpPlayerNum].curdialog->state = MENUDIALOGSTATE_PREOPEN;
 	g_Menus[g_MpPlayerNum].curdialog->statefrac = 0;
@@ -1386,7 +1501,7 @@ void menu_open_dialog(struct menudialogdef *dialogdef, struct menudialog *dialog
 	dialog->unk58 = 0;
 	dialog->unk5c = 0;
 
-	dialog->focuseditem = dialog_find_first_item(dialog);
+	dialog->focuseditem = dialogFindFirstItem(dialog);
 
 	// Check if any items should be focused automatically
 	item = dialog->definition->items;
@@ -1394,7 +1509,7 @@ void menu_open_dialog(struct menudialogdef *dialogdef, struct menudialog *dialog
 	while (item->type != MENUITEMTYPE_END) {
 		if (item->handler
 				&& (item->flags & MENUITEMFLAG_SELECTABLE_OPENSDIALOG) == 0
-				&& item->handler(MENUOP_IS_PREFOCUSED, item, &data1)) {
+				&& item->handler(MENUOP_CHECKPREFOCUSED, item, &data1)) {
 			dialog->focuseditem = item;
 		}
 
@@ -1405,7 +1520,7 @@ void menu_open_dialog(struct menudialogdef *dialogdef, struct menudialog *dialog
 	if (dialog->focuseditem
 			&& dialog->focuseditem->handler
 			&& (dialog->focuseditem->flags & MENUITEMFLAG_SELECTABLE_OPENSDIALOG) == 0) {
-		dialog->focuseditem->handler(MENUOP_ON_FOCUS, dialog->focuseditem, &data2);
+		dialog->focuseditem->handler(MENUOP_FOCUS, dialog->focuseditem, &data2);
 	}
 
 	dialog->dimmed = false;
@@ -1413,11 +1528,11 @@ void menu_open_dialog(struct menudialogdef *dialogdef, struct menudialog *dialog
 	dialog->dstscroll = 0;
 
 	if (dialogdef->handler) {
-		dialogdef->handler(MENUOP_ON_OPEN, dialogdef, &data3);
+		dialogdef->handler(MENUOP_OPEN, dialogdef, &data3);
 	}
 
-	dialog_calculate_content_size(dialogdef, dialog, menu);
-	dialog_calculate_position(dialog);
+	dialogCalculateContentSize(dialogdef, dialog, menu);
+	dialogCalculatePosition(dialog);
 
 	dialog->x = dialog->dstx;
 	dialog->y = dialog->dsty;
@@ -1425,10 +1540,16 @@ void menu_open_dialog(struct menudialogdef *dialogdef, struct menudialog *dialog
 	dialog->height = dialog->dstheight;
 }
 
-void menu_push_dialog(struct menudialogdef *dialogdef)
+void menuPushDialog(struct menudialogdef *dialogdef)
 {
+#ifndef PLATFORM_N64
+	// Prevent the mouse from immediately changing a slider's value, as was
+	// happening while entering the Audio menu.
+	g_AllowMouseHeld = false;
+#endif
+
 	if (dialogdef) {
-		menu_unset_model(&g_Menus[g_MpPlayerNum].menumodel);
+		menuUnsetModel(&g_Menus[g_MpPlayerNum].menumodel);
 
 		if (g_Menus[g_MpPlayerNum].depth < 6 && g_Menus[g_MpPlayerNum].numdialogs < ARRAYCOUNT(g_Menus[0].dialogs)) {
 			struct menulayer *layer = &g_Menus[g_MpPlayerNum].layers[g_Menus[g_MpPlayerNum].depth];
@@ -1446,10 +1567,10 @@ void menu_push_dialog(struct menudialogdef *dialogdef)
 			g_Menus[g_MpPlayerNum].curdialog = dialog;
 			dialog->swipedir = 0;
 
-			menu_open_dialog(dialogdef, dialog, &g_Menus[g_MpPlayerNum]);
+			menuOpenDialog(dialogdef, dialog, &g_Menus[g_MpPlayerNum]);
 
-			dialog->dstx = (vi_get_width() - dialog->width) / 2;
-			dialog->dsty = (vi_get_height() - dialog->height) / 2;
+			dialog->dstx = (viGetWidth() - dialog->width) / 2;
+			dialog->dsty = (viGetHeight() - dialog->height) / 2;
 
 			g_Menus[g_MpPlayerNum].fm.unke40_00 = true;
 			sibling = dialogdef->nextsibling;
@@ -1467,10 +1588,10 @@ void menu_push_dialog(struct menudialogdef *dialogdef)
 
 					dialog->swipedir = -1;
 
-					menu_open_dialog(sibling, dialog, &g_Menus[g_MpPlayerNum]);
+					menuOpenDialog(sibling, dialog, &g_Menus[g_MpPlayerNum]);
 
 					dialog->dstx = dialog->x = -SCREEN_320;
-					dialog->dsty = dialog->y = (vi_get_height() - dialog->height) / 2;
+					dialog->dsty = dialog->y = (viGetHeight() - dialog->height) / 2;
 					dialog->type = 0;
 
 					sibling = sibling->nextsibling;
@@ -1479,26 +1600,26 @@ void menu_push_dialog(struct menudialogdef *dialogdef)
 
 			if (sibling);
 
-			menu_play_sound(MENUSOUND_OPENDIALOG);
+			menuPlaySound(MENUSOUND_OPENDIALOG);
 
 			if (dialogdef->type == MENUDIALOGTYPE_DANGER) {
-				menu_play_sound(MENUSOUND_ERROR);
+				menuPlaySound(MENUSOUND_ERROR);
 			}
 
 			if (dialogdef->type == MENUDIALOGTYPE_SUCCESS) {
-				menu_play_sound(MENUSOUND_SUCCESS);
+				menuPlaySound(MENUSOUND_SUCCESS);
 			}
 		}
 	}
 }
 
 #if VERSION >= VERSION_NTSC_1_0
-bool menu_save_file(s32 arg0)
+bool func0f0f3220(s32 arg0)
 {
 	bool save = true;
 	s32 i;
 
-	if (g_MenuData.pendingsaves[arg0] == 4) {
+	if (g_MenuData.unk669[arg0] == 4) {
 		s32 prevplayernum = g_MpPlayerNum;
 
 		for (i = ARRAYCOUNT(g_Menus) - 1; i >= 0; i--) {
@@ -1522,30 +1643,30 @@ bool menu_save_file(s32 arg0)
 		}
 
 		if (save) {
-			filemgr_save_or_load(&g_GameFileGuid, FILEOP_SAVE_GAME_000, 0);
+			filemgrSaveOrLoad(&g_GameFileGuid, FILEOP_SAVE_GAME_000, 0);
 		}
 
 		g_MpPlayerNum = prevplayernum;
-	} else if (g_MenuData.pendingsaves[arg0] < 4) {
+	} else if (g_MenuData.unk669[arg0] < 4) {
 		s32 prevplayernum = g_MpPlayerNum;
-		g_MpPlayerNum = g_MenuData.pendingsaves[arg0];
-		filemgr_save_or_load(&g_PlayerConfigsArray[g_MpPlayerNum].fileguid, FILEOP_SAVE_MPPLAYER, g_MpPlayerNum);
+		g_MpPlayerNum = g_MenuData.unk669[arg0];
+		filemgrSaveOrLoad(&g_PlayerConfigsArray[g_MpPlayerNum].fileguid, FILEOP_SAVE_MPPLAYER, g_MpPlayerNum);
 		save = true;
 		g_MpPlayerNum = prevplayernum;
 	}
 
 	if (save) {
-		g_MenuData.numpendingsaves--;
+		g_MenuData.unk66e--;
 	}
 
 	return save;
 }
 #else
-void menu_save_file(s32 arg0)
+void func0f0f3220(s32 arg0)
 {
 	s32 i;
 
-	if (g_MenuData.pendingsaves[arg0] == 4) {
+	if (g_MenuData.unk669[arg0] == 4) {
 		s32 prevplayernum = g_MpPlayerNum;
 
 		for (i = ARRAYCOUNT(g_Menus) - 1; i >= 0; i--) {
@@ -1554,21 +1675,21 @@ void menu_save_file(s32 arg0)
 			}
 		}
 
-		filemgr_save_or_load(&g_GameFileGuid, FILEOP_SAVE_GAME_000, 0);
+		filemgrSaveOrLoad(&g_GameFileGuid, FILEOP_SAVE_GAME_000, 0);
 
 		g_MpPlayerNum = prevplayernum;
-	} else if (g_MenuData.pendingsaves[arg0] < 4) {
+	} else if (g_MenuData.unk669[arg0] < 4) {
 		s32 prevplayernum = g_MpPlayerNum;
-		g_MpPlayerNum = g_MenuData.pendingsaves[arg0];
-		filemgr_save_or_load(&g_PlayerConfigsArray[g_MpPlayerNum].fileguid, FILEOP_SAVE_MPPLAYER, g_MpPlayerNum);
+		g_MpPlayerNum = g_MenuData.unk669[arg0];
+		filemgrSaveOrLoad(&g_PlayerConfigsArray[g_MpPlayerNum].fileguid, FILEOP_SAVE_MPPLAYER, g_MpPlayerNum);
 		g_MpPlayerNum = prevplayernum;
 	}
 
-	g_MenuData.numpendingsaves--;
+	g_MenuData.unk66e--;
 }
 #endif
 
-void menu_close_dialog(void)
+void menuCloseDialog(void)
 {
 	if (g_Menus[g_MpPlayerNum].depth > 0) {
 		union handlerdata data;
@@ -1580,7 +1701,7 @@ void menu_close_dialog(void)
 			data.dialog1.preventclose = false;
 
 			if (layer->siblings[i]->definition->handler) {
-				layer->siblings[i]->definition->handler(MENUOP_ON_CLOSE, layer->siblings[i]->definition, &data);
+				layer->siblings[i]->definition->handler(MENUOP_CLOSE, layer->siblings[i]->definition, &data);
 			}
 
 			if (value_prevent == data.dialog1.preventclose) {
@@ -1597,19 +1718,19 @@ void menu_close_dialog(void)
 		g_Menus[g_MpPlayerNum].blockend = layer->siblings[0]->blockstart;
 		g_Menus[g_MpPlayerNum].depth--;
 
-		menu_play_sound(MENUSOUND_0B);
+		menuPlaySound(MENUSOUND_0B);
 	}
 
 #if VERSION >= VERSION_NTSC_1_0
-	if (g_MenuData.numpendingsaves > 0 && g_Menus[g_MpPlayerNum].depth == 0)
+	if (g_MenuData.unk66e > 0 && g_Menus[g_MpPlayerNum].depth == 0)
 #else
-	if (g_MenuData.numpendingsaves > 0)
+	if (g_MenuData.unk66e > 0)
 #endif
 	{
-		s32 value = g_MenuData.numpendingsaves;
+		s32 value = g_MenuData.unk66e;
 
 		while (value >= 0) {
-			menu_save_file(value);
+			func0f0f3220(value);
 			value--;
 		}
 	}
@@ -1622,14 +1743,14 @@ void menu_close_dialog(void)
 	}
 }
 
-void menu_update_cur_frame(void)
+void menuUpdateCurFrame(void)
 {
 	s32 depth = g_Menus[g_MpPlayerNum].depth;
 
 	if (depth == 0) {
 		// No more parent menus - return control to the player
 		g_Vars.currentplayer->joybutinhibit = 0xffffffff;
-		menu_close();
+		menuClose();
 		g_Menus[g_MpPlayerNum].curdialog = NULL;
 	} else {
 		// Set up parent menu
@@ -1638,19 +1759,19 @@ void menu_update_cur_frame(void)
 	}
 }
 
-void menu_pop_dialog(void)
+void menuPopDialog(void)
 {
-	menu_close_dialog();
-	menu_update_cur_frame();
+	menuCloseDialog();
+	menuUpdateCurFrame();
 }
 
-void menu_replace_current_dialog(struct menudialogdef *dialogdef)
+void func0f0f3704(struct menudialogdef *dialogdef)
 {
-	menu_close_dialog();
-	menu_push_dialog(dialogdef);
+	menuCloseDialog();
+	menuPushDialog(dialogdef);
 }
 
-void menu_configure_model(struct menumodel *menumodel, f32 x, f32 y, f32 z, f32 rotx, f32 roty, f32 rotz, f32 scale, u8 flags)
+void menuConfigureModel(struct menumodel *menumodel, f32 x, f32 y, f32 z, f32 rotx, f32 roty, f32 rotz, f32 scale, u8 flags)
 {
 	menumodel->configuring = true;
 
@@ -1674,10 +1795,10 @@ void menu_configure_model(struct menumodel *menumodel, f32 x, f32 y, f32 z, f32 
 	menumodel->configurefrac = 0.0f;
 }
 
-void menu_unset_model(struct menumodel *menumodel)
+void menuUnsetModel(struct menumodel *menumodel)
 {
 	if (menumodel->curparams == 0x4fac5ace) {
-		challenge_unset_current();
+		challengeUnsetCurrent();
 	}
 
 	menumodel->loaddelay = 0;
@@ -1716,7 +1837,7 @@ Lights1 var80071468 = gdSPDefLights1(0x96, 0x96, 0x96, 0xff, 0xff, 0xff, 0xb2, 0
 /**
  * Render the hudpiece as well as any models within dialogs.
  */
-Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
+Gfx *menuRenderModel(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 {
 	f32 rotx;
 	f32 roty;
@@ -1734,14 +1855,14 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 	s32 headnum;
 
 	if (g_Vars.stagenum != STAGE_CITRAINING && g_Vars.stagenum != STAGE_CREDITS) {
-		if (g_MenuData.ininventorymenu && modeltype != MENUMODELTYPE_HUDPIECE && modeltype < MENUMODELTYPE_3) {
+		if (g_MenuData.unk5d5_01 && modeltype != MENUMODELTYPE_HUDPIECE && modeltype < MENUMODELTYPE_3) {
 			return gdl;
 		}
 
 		if (menumodel->allocstart == NULL) {
-			if (bgun_change_gun_mem(GUNMEMOWNER_INVMENU)) {
-				menumodel->allocstart = bgun_get_gun_mem();
-				menumodel->alloclen = bgun_calculate_gun_mem_capacity();
+			if (bgunChangeGunMem(GUNMEMOWNER_INVMENU)) {
+				menumodel->allocstart = bgunGetGunMem();
+				menumodel->alloclen = bgunCalculateGunMemCapacity();
 			} else {
 				return gdl;
 			}
@@ -1759,7 +1880,7 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 			menumodel->loaddelay = 0;
 		} else {
 			if (menumodel->curparams == 0x4fac5ace) {
-				challenge_unset_current();
+				challengeUnsetCurrent();
 			}
 
 			if (menumodel->loaddelay == 0) {
@@ -1777,20 +1898,20 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 					} else {
 						s32 mpheadnum = MENUMODELPARAMS_GET_MP_HEADNUM(menumodel->newparams);
 						s32 mpbodynum = MENUMODELPARAMS_GET_MP_BODYNUM(menumodel->newparams);
-						bodynum = mp_get_body_id(mpbodynum);
+						bodynum = mpGetBodyId(mpbodynum);
 
-						if (mpheadnum < mp_get_num_heads2()) {
-							headnum = mp_get_head_id(mpheadnum);
+						if (mpheadnum < mpGetNumHeads2()) {
+							headnum = mpGetHeadId(mpheadnum);
 						} else {
-							headnum = phead_get_unk3a4(mpheadnum - mp_get_num_heads2());
-							headnum = mp_get_beau_head_id(headnum);
-							menumodel->perfectheadnum = (mpheadnum - mp_get_num_heads2()) & 0xff;
+							headnum = func0f14a9f8(mpheadnum - mpGetNumHeads2());
+							headnum = mpGetBeauHeadId(headnum);
+							menumodel->perfectheadnum = (mpheadnum - mpGetNumHeads2()) & 0xff;
 						}
 					}
 
 					bodyfilenum = g_HeadsAndBodies[bodynum].filenum;
 
-					totalfilelen = file_get_inflated_size(bodyfilenum);
+					totalfilelen = fileGetInflatedSize(bodyfilenum, LOADTYPE_MODEL);
 					totalfilelen = ALIGN64(totalfilelen);
 
 					if (g_HeadsAndBodies[bodynum].unk00_01) {
@@ -1798,51 +1919,63 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 						headfilenum = 0xffff;
 					} else {
 						headfilenum = g_HeadsAndBodies[headnum].filenum;
-						totalfilelen += ALIGN64(file_get_inflated_size(headfilenum));
+						totalfilelen += ALIGN64(fileGetInflatedSize(headfilenum, LOADTYPE_MODEL));
 					}
 
+#ifdef PLATFORM_64BIT
+					totalfilelen += 0x6000;
+#else
 					totalfilelen += 0x4000;
+#endif
 
-					tex_init_pool(&texpool, menumodel->allocstart + totalfilelen, menumodel->alloclen - totalfilelen);
+					texInitPool(&texpool, menumodel->allocstart + totalfilelen, menumodel->alloclen - totalfilelen);
 
 					menumodel->headnum = headnum;
 					menumodel->bodynum = bodynum;
-					menumodel->bodymodeldef = modeldef_load(bodyfilenum, menumodel->allocstart, totalfilelen, &texpool);
-					bodyfilelen2 = ALIGN64(file_get_loaded_size(bodyfilenum));
-					model_allocate_rw_data(menumodel->bodymodeldef);
+					menumodel->bodymodeldef = modeldefLoad(bodyfilenum, menumodel->allocstart, totalfilelen, &texpool);
+					bodyfilelen2 = ALIGN64(fileGetLoadedSize(bodyfilenum));
+					modelAllocateRwData(menumodel->bodymodeldef);
 
 					if (headnum < 0) {
 						menumodel->headmodeldef = NULL;
 					} else {
-						menumodel->headmodeldef = modeldef_load(headfilenum, menumodel->allocstart + bodyfilelen2, totalfilelen - bodyfilelen2, &texpool);
-						file_get_loaded_size(headfilenum);
-						body_calculate_head_offset(menumodel->headmodeldef, headnum, bodynum);
-						model_allocate_rw_data(menumodel->headmodeldef);
+						menumodel->headmodeldef = modeldefLoad(headfilenum, menumodel->allocstart + bodyfilelen2, totalfilelen - bodyfilelen2, &texpool);
+						fileGetLoadedSize(headfilenum);
+						bodyCalculateHeadOffset(menumodel->headmodeldef, headnum, bodynum);
+						modelAllocateRwData(menumodel->headmodeldef);
 					}
 
-					model_init(&menumodel->bodymodel, menumodel->bodymodeldef, menumodel->rwdata, true);
-					anim_init(&menumodel->bodyanim);
+					modelInit(&menumodel->bodymodel, menumodel->bodymodeldef, menumodel->rwdata, true);
+					animInit(&menumodel->bodyanim);
 
+#ifdef PLATFORM_64BIT
+					menumodel->bodymodel.rwdatalen = 256 + 128;
+#else
 					menumodel->bodymodel.rwdatalen = 256;
+#endif
 					menumodel->bodymodel.anim = &menumodel->bodyanim;
 
-					body_instantiate_model_to_addr(bodynum, headnum, menumodel->bodymodeldef, menumodel->headmodeldef, totalfilelen * 0, &menumodel->bodymodel, false, 1);
+					body0f02ce8c(bodynum, headnum, menumodel->bodymodeldef, menumodel->headmodeldef, totalfilelen * 0, &menumodel->bodymodel, false, 1);
 				} else {
-					totalfilelen = ALIGN64(file_get_inflated_size(menumodel->newparams)) + 0x4000;
+					totalfilelen = ALIGN64(fileGetInflatedSize(menumodel->newparams, LOADTYPE_MODEL)) + 0x4000;
 					if (1);
 
-					tex_init_pool(&texpool, &menumodel->allocstart[(u32)totalfilelen], menumodel->alloclen - totalfilelen);
+					texInitPool(&texpool, &menumodel->allocstart[(u32)totalfilelen], menumodel->alloclen - totalfilelen);
 
 					menumodel->headnum = -1;
 					menumodel->bodynum = -1;
-					menumodel->bodymodeldef = modeldef_load(menumodel->newparams, menumodel->allocstart, totalfilelen, &texpool);
+					menumodel->bodymodeldef = modeldefLoad(menumodel->newparams, menumodel->allocstart, totalfilelen, &texpool);
 
-					file_get_loaded_size(menumodel->newparams);
-					model_allocate_rw_data(menumodel->bodymodeldef);
-					model_init(&menumodel->bodymodel, menumodel->bodymodeldef, menumodel->rwdata, true);
-					anim_init(&menumodel->bodyanim);
+					fileGetLoadedSize(menumodel->newparams);
+					modelAllocateRwData(menumodel->bodymodeldef);
+					modelInit(&menumodel->bodymodel, menumodel->bodymodeldef, menumodel->rwdata, true);
+					animInit(&menumodel->bodyanim);
 
+#ifdef PLATFORM_64BIT
+					menumodel->bodymodel.rwdatalen = 256+128;
+#else
 					menumodel->bodymodel.rwdatalen = 256;
+#endif
 					menumodel->bodymodel.anim = &menumodel->bodyanim;
 				}
 
@@ -1856,7 +1989,7 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 	}
 
 	if (menumodel->bodymodeldef != NULL) {
-		struct modelrenderdata renderdata = { NULL, true, MODELRENDERFLAG_DEFAULT };
+		struct modelrenderdata renderdata = {NULL, true, 3};
 		Mtxf *matrices;
 		s32 i;
 		u32 stack[3];
@@ -1873,13 +2006,13 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 		// Most models use the z-buffer and a scissor.
 		// Types 2 and 3 are unused. Type 4 is the credits scrolling logo.
 		if (modeltype < MENUMODELTYPE_3 && g_MenuData.usezbuf) {
-			gdl = vi_prepare_zbuf(gdl);
+			gdl = viPrepareZbuf(gdl);
 			gdl = vi0000b1d0(gdl);
 
 			g_MenuData.usezbuf = false;
 
 			if (modeltype != MENUMODELTYPE_2) {
-				gdl = menu_apply_scissor(gdl);
+				gdl = menuApplyScissor(gdl);
 			}
 
 			gSPSetGeometryMode(gdl++, G_ZBUFFER);
@@ -1895,11 +2028,11 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 			dodefaultzoom = true;
 
 			if (menumodel->bodymodeldef->skel == &g_SkelChr) {
-				struct modelnode *node = model_get_part(menumodel->bodymodeldef, MODELPART_CHR_0006);
+				struct modelnode *node = modelGetPart(menumodel->bodymodeldef, MODELPART_CHR_0006);
 
 				if (node) {
 					struct modelrodata_position *rodata = &node->rodata->position;
-					f32 frac = menu_get_linear_osc_pause_frac(menumodel->zoomtimer60 / TICKS(480.0f));
+					f32 frac = menuGetLinearOscPauseFrac(menumodel->zoomtimer60 / TICKS(480.0f));
 
 					zoompos.f[0] = 0.0f;
 					zoompos.f[1] = 0.0f - (rodata->pos.f[1] / 7.6f * (1.0f - frac * frac));
@@ -1912,14 +2045,14 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 
 					dodefaultzoom = false;
 
-					model_find_bbox_rodata(&menumodel->bodymodel);
+					modelFindBboxRodata(&menumodel->bodymodel);
 				}
 
 				if (1);
 			}
 
 			if (dodefaultzoom) {
-				struct modelrodata_bbox *bbox = model_find_bbox_rodata(&menumodel->bodymodel);
+				struct modelrodata_bbox *bbox = modelFindBboxRodata(&menumodel->bodymodel);
 
 				if (bbox) {
 					zoompos.x = -(bbox->xmax - ((bbox->xmax - bbox->xmin) * 0.5f));
@@ -1931,7 +2064,7 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 			}
 		}
 
-		mtx4_load_identity(&rotmtx);
+		mtx4LoadIdentity(&rotmtx);
 
 		// For the hudpiece, tween the position and scale to the new values and apply rotation.
 		if (modeltype == MENUMODELTYPE_HUDPIECE) {
@@ -1983,7 +2116,7 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 				tmpcoord.y = roty;
 				tmpcoord.z = rotz;
 
-				mtx4_load_rotation(&tmpcoord, &rotmtx);
+				mtx4LoadRotation(&tmpcoord, &rotmtx);
 			}
 		} else {
 			// If the caller is reconfiguring the model's position, rotation or scale, tween towards the new values.
@@ -2001,7 +2134,7 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 					menumodel->curposz = menumodel->newposz;
 					menumodel->curscale = menumodel->newscale;
 				} else {
-					f32 fracnew = (-cosf(menumodel->configurefrac * DTOR(180)) * 0.5f) + 0.5f;
+					f32 fracnew = (-cosf(menumodel->configurefrac * M_PI) * 0.5f) + 0.5f;
 					f32 fraccur = 1.0f - fracnew;
 
 					if (menumodel->flags & MENUMODELFLAG_HASPOSITION) {
@@ -2037,8 +2170,8 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 						tmprot.z = menumodel->newrotz;
 
 						quaternion0f096ca0(&tmprot, sp2ac);
-						quaternion_slerp(sp2bc, sp2ac, fracnew, sp29c);
-						quaternion_to_mtx(sp29c, &rotmtx);
+						quaternionSlerp(sp2bc, sp2ac, fracnew, sp29c);
+						quaternionToMtx(sp29c, &rotmtx);
 					} else {
 						menumodel->currotx = rotx = menumodel->newrotx;
 						menumodel->curroty = roty = menumodel->newroty;
@@ -2048,7 +2181,7 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 						tmpcoord.y = roty;
 						tmpcoord.z = rotz;
 
-						mtx4_load_rotation(&tmpcoord, &rotmtx);
+						mtx4LoadRotation(&tmpcoord, &rotmtx);
 					}
 				}
 			}
@@ -2070,7 +2203,7 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 				tmpcoord.y = roty;
 				tmpcoord.z = rotz;
 
-				mtx4_load_rotation(&tmpcoord, &rotmtx);
+				mtx4LoadRotation(&tmpcoord, &rotmtx);
 			}
 		}
 
@@ -2078,27 +2211,27 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 
 		if (modeltype == MENUMODELTYPE_HUDPIECE) {
 			if (IS8MB()) {
-				screenpos[0] = menumodel->curposx * g_UiScaleX;
+				screenpos[0] = menumodel->curposx * g_ScaleX;
 				screenpos[1] = menumodel->curposy;
 			}
 		} else {
-			screenpos[0] = posx * g_UiScaleX + vi_get_view_left() + vi_get_view_width() * 0.5f;
-			screenpos[1] = posy + vi_get_view_top() + vi_get_view_height() * 0.5f;
+			screenpos[0] = posx * g_ScaleX + viGetViewLeft() + viGetViewWidth() * 0.5f;
+			screenpos[1] = posy + viGetViewTop() + viGetViewHeight() * 0.5f;
 		}
 
 		cam0f0b4c3c(screenpos, &tmpcoord, 1.0f);
 
-		mtx4_load_identity(&posmtx);
+		mtx4LoadIdentity(&posmtx);
 
 		// Show or hide model parts according to the visibility list
 		if (menumodel->partvisibility != NULL) {
 			struct modelpartvisibility *ptr = menumodel->partvisibility;
 
 			while (ptr->part != 255) {
-				struct modelnode *node = model_get_part(menumodel->bodymodeldef, ptr->part);
+				struct modelnode *node = modelGetPart(menumodel->bodymodeldef, ptr->part);
 
 				if (node) {
-					union modelrwdata *rwdata = model_get_node_rw_data(&menumodel->bodymodel, node);
+					union modelrwdata *rwdata = modelGetNodeRwData(&menumodel->bodymodel, node);
 
 					if (rwdata) {
 						if (ptr->visible) {
@@ -2131,17 +2264,17 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 			struct coord newpos = {0, 0, 0};
 			u32 stack[3];
 
-			model_update_info(&menumodel->bodymodel);
+			modelUpdateInfo(&menumodel->bodymodel);
 
-			model_get_root_position(&menumodel->bodymodel, &oldpos);
+			modelGetRootPosition(&menumodel->bodymodel, &oldpos);
 
-			if (joy_get_buttons(0, L_TRIG)) {
-				model_set_root_position(&menumodel->bodymodel, &newpos);
+			if (joyGetButtons(0, R_TRIG)) {
+				modelSetRootPosition(&menumodel->bodymodel, &newpos);
 			}
 		}
 #endif
 
-		mtx4_load_translation(&tmpcoord, &posmtx);
+		mtx4LoadTranslation(&tmpcoord, &posmtx);
 
 		if (haszoom) {
 			mtx00015f04(scale * zoomy, &posmtx);
@@ -2156,23 +2289,23 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 			Mtxf sp184;
 
 			if (haszoom) {
-				mtx4_load_translation(&zoompos, &sp204);
+				mtx4LoadTranslation(&zoompos, &sp204);
 			} else {
 				tmpcoord.x = menumodel->displacex;
 				tmpcoord.y = menumodel->displacey;
 				tmpcoord.z = menumodel->displacez;
 
-				mtx4_load_translation(&tmpcoord, &sp204);
+				mtx4LoadTranslation(&tmpcoord, &sp204);
 			}
 
-			mtx4_mult_mtx4(&posmtx, &rotmtx, &sp244);
+			mtx4MultMtx4(&posmtx, &rotmtx, &sp244);
 
 			if (modeltype == MENUMODELTYPE_3) {
 				credits0f13ae04(&sp1c4);
-				mtx4_mult_mtx4(&sp1c4, &sp244, &sp184);
-				mtx4_mult_mtx4(&sp184, &sp204, &menumodel->mtx);
+				mtx4MultMtx4(&sp1c4, &sp244, &sp184);
+				mtx4MultMtx4(&sp184, &sp204, &menumodel->mtx);
 			} else {
-				mtx4_mult_mtx4(&sp244, &sp204, &menumodel->mtx);
+				mtx4MultMtx4(&sp244, &sp204, &menumodel->mtx);
 			}
 		}
 
@@ -2180,20 +2313,35 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 
 		if (modeltype < MENUMODELTYPE_3) {
 			if (modeltype != MENUMODELTYPE_DEFAULT) {
-				gdl = ortho_end(gdl);
-				gSPMatrix(gdl++, osVirtualToPhysical(cam_get_perspective_mtxl()), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+				gdl = func0f0d49c8(gdl);
+				gSPMatrix(gdl++, osVirtualToPhysical(camGetPerspectiveMtxL()), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
 			} else {
-				f32 aspect = (f32) (g_MenuScissorX2 - g_MenuScissorX1) / (f32) (g_MenuScissorY2 - g_MenuScissorY1);
+#ifdef PLATFORM_N64
+				s32 x1 = g_MenuScissorX1;
+				s32 x2 = g_MenuScissorX2;
+#else
+				s32 halfScreenWidth = SCREEN_WIDTH_LO >> 1;
+				f32 scale = SCREEN_ASPECT / videoGetAspect();
+				f32 width = (g_MenuScissorX2 - g_MenuScissorX1) * scale;
+				f32 center = (g_MenuScissorX1 + g_MenuScissorX2) * 0.5f;
+				center = ((center - halfScreenWidth) * scale) + halfScreenWidth;
+
+				s32 x1 = (s32)(center - width * 0.5f);
+				s32 x2 = (s32)(center + width * 0.5f);
+#endif
+
+				f32 aspect = (f32) (x2 - x1) / (f32) (g_MenuScissorY2 - g_MenuScissorY1);
+
 				static u32 znear = 10;
 				static u32 zfar = 300;
 
-				main_override_variable("mzn", &znear);
-				main_override_variable("mzf", &zfar);
+				mainOverrideVariable("mzn", &znear);
+				mainOverrideVariable("mzf", &zfar);
 
-				gdl = ortho_end(gdl);
+				gdl = func0f0d49c8(gdl);
 
-				vi_set_view_position(g_MenuScissorX1 * g_UiScaleX, g_MenuScissorY1);
-				vi_set_fov_aspect_and_size(g_Vars.currentplayer->fovy, aspect, (g_MenuScissorX2 - g_MenuScissorX1) * g_UiScaleX, g_MenuScissorY2 - g_MenuScissorY1);
+				viSetViewPosition(x1 * g_ScaleX, g_MenuScissorY1);
+				viSetFovAspectAndSize(g_Vars.currentplayer->fovy, aspect, (x2 - x1) * g_ScaleX, g_MenuScissorY2 - g_MenuScissorY1);
 
 				gdl = vi0000af00(gdl, var800a2048[g_MpPlayerNum]);
 				gdl = vi0000aca4(gdl, znear, zfar);
@@ -2201,10 +2349,10 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 		}
 
 		// Allocate model matrices
-		matrices = gfx_allocate(menumodel->bodymodeldef->nummatrices * sizeof(Mtxf));
+		matrices = gfxAllocate(menumodel->bodymodeldef->nummatrices * sizeof(Mtxf));
 
 		for (i = 0; i < menumodel->bodymodeldef->nummatrices; i++) {
-			mtx4_load_identity(&matrices[i]);
+			mtx4LoadIdentity(&matrices[i]);
 		}
 
 		menumodel->bodymodel.matrices = matrices;
@@ -2212,10 +2360,10 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 		// Set new animation if requested
 		if (menumodel->newanimnum && menumodel->curanimnum != menumodel->newanimnum) {
 			if (menumodel->reverseanim) {
-				model_set_animation(&menumodel->bodymodel, menumodel->newanimnum, false, 0, PALUPF(-0.5f), 0.0f);
-				model_set_anim_frame(&menumodel->bodymodel, model_get_num_anim_frames(&menumodel->bodymodel));
+				modelSetAnimation(&menumodel->bodymodel, menumodel->newanimnum, false, 0, PALUPF(-0.5f), 0.0f);
+				modelSetAnimFrame(&menumodel->bodymodel, modelGetNumAnimFrames(&menumodel->bodymodel));
 			} else {
-				model_set_animation(&menumodel->bodymodel, menumodel->newanimnum, false, 0, PALUPF(0.5f), 0.0f);
+				modelSetAnimation(&menumodel->bodymodel, menumodel->newanimnum, false, 0, PALUPF(0.5f), 0.0f);
 			}
 
 			menumodel->curanimnum = menumodel->newanimnum;
@@ -2228,29 +2376,29 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 			f32 frame;
 			u32 stack;
 
-			model_tick_anim_quarter_speed(&menumodel->bodymodel, g_Vars.diffframe240, true);
+			modelTickAnimQuarterSpeed(&menumodel->bodymodel, g_Vars.diffframe240, true);
 
 			if (menumodel->reverseanim) {
-				frame = model_get_num_anim_frames(&menumodel->bodymodel) - model_get_cur_anim_frame(&menumodel->bodymodel);
+				frame = modelGetNumAnimFrames(&menumodel->bodymodel) - modelGetCurAnimFrame(&menumodel->bodymodel);
 			} else {
-				frame = model_get_cur_anim_frame(&menumodel->bodymodel);
+				frame = modelGetCurAnimFrame(&menumodel->bodymodel);
 			}
 
-			if (frame >= model_get_num_anim_frames(&menumodel->bodymodel) - 1) {
+			if (frame >= modelGetNumAnimFrames(&menumodel->bodymodel) - 1) {
 				menumodel->curanimnum = 0;
 			}
 		}
 
-		mtx4_copy(&menumodel->mtx, matrices);
+		mtx4Copy(&menumodel->mtx, matrices);
 
-		renderdata.rendermtx = &menumodel->mtx;
-		renderdata.matrices = menumodel->bodymodel.matrices;
+		renderdata.unk00 = &menumodel->mtx;
+		renderdata.unk10 = menumodel->bodymodel.matrices;
 
-		model_set_matrices_with_anim(&renderdata, &menumodel->bodymodel);
+		modelSetMatricesWithAnim(&renderdata, &menumodel->bodymodel);
 
 		if (menumodel->bodymodeldef->skel == &g_SkelHudPiece) {
 			// Update the hudpiece's liquid texture
-			struct modelnode *node = model_get_part(menumodel->bodymodeldef, MODELPART_HUDPIECE_0000);
+			struct modelnode *node = modelGetPart(menumodel->bodymodeldef, MODELPART_HUDPIECE_0000);
 
 			if (node) {
 				struct modelrodata_gundl *rodata = &node->rodata->gundl;
@@ -2273,28 +2421,28 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 			}
 
 			// Rotate the hudpiece's rotor thing
-			node = model_get_part(menumodel->bodymodeldef, MODELPART_HUDPIECE_0002);
+			node = modelGetPart(menumodel->bodymodeldef, MODELPART_HUDPIECE_0002);
 
 			if (node) {
-				s32 mtxindex = model_find_node_mtx_index(node, 0);
+				s32 mtxindex = modelFindNodeMtxIndex(node, 0);
 				Mtxf sp120;
 				Mtxf spe0;
 
-				mtx4_load_identity(&sp120);
-				mtx4_load_x_rotation(menu_get_cos_osc_frac(4), &sp120);
-				mtx4_mult_mtx4((Mtxf *)((uintptr_t)matrices + mtxindex * sizeof(Mtxf)), &sp120, &spe0);
-				mtx4_copy(&spe0, (Mtxf *)((uintptr_t)matrices + mtxindex * sizeof(Mtxf)));
+				mtx4LoadIdentity(&sp120);
+				mtx4LoadXRotation(menuGetCosOscFrac(4), &sp120);
+				mtx4MultMtx4((Mtxf *)((uintptr_t)matrices + mtxindex * sizeof(Mtxf)), &sp120, &spe0);
+				mtx4Copy(&spe0, (Mtxf *)((uintptr_t)matrices + mtxindex * sizeof(Mtxf)));
 			}
 
 			// Make the menu projection lines come from the hudpiece eye
-			node = model_get_part(menumodel->bodymodeldef, MODELPART_HUDPIECE_0001);
+			node = modelGetPart(menumodel->bodymodeldef, MODELPART_HUDPIECE_0001);
 
 			if (node) {
 				if (g_MenuData.root == MENUROOT_MAINMENU
 						|| g_MenuData.root == MENUROOT_FILEMGR
 						|| g_MenuData.root == MENUROOT_MPSETUP
 						|| g_MenuData.root == MENUROOT_TRAINING) {
-					s32 mtxindex = model_find_node_mtx_index(node, 0);
+					s32 mtxindex = modelFindNodeMtxIndex(node, 0);
 					struct coord pos;
 					f32 screenpos[2];
 
@@ -2304,16 +2452,21 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 
 					cam0f0b4d04(&pos, screenpos);
 
-					g_HolorayProjectFromX = ((s32)screenpos[0] - vi_get_width() / 2) / g_UiScaleX;
-					g_HolorayProjectFromY = (s32)screenpos[1] - vi_get_height() / 2;
+					g_MenuProjectFromX = ((s32)screenpos[0] - viGetWidth() / 2) / g_ScaleX;
+					g_MenuProjectFromY = (s32)screenpos[1] - viGetHeight() / 2;
 				}
 			}
 		}
 
 		gSPSetLights1(gdl++, var80071468);
-		gSPLookAt(gdl++, cam_get_look_at());
 
-		renderdata.context = MODELRENDERCONTEXT_MENUMODEL_OPA;
+#ifdef AVOID_UB
+		// during the credits camGetLookAt() can return NULL
+		if (camGetLookAt())
+#endif
+		gSPLookAt(gdl++, camGetLookAt());
+
+		renderdata.unk30 = 1;
 		renderdata.envcolour = 0xffffffff;
 		renderdata.fogcolour = 0xffffffff;
 
@@ -2322,7 +2475,7 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 		renderdata.gdl = gdl;
 		renderdata.zbufferenabled = true;
 
-		model_render(&renderdata, &menumodel->bodymodel);
+		modelRender(&renderdata, &menumodel->bodymodel);
 
 		gdl = renderdata.gdl;
 
@@ -2330,14 +2483,14 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 
 		for (i = 0; i < menumodel->bodymodeldef->nummatrices; i++) {
 			Mtxf sp70;
-			mtx4_copy((Mtxf *)((uintptr_t)menumodel->bodymodel.matrices + i * sizeof(Mtxf)), &sp70);
-			mtx_f2l(&sp70, &menumodel->bodymodel.matrices[i]);
+			mtx4Copy((Mtxf *)((uintptr_t)menumodel->bodymodel.matrices + i * sizeof(Mtxf)), &sp70);
+			mtxF2L(&sp70, &menumodel->bodymodel.matrices[i]);
 		}
 
 		mtx00016784();
 
 		if (modeltype < MENUMODELTYPE_3) {
-			gdl = ortho_begin(gdl);
+			gdl = func0f0d479c(gdl);
 		}
 
 		gDPPipeSync(gdl++);
@@ -2347,11 +2500,11 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 		gSPClearGeometryMode(gdl++, G_CULL_BOTH);
 		gDPSetTextureFilter(gdl++, G_TF_BILERP);
 
-		tex_select(&gdl, NULL, 2, 0, 2, 1, NULL);
+		texSelect(&gdl, NULL, 2, 0, 2, 1, NULL);
 
 		gDPSetRenderMode(gdl++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
 
-		tex_select(&gdl, NULL, 2, 0, 2, 1, NULL);
+		texSelect(&gdl, NULL, 2, 0, 2, 1, NULL);
 
 		gSPDisplayList(gdl++, var800613a0);
 	}
@@ -2359,7 +2512,7 @@ Gfx *menu_render_model(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 	return gdl;
 }
 
-void menu_get_team_titlebar_colours(u32 *top, u32 *middle, u32 *bottom)
+void menuGetTeamTitlebarColours(u32 *top, u32 *middle, u32 *bottom)
 {
 	const u32 colours[][3] = {
 		// top, middle, bottom
@@ -2378,13 +2531,13 @@ void menu_get_team_titlebar_colours(u32 *top, u32 *middle, u32 *bottom)
 	*bottom = colours[g_PlayerConfigsArray[g_MpPlayerNum].base.team][2] | (*bottom & 0xff);
 }
 
-Gfx *menu_apply_scissor(Gfx *gdl)
+Gfx *menuApplyScissor(Gfx *gdl)
 {
 	gDPPipeSync(gdl++);
 
 #if VERSION >= VERSION_NTSC_1_0
-	g_ScissorX1 = g_MenuScissorX1 * g_UiScaleX;
-	g_ScissorX2 = g_MenuScissorX2 * g_UiScaleX;
+	g_ScissorX1 = g_MenuScissorX1 * g_ScaleX;
+	g_ScissorX2 = g_MenuScissorX2 * g_ScaleX;
 	g_ScissorY1 = g_MenuScissorY1;
 	g_ScissorY2 = g_MenuScissorY2;
 
@@ -2404,20 +2557,20 @@ Gfx *menu_apply_scissor(Gfx *gdl)
 		g_ScissorY2 = 0;
 	}
 
-	if (g_ScissorX1 > vi_get_buf_width()) {
-		g_ScissorX1 = vi_get_buf_width();
+	if (g_ScissorX1 > viGetBufWidth()) {
+		g_ScissorX1 = viGetBufWidth();
 	}
 
-	if (g_ScissorX2 > vi_get_buf_width()) {
-		g_ScissorX2 = vi_get_buf_width();
+	if (g_ScissorX2 > viGetBufWidth()) {
+		g_ScissorX2 = viGetBufWidth();
 	}
 
-	if (g_ScissorY1 > vi_get_buf_height()) {
-		g_ScissorY1 = vi_get_buf_height();
+	if (g_ScissorY1 > viGetBufHeight()) {
+		g_ScissorY1 = viGetBufHeight();
 	}
 
-	if (g_ScissorY2 > vi_get_buf_height()) {
-		g_ScissorY2 = vi_get_buf_height();
+	if (g_ScissorY2 > viGetBufHeight()) {
+		g_ScissorY2 = viGetBufHeight();
 	}
 
 	if (g_ScissorX2 < g_ScissorX1) {
@@ -2431,8 +2584,8 @@ Gfx *menu_apply_scissor(Gfx *gdl)
 	gDPSetScissor(gdl++, G_SC_NON_INTERLACE, g_ScissorX1, g_ScissorY1, g_ScissorX2, g_ScissorY2);
 #else
 	gDPSetScissor(gdl++, G_SC_NON_INTERLACE,
-			g_MenuScissorX1 * g_UiScaleX, g_MenuScissorY1,
-			g_MenuScissorX2 * g_UiScaleX, g_MenuScissorY2);
+			g_MenuScissorX1 * g_ScaleX, g_MenuScissorY1,
+			g_MenuScissorX2 * g_ScaleX, g_MenuScissorY2);
 #endif
 
 	return gdl;
@@ -2445,7 +2598,7 @@ Gfx *menu_apply_scissor(Gfx *gdl)
  * variant of the dialog is rendered which has no borders, less background,
  * no overlays and no models such as inventory weapons.
  */
-Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool lightweight)
+Gfx *dialogRender(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool lightweight)
 {
 	s32 i;
 	s32 dialogleft;
@@ -2479,7 +2632,7 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 
 #if VERSION >= VERSION_NTSC_1_0
 	if ((g_Vars.coopplayernum >= 0 || g_Vars.antiplayernum >= 0)
-			&& menu_get_root() == MENUROOT_MPENDSCREEN
+			&& menuGetRoot() == MENUROOT_MPENDSCREEN
 			&& !var8009dfc0) {
 		return gdl;
 	}
@@ -2487,16 +2640,16 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 
 	colour1 = MIXCOLOUR(dialog, item_focused_outer);
 
-	text_set_shadow_colour(colour1);
+	text0f156030(colour1);
 
-	g_TextHoloRayEnabled = false;
+	var8007fb9c = false;
 
 	if (g_Menus[g_MpPlayerNum].curdialog == dialog
-			&& (dialog->definition->flags & MENUDIALOGFLAG_ALLOW_MODELS)
+			&& (dialog->definition->flags & MENUDIALOGFLAG_0002)
 			&& !lightweight
 			&& g_Menus[g_MpPlayerNum].menumodel.drawbehinddialog == true) {
 		gSPSetGeometryMode(gdl++, G_ZBUFFER);
-		gdl = menu_render_model(gdl, &g_Menus[g_MpPlayerNum].menumodel, MENUMODELTYPE_2);
+		gdl = menuRenderModel(gdl, &g_Menus[g_MpPlayerNum].menumodel, MENUMODELTYPE_2);
 		gSPClearGeometryMode(gdl++, G_ZBUFFER);
 	}
 
@@ -2510,10 +2663,10 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 		}
 #endif
 
-		sp170 = 1.0f - g_MenuData.bgopacityfrac;
+		sp170 = 1.0f - g_MenuData.unk010;
 
 #if VERSION >= VERSION_NTSC_1_0
-		if ((g_Vars.coopplayernum >= 0 || g_Vars.antiplayernum >= 0) && menu_get_root() == MENUROOT_MPENDSCREEN) {
+		if ((g_Vars.coopplayernum >= 0 || g_Vars.antiplayernum >= 0) && menuGetRoot() == MENUROOT_MPENDSCREEN) {
 			sp170 = 1.0f - dialog->statefrac;
 		}
 #endif
@@ -2528,7 +2681,7 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 	dialogright = dialogleft + dialogwidth;
 	dialogbottom = dialogtop + dialogheight;
 
-	title = menu_resolve_dialog_title(dialog->definition);
+	title = menuResolveDialogTitle(dialog->definition);
 
 	colour1 = MIXCOLOUR(dialog, dialog_border1);
 	colour2 = MIXCOLOUR(dialog, dialog_titlebg);
@@ -2547,8 +2700,8 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 		colour5 = (colour5 & 0xffffff00) | 0x3f;
 	}
 
-	g_HolorayMinY = -1000;
-	g_HolorayMaxY = 1000;
+	var8009de90 = -1000;
+	var8009de94 = 1000;
 
 	if (dialog->definition->flags & MENUDIALOGFLAG_DISABLETITLEBAR) {
 		bgy1 += LINEHEIGHT;
@@ -2558,14 +2711,14 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 	// Each surface is rendered a second time with the colours swapped.
 	// The order is top, right, bottom, left.
 	if (g_MenuData.root != MENUROOT_MPSETUP && (g_MenuData.root != MENUROOT_MPPAUSE || g_Vars.normmplayerisrunning)) {
-		g_TextHoloRayGdl = ortho_draw_holoray(g_TextHoloRayGdl, bgx1, bgy1, bgx2, bgy1, colour4, colour5, MENUPLANE_00);
-		g_TextHoloRayGdl = ortho_draw_holoray(g_TextHoloRayGdl, bgx2, bgy1, bgx2, bgy2, colour5, colour4, MENUPLANE_00);
-		g_TextHoloRayGdl = ortho_draw_holoray(g_TextHoloRayGdl, bgx2, bgy2, bgx1, bgy2, colour4, colour5, MENUPLANE_00);
-		g_TextHoloRayGdl = ortho_draw_holoray(g_TextHoloRayGdl, bgx1, bgy2, bgx1, bgy1, colour5, colour4, MENUPLANE_00);
-		g_TextHoloRayGdl = ortho_draw_holoray(g_TextHoloRayGdl, bgx1, bgy1, bgx2, bgy1, colour5, colour4, MENUPLANE_01);
-		g_TextHoloRayGdl = ortho_draw_holoray(g_TextHoloRayGdl, bgx2, bgy1, bgx2, bgy2, colour4, colour5, MENUPLANE_01);
-		g_TextHoloRayGdl = ortho_draw_holoray(g_TextHoloRayGdl, bgx2, bgy2, bgx1, bgy2, colour5, colour4, MENUPLANE_01);
-		g_TextHoloRayGdl = ortho_draw_holoray(g_TextHoloRayGdl, bgx1, bgy2, bgx1, bgy1, colour4, colour5, MENUPLANE_01);
+		var800a4634 = menugfxDrawPlane(var800a4634, bgx1, bgy1, bgx2, bgy1, colour4, colour5, MENUPLANE_00);
+		var800a4634 = menugfxDrawPlane(var800a4634, bgx2, bgy1, bgx2, bgy2, colour5, colour4, MENUPLANE_00);
+		var800a4634 = menugfxDrawPlane(var800a4634, bgx2, bgy2, bgx1, bgy2, colour4, colour5, MENUPLANE_00);
+		var800a4634 = menugfxDrawPlane(var800a4634, bgx1, bgy2, bgx1, bgy1, colour5, colour4, MENUPLANE_00);
+		var800a4634 = menugfxDrawPlane(var800a4634, bgx1, bgy1, bgx2, bgy1, colour5, colour4, MENUPLANE_01);
+		var800a4634 = menugfxDrawPlane(var800a4634, bgx2, bgy1, bgx2, bgy2, colour4, colour5, MENUPLANE_01);
+		var800a4634 = menugfxDrawPlane(var800a4634, bgx2, bgy2, bgx1, bgy2, colour5, colour4, MENUPLANE_01);
+		var800a4634 = menugfxDrawPlane(var800a4634, bgx1, bgy2, bgx1, bgy1, colour4, colour5, MENUPLANE_01);
 	}
 
 	// Render the title bar
@@ -2573,17 +2726,17 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 		if (((g_MenuData.root == MENUROOT_MPSETUP) || (g_MenuData.root == MENUROOT_4MBMAINMENU))
 				&& (g_MpSetup.options & MPOPTION_TEAMSENABLED)
 				&& g_Vars.mpsetupmenu != MPSETUPMENU_GENERAL) {
-			menu_get_team_titlebar_colours(&colour1, &colour2, &colour3);
+			menuGetTeamTitlebarColours(&colour1, &colour2, &colour3);
 		}
 
-		gdl = menugfx_render_gradient(gdl, dialogleft - 2, dialogtop, dialogright + 2, dialogtop + LINEHEIGHT, colour1, colour2, colour3);
-		gdl = menugfx_draw_shimmer(gdl, dialogleft - 2, dialogtop, dialogright + 2, dialogtop + 1, (colour1 & 0xff) >> 1, 1, 40, 0);
-		gdl = menugfx_draw_shimmer(gdl, dialogleft - 2, dialogtop + 10, dialogright + 2, dialogtop + LINEHEIGHT, (colour1 & 0xff) >> 1, 0, 40, 1);
+		gdl = menugfxRenderGradient(gdl, dialogleft - 2, dialogtop, dialogright + 2, dialogtop + LINEHEIGHT, colour1, colour2, colour3);
+		gdl = menugfxDrawShimmer(gdl, dialogleft - 2, dialogtop, dialogright + 2, dialogtop + 1, (colour1 & 0xff) >> 1, 1, 40, 0);
+		gdl = menugfxDrawShimmer(gdl, dialogleft - 2, dialogtop + 10, dialogright + 2, dialogtop + LINEHEIGHT, (colour1 & 0xff) >> 1, 0, 40, 1);
 
 		x = dialogleft + 2;
 		y = dialogtop + 2;
 
-		gdl = text_begin(gdl);
+		gdl = text0f153628(gdl);
 
 		context.unk18 = false;
 
@@ -2601,19 +2754,19 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 
 			colour1 = MIXCOLOUR(dialog, dialog_titlefg);
 
-			text_set_wave_colours(g_MenuWave2Colours[dialog->type].dialog_titlefg, g_MenuWave1Colours[dialog->type].dialog_titlefg);
+			textSetWaveColours(g_MenuWave2Colours[dialog->type].dialog_titlefg, g_MenuWave1Colours[dialog->type].dialog_titlefg);
 
 			// Title shadow
 			x = dialogleft + 3;
 			y = dialogtop + 3;
 
-			gdl = text_render_v2(gdl, &x, &y, title, g_CharsHandelGothicSm, g_FontHandelGothicSm, colour1 & 0xff, dialogwidth, vi_get_height(), 0, 0);
+			gdl = textRenderProjected(gdl, &x, &y, title, g_CharsHandelGothicSm, g_FontHandelGothicSm, colour1 & 0xff, dialogwidth, viGetHeight(), 0, 0);
 
 			// Title proper
 			x = dialogleft + 2;
 			y = dialogtop + 2;
 
-			gdl = text_render_v2(gdl, &x, &y, title, g_CharsHandelGothicSm, g_FontHandelGothicSm, colour1, dialogwidth, vi_get_height(), 0, 0);
+			gdl = textRenderProjected(gdl, &x, &y, title, g_CharsHandelGothicSm, g_FontHandelGothicSm, colour1, dialogwidth, viGetHeight(), 0, 0);
 
 			// In MP dialogs, render the player number in the top right
 			if (g_MenuData.root == MENUROOT_MPSETUP
@@ -2623,26 +2776,26 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 				x = dialogright - 9;
 				y = dialogtop + 2;
 
-				gdl = text_render_v2(gdl, &x, &y, sp154[g_MpPlayerNum], g_CharsHandelGothicSm, g_FontHandelGothicSm, colour1, dialogwidth, vi_get_height(), 0, 0);
+				gdl = textRenderProjected(gdl, &x, &y, sp154[g_MpPlayerNum], g_CharsHandelGothicSm, g_FontHandelGothicSm, colour1, dialogwidth, viGetHeight(), 0, 0);
 			}
 		}
 
-		gdl = text_end(gdl);
+		gdl = text0f153780(gdl);
 	}
 
 	// Configure things for the redraw effect
 	if (!(dialog->redrawtimer < 0.0f)) {
 		if (g_MenuData.root != MENUROOT_MPPAUSE) {
 			if (dialog->state >= MENUDIALOGSTATE_POPULATED) {
-				text_set_diagonal_blend(dialog->x, dialog->y, dialog->redrawtimer, DIAGMODE_REDRAW);
+				textSetDiagonalBlend(dialog->x, dialog->y, dialog->redrawtimer, DIAGMODE_REDRAW);
 			} else {
-				text_set_diagonal_blend(dialog->x, dialog->y, dialog->redrawtimer, DIAGMODE_FADEIN);
+				textSetDiagonalBlend(dialog->x, dialog->y, dialog->redrawtimer, DIAGMODE_FADEIN);
 			}
 
-			g_TextHoloRayEnabled = true;
+			var8007fb9c = true;
 		}
 	} else if (dialog->state == MENUDIALOGSTATE_POPULATED) {
-		text_set_menu_blend(dialog->statefrac);
+		textSetMenuBlend(dialog->statefrac);
 	}
 
 	if (dialogbottom < dialogtop + LINEHEIGHT) {
@@ -2652,7 +2805,7 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 	colour1 = MIXCOLOUR(dialog, dialog_bodybg);
 
 	if (dialog->dimmed) {
-		colour1 = (colour_blend(colour1, 0x00000000, 44) & 0xffffff00) | (colour1 & 0xff);
+		colour1 = (colourBlend(colour1, 0x00000000, 44) & 0xffffff00) | (colour1 & 0xff);
 	}
 
 	colour2 = MIXCOLOUR(dialog, unused14);
@@ -2660,16 +2813,16 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 	// Draw the dialog's background and outer borders
 	if (!lightweight) {
 		if (dialog->state == MENUDIALOGSTATE_OPENING) {
-			gdl = menugfx_render_dialog_background(gdl, dialogleft + 1, dialogtop + LINEHEIGHT, dialogright - 1, dialogbottom, dialog, colour1, colour2, 1.0f);
+			gdl = menugfxRenderDialogBackground(gdl, dialogleft + 1, dialogtop + LINEHEIGHT, dialogright - 1, dialogbottom, dialog, colour1, colour2, 1.0f);
 		} else if (dialog->state == MENUDIALOGSTATE_POPULATING) {
-			gdl = menugfx_render_dialog_background(gdl, dialogleft + 1, dialogtop + LINEHEIGHT, dialogright - 1, dialogbottom, dialog, colour1, colour2, dialog->statefrac);
+			gdl = menugfxRenderDialogBackground(gdl, dialogleft + 1, dialogtop + LINEHEIGHT, dialogright - 1, dialogbottom, dialog, colour1, colour2, dialog->statefrac);
 		} else {
-			gdl = menugfx_render_dialog_background(gdl, dialogleft + 1, dialogtop + LINEHEIGHT, dialogright - 1, dialogbottom, dialog, colour1, colour2, -1.0f);
+			gdl = menugfxRenderDialogBackground(gdl, dialogleft + 1, dialogtop + LINEHEIGHT, dialogright - 1, dialogbottom, dialog, colour1, colour2, -1.0f);
 		}
 
 		// No dialog has this flag, so this branch is unused
 		if (dialog->definition->flags & MENUDIALOGFLAG_DISABLETITLEBAR) {
-			gdl = menugfx_draw_dialog_border_line(gdl, dialogleft + 1, dialogtop + LINEHEIGHT, dialogright - 1, dialogtop + LINEHEIGHT + 1, MIXCOLOUR(dialog, dialog_border1), MIXCOLOUR(dialog, dialog_border2));
+			gdl = menugfxDrawDialogBorderLine(gdl, dialogleft + 1, dialogtop + LINEHEIGHT, dialogright - 1, dialogtop + LINEHEIGHT + 1, MIXCOLOUR(dialog, dialog_border1), MIXCOLOUR(dialog, dialog_border2));
 		}
 	}
 
@@ -2679,10 +2832,10 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 
 	{
 		struct menulayer *layer;
-		s32 viewleft = vi_get_view_left() / g_UiScaleX;
-		s32 viewtop = vi_get_view_top();
-		s32 viewright = (vi_get_view_left() + vi_get_view_width()) / g_UiScaleX;
-		s32 viewbottom = vi_get_view_top() + vi_get_view_height();
+		s32 viewleft = viGetViewLeft() / g_ScaleX;
+		s32 viewtop = viGetViewTop();
+		s32 viewright = (viGetViewLeft() + viGetViewWidth()) / g_ScaleX;
+		s32 viewbottom = viGetViewTop() + viGetViewHeight();
 
 		g_MenuScissorX1 = dialogleft + 2;
 		g_MenuScissorX2 = dialogright - 2;
@@ -2723,24 +2876,24 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 			g_MenuScissorX2 = viewtop;
 		}
 
-		g_HolorayMinY = g_MenuScissorY1;
-		g_HolorayMaxY = g_MenuScissorY2;
+		var8009de90 = g_MenuScissorY1;
+		var8009de94 = g_MenuScissorY2;
 
-		gdl = menu_apply_scissor(gdl);
+		gdl = menuApplyScissor(gdl);
 
 		// Render models (inventory, chr/vehicle bios)
 		if (g_Menus[g_MpPlayerNum].curdialog == dialog
-				&& (dialog->definition->flags & MENUDIALOGFLAG_ALLOW_MODELS)
+				&& (dialog->definition->flags & MENUDIALOGFLAG_0002)
 				&& !lightweight
-				&& g_Menus[g_MpPlayerNum].menumodel.drawbehinddialog == false) {
+				&& !g_Menus[g_MpPlayerNum].menumodel.drawbehinddialog) {
 			gSPSetGeometryMode(gdl++, G_ZBUFFER);
 
-			gdl = menu_render_model(gdl, &g_Menus[g_MpPlayerNum].menumodel, MENUMODELTYPE_DEFAULT);
+			gdl = menuRenderModel(gdl, &g_Menus[g_MpPlayerNum].menumodel, MENUMODELTYPE_DEFAULT);
 
 			gSPClearGeometryMode(gdl++, G_ZBUFFER);
 
-			vi_set_view_position(g_Vars.currentplayer->viewleft, g_Vars.currentplayer->viewtop);
-			vi_set_fov_aspect_and_size(g_Vars.currentplayer->fovy, g_Vars.currentplayer->aspect,
+			viSetViewPosition(g_Vars.currentplayer->viewleft, g_Vars.currentplayer->viewtop);
+			viSetFovAspectAndSize(g_Vars.currentplayer->fovy, g_Vars.currentplayer->aspect,
 					g_Vars.currentplayer->viewwidth, g_Vars.currentplayer->viewheight);
 		}
 
@@ -2770,8 +2923,8 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 
 				colindex = dialog->colstart + i;
 
-				if (i != 0 && (dialog->definition->flags & MENUDIALOGFLAG_NOVERTICALBORDERS) == 0) {
-					gdl = menugfx_draw_filled_rect(gdl, curx - 1, dialogtop + LINEHEIGHT + 1, curx, dialogbottom, sp120, sp120);
+				if (i != 0 && (dialog->definition->flags & MENUDIALOGFLAG_0400) == 0) {
+					gdl = menugfxDrawFilledRect(gdl, curx - 1, dialogtop + LINEHEIGHT + 1, curx, dialogbottom, sp120, sp120);
 				}
 
 				colwidth = menu->cols[colindex].width;
@@ -2828,7 +2981,7 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 						context.dialog = dialog;
 
 						if (prevwaslist) {
-							gdl = menugfx_draw_filled_rect(gdl, context.x, context.y - 1, context.x + context.width, context.y, sp120, sp120);
+							gdl = menugfxDrawFilledRect(gdl, context.x, context.y - 1, context.x + context.width, context.y, sp120, sp120);
 							prevwaslist = false;
 						}
 
@@ -2842,11 +2995,11 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 							u32 colour2;
 
 							colour2 = MIXCOLOUR(dialog, item_focused_outer);
-							colour = colour_blend(colour2, colour2 & 0xffffff00, 127);
+							colour = colourBlend(colour2, colour2 & 0xffffff00, 127);
 
-							gdl = text_begin_boxmode(gdl, colour);
+							gdl = textSetPrimColour(gdl, colour);
 							gDPFillRectangleScaled(gdl++, x1, y1, x2, y2);
-							gdl = text_end_boxmode(gdl);
+							gdl = text0f153838(gdl);
 						}
 
 						if (focused) {
@@ -2859,10 +3012,10 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 #if VERSION >= VERSION_NTSC_1_0
 								if (!(dialog->transitionfrac >= 0.0f && dialog->type2 == 0)
 										&& !(dialog->transitionfrac < 0.0f && dialog->type == 0)) {
-									text_set_shadow_enabled(true);
+									text0f156024(1);
 								}
 #else
-								text_set_shadow_enabled(true);
+								text0f156024(1);
 #endif
 							}
 
@@ -2879,11 +3032,11 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 
 								// Left side
 								gdl = menugfx0f0e2498(gdl);
-								gdl = menugfx_draw_tri2(gdl, x1, liney - 1, x3 - 3, liney, sp120, sp120, 0);
-								gdl = menugfx_draw_tri2(gdl, x3 - 3, liney - 1, x3, liney, sp120, 0xffffffff, 0);
-								gdl = menugfx_draw_tri2(gdl, x1, liney + 1, x3 - 3, liney + 2, sp120, sp120, 0);
-								gdl = menugfx_draw_tri2(gdl, x3 - 3, liney + 1, x3, liney + 2, sp120, 0xffffffff, 0);
-								gdl = menugfx_draw_tri2(gdl, x3 - 2, liney, x4, liney + 1, colour, sp120 & 0xffffff00, 0);
+								gdl = menugfxDrawTri2(gdl, x1, liney - 1, x3 - 3, liney, sp120, sp120, 0);
+								gdl = menugfxDrawTri2(gdl, x3 - 3, liney - 1, x3, liney, sp120, 0xffffffff, 0);
+								gdl = menugfxDrawTri2(gdl, x1, liney + 1, x3 - 3, liney + 2, sp120, sp120, 0);
+								gdl = menugfxDrawTri2(gdl, x3 - 3, liney + 1, x3, liney + 2, sp120, 0xffffffff, 0);
+								gdl = menugfxDrawTri2(gdl, x3 - 2, liney, x4, liney + 1, colour, sp120 & 0xffffff00, 0);
 
 								if (item->flags & MENUITEMFLAG_SELECTABLE_CENTRE) {
 									// Right side
@@ -2891,23 +3044,23 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 									x3 = context.x + context.width - 8;
 									x4 = context.x + context.width - context.width / 3;
 
-									gdl = menugfx_draw_tri2(gdl, x1 - 5, liney - 1, x1, liney, sp120, sp120, 0);
-									gdl = menugfx_draw_tri2(gdl, x3, liney - 1, x3 + 3, liney, -1, sp120, 0);
-									gdl = menugfx_draw_tri2(gdl, x3 + 3, liney + 1, x1, liney + 2, sp120, sp120, 0);
-									gdl = menugfx_draw_tri2(gdl, x3, liney + 1, x3 + 3, liney + 2, -1, sp120, 0);
-									gdl = menugfx_draw_tri2(gdl, x4, liney, x3 + 2, liney + 1, sp120 & 0xffffff00, colour, 0);
+									gdl = menugfxDrawTri2(gdl, x1 - 5, liney - 1, x1, liney, sp120, sp120, 0);
+									gdl = menugfxDrawTri2(gdl, x3, liney - 1, x3 + 3, liney, -1, sp120, 0);
+									gdl = menugfxDrawTri2(gdl, x3 + 3, liney + 1, x1, liney + 2, sp120, sp120, 0);
+									gdl = menugfxDrawTri2(gdl, x3, liney + 1, x3 + 3, liney + 2, -1, sp120, 0);
+									gdl = menugfxDrawTri2(gdl, x4, liney, x3 + 2, liney + 1, sp120 & 0xffffff00, colour, 0);
 								}
 							}
 						}
 
-						gdl = menuitem_render(gdl, &context);
+						gdl = menuitemRender(gdl, &context);
 
 						if (item->type == MENUITEMTYPE_LIST) {
 							prevwaslist = true;
 						}
 
 						if (focused) {
-							text_set_shadow_enabled(false);
+							text0f156024(0);
 						}
 					}
 
@@ -2919,7 +3072,7 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 
 			// Render overlays, such as dropdown menus
 			if (!lightweight) {
-				gdl = text_begin_boxmode(gdl, 0x00000000);
+				gdl = textSetPrimColour(gdl, 0x00000000);
 
 				curx = dialogleft;
 
@@ -2943,7 +3096,7 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 							itemdata = (union menuitemdata *)&menu->blocks[menu->rows[rowindex].blockindex];
 						}
 
-						gdl = menuitem_overlay(gdl, curx, cury, menu->cols[colindex].width, menu->rows[rowindex].height, item, dialog, itemdata);
+						gdl = menuitemOverlay(gdl, curx, cury, menu->cols[colindex].width, menu->rows[rowindex].height, item, dialog, itemdata);
 
 						cury += menu->rows[rowindex].height;
 					}
@@ -2951,14 +3104,14 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 					curx += menu->cols[colindex].width;
 				}
 
-				gdl = text_end_boxmode(gdl);
+				gdl = text0f153838(gdl);
 			}
 
-			gDPSetScissor(gdl++, G_SC_NON_INTERLACE, vi_get_view_left(), vi_get_view_top(),
-					vi_get_view_left() + vi_get_view_width(), vi_get_view_top() + vi_get_view_height());
+			gDPSetScissor(gdl++, G_SC_NON_INTERLACE, viGetViewLeft(), viGetViewTop(),
+					viGetViewLeft() + viGetViewWidth(), viGetViewTop() + viGetViewHeight());
 		} else {
-			gDPSetScissor(gdl++, G_SC_NON_INTERLACE, vi_get_view_left(), vi_get_view_top(),
-					vi_get_view_left() + vi_get_view_width(), vi_get_view_top() + vi_get_view_height());
+			gDPSetScissor(gdl++, G_SC_NON_INTERLACE, viGetViewLeft(), viGetViewTop(),
+					viGetViewLeft() + viGetViewWidth(), viGetViewTop() + viGetViewHeight());
 		}
 
 		// Render left/right chevrons and sibling dialog titles
@@ -2970,13 +3123,13 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 			// Draw chevrons
 			u32 colour1;
 			u32 colour;
-			u32 weight = menu_get_sin_osc_frac(10) * 255.0f;
+			u32 weight = menuGetSinOscFrac(10) * 255.0f;
 
 			colour1 = MIXCOLOUR(dialog, dialog_border1);
-			colour = colour_blend(0xffffffff, colour1, weight);
+			colour = colourBlend(0xffffffff, colour1, weight);
 
-			gdl = menugfx_draw_dialog_chevron(gdl, dialogleft - 5, (dialogtop + dialogbottom) / 2, 9, 1, colour, colour, menu_get_sin_osc_frac(20));
-			gdl = menugfx_draw_dialog_chevron(gdl, dialogright + 5, (dialogtop + dialogbottom) / 2, 9, 3, colour, colour, menu_get_sin_osc_frac(20));
+			gdl = menugfxDrawDialogChevron(gdl, dialogleft - 5, (dialogtop + dialogbottom) / 2, 9, 1, colour, colour, menuGetSinOscFrac(20));
+			gdl = menugfxDrawDialogChevron(gdl, dialogright + 5, (dialogtop + dialogbottom) / 2, 9, 3, colour, colour, menuGetSinOscFrac(20));
 
 			if (g_MenuData.root == MENUROOT_MAINMENU
 					|| g_MenuData.root == MENUROOT_4MBFILEMGR
@@ -2988,10 +3141,10 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 				s32 previndex;
 				s32 nextindex;
 
-				text_reset_blends();
-				text_set_rotation90(true);
+				textResetBlends();
+				textSetRotation90(true);
 
-				gdl = text_begin(gdl);
+				gdl = text0f153628(gdl);
 
 				// Left/previous title
 				previndex = layer->cursibling - 1;
@@ -3000,11 +3153,11 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 					previndex = layer->numsiblings - 1;
 				}
 
-				title = menu_resolve_dialog_title(layer->siblings[previndex]->definition);
+				title = menuResolveDialogTitle(layer->siblings[previndex]->definition);
 
-				text_measure(&textheight, &textwidth, title, g_CharsHandelGothicXs, g_FontHandelGothicXs, 0);
+				textMeasure(&textheight, &textwidth, title, g_CharsHandelGothicXs, g_FontHandelGothicXs, 0);
 
-				x = dialogleft - 1;
+				x = dialogleft - 2;
 				y = (dialogtop + dialogbottom) / 2 - textwidth - 3;
 
 				if (y < dialogtop) {
@@ -3012,7 +3165,7 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 					x -= 3;
 				}
 
-				gdl = text_render_v2(gdl, &y, &x, title, g_CharsHandelGothicXs, g_FontHandelGothicXs, 0xffffffff, dialogwidth, vi_get_height(), 0, 0);
+				gdl = textRenderProjected(gdl, &y, &x, title, g_CharsHandelGothicXs, g_FontHandelGothicXs, 0xffffffff, dialogwidth, viGetHeight(), 0, 0);
 
 				// Right/next title
 				nextindex = layer->cursibling + 1;
@@ -3021,9 +3174,9 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 					nextindex = 0;
 				}
 
-				title = menu_resolve_dialog_title(layer->siblings[nextindex]->definition);
+				title = menuResolveDialogTitle(layer->siblings[nextindex]->definition);
 
-				text_measure(&textheight, &textwidth, title, g_CharsHandelGothicXs, g_FontHandelGothicXs, 0);
+				textMeasure(&textheight, &textwidth, title, g_CharsHandelGothicXs, g_FontHandelGothicXs, 0);
 
 #if VERSION == VERSION_JPN_FINAL
 				x = dialogright + 13;
@@ -3037,10 +3190,10 @@ Gfx *dialog_render(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool 
 					x += 3;
 				}
 
-				gdl = text_render_v2(gdl, &y, &x, title, g_CharsHandelGothicXs, g_FontHandelGothicXs, -1, dialogwidth, vi_get_height(), 0, 0);
-				gdl = text_end(gdl);
+				gdl = textRenderProjected(gdl, &y, &x, title, g_CharsHandelGothicXs, g_FontHandelGothicXs, -1, dialogwidth, viGetHeight(), 0, 0);
+				gdl = text0f153780(gdl);
 
-				text_set_rotation90(false);
+				textSetRotation90(false);
 			}
 		}
 	}
@@ -3054,7 +3207,7 @@ const char var7f1b269c[] = "NOT IN MODE MULTIINGAME!\n";
 const char var7f1b26b8[] = "Numactive now:%d\n";
 const char var7f1b26cc[] = "[]-[] SwitchMenuMode called, context %d\n";
 
-void menu_get_cont_pads(s8 *contpadnum1, s8 *contpadnum2)
+void menuGetContPads(s8 *contpadnum1, s8 *contpadnum2)
 {
 	switch (g_MenuData.root) {
 	case MENUROOT_MPSETUP:
@@ -3066,14 +3219,14 @@ void menu_get_cont_pads(s8 *contpadnum1, s8 *contpadnum2)
 		*contpadnum2 = -1;
 		break;
 	default:
-		*contpadnum1 = options_get_contpad_num1(g_Vars.currentplayerstats->mpindex);
+		*contpadnum1 = optionsGetContpadNum1(g_Vars.currentplayerstats->mpindex);
 		*contpadnum2 = -1;
 
 		if (!g_Vars.normmplayerisrunning) {
-			s32 mode = options_get_control_mode(g_Vars.currentplayerstats->mpindex);
+			s32 mode = optionsGetControlMode(g_Vars.currentplayerstats->mpindex);
 
 			if (mode == CONTROLMODE_23 || mode == CONTROLMODE_24 || mode == CONTROLMODE_22 || mode == CONTROLMODE_21) {
-				*contpadnum2 = options_get_contpad_num2(g_Vars.currentplayerstats->mpindex);
+				*contpadnum2 = optionsGetContpadNum2(g_Vars.currentplayerstats->mpindex);
 			}
 		}
 		break;
@@ -3086,7 +3239,7 @@ u32 g_MpNumJoined = 1;
  * Choose which direction a new dialog should swipe from in the combat simulator
  * menus.
  */
-void menu_calculate_swipe_direction(s32 arg0, s32 *vdir, s32 *hdir)
+void func0f0f7594(s32 arg0, s32 *vdir, s32 *hdir)
 {
 	if (g_MenuData.root == MENUROOT_MPSETUP) {
 		s32 playernum = g_Menus[g_MpPlayerNum].playernum;
@@ -3160,15 +3313,15 @@ void menu_calculate_swipe_direction(s32 arg0, s32 *vdir, s32 *hdir)
  * are sharing a viewport.
  */
 #if VERSION >= VERSION_JPN_FINAL
-void menu_find_available_size(s32 *leftptr, s32 *topptr, s32 *rightptr, s32 *bottomptr, struct menudialog *dialog)
+void menuFindAvailableSize(s32 *leftptr, s32 *topptr, s32 *rightptr, s32 *bottomptr, struct menudialog *dialog)
 #else
-void menu_find_available_size(s32 *leftptr, s32 *topptr, s32 *rightptr, s32 *bottomptr)
+void menuFindAvailableSize(s32 *leftptr, s32 *topptr, s32 *rightptr, s32 *bottomptr)
 #endif
 {
-	s32 left = vi_get_view_left() / g_UiScaleX + 20;
-	s32 top = vi_get_view_top() + 4;
-	s32 right = (vi_get_view_left() + vi_get_view_width()) / g_UiScaleX - 20;
-	s32 bottom = vi_get_view_top() + vi_get_view_height() - 4;
+	s32 left = viGetViewLeft() / g_ScaleX + 20;
+	s32 top = viGetViewTop() + 4;
+	s32 right = (viGetViewLeft() + viGetViewWidth()) / g_ScaleX - 20;
+	s32 bottom = viGetViewTop() + viGetViewHeight() - 4;
 	s32 playernum;
 	u32 stack1;
 #if VERSION >= VERSION_JPN_FINAL
@@ -3177,7 +3330,7 @@ void menu_find_available_size(s32 *leftptr, s32 *topptr, s32 *rightptr, s32 *bot
 	u32 stack2;
 
 #if VERSION >= VERSION_JPN_FINAL
-	if (current_player_is_menu_open_in_solo_or_mp()) {
+	if (currentPlayerIsMenuOpenInSoloOrMp()) {
 		v1 = true;
 	}
 
@@ -3193,17 +3346,17 @@ void menu_find_available_size(s32 *leftptr, s32 *topptr, s32 *rightptr, s32 *bot
 		// Make room for health bar
 		top += 22;
 
-		if (options_get_effective_screen_size() == SCREENSIZE_CINEMA) {
+		if (optionsGetEffectiveScreenSize() == SCREENSIZE_CINEMA) {
 			top -= 8;
 			bottom += 4;
 		}
 	}
 #else
-	if (current_player_is_menu_open_in_solo_or_mp()) {
+	if (currentPlayerIsMenuOpenInSoloOrMp()) {
 		// Make room for health bar
 		top += 22;
 
-		if (options_get_effective_screen_size() == SCREENSIZE_CINEMA) {
+		if (optionsGetEffectiveScreenSize() == SCREENSIZE_CINEMA) {
 			top -= 8;
 			bottom += 4;
 		}
@@ -3288,9 +3441,9 @@ void menu_find_available_size(s32 *leftptr, s32 *topptr, s32 *rightptr, s32 *bot
 	case MENUROOT_MPENDSCREEN:
 	case MENUROOT_PICKTARGET:
 	case MENUROOT_4MBFILEMGR:
-		*leftptr = g_Vars.players[g_Menus[g_MpPlayerNum].playernum]->viewleft / g_UiScaleX;
+		*leftptr = g_Vars.players[g_Menus[g_MpPlayerNum].playernum]->viewleft / g_ScaleX;
 		*topptr = g_Vars.players[g_Menus[g_MpPlayerNum].playernum]->viewtop;
-		*rightptr = (g_Vars.players[g_Menus[g_MpPlayerNum].playernum]->viewleft + g_Vars.players[g_Menus[g_MpPlayerNum].playernum]->viewwidth) / g_UiScaleX;
+		*rightptr = (g_Vars.players[g_Menus[g_MpPlayerNum].playernum]->viewleft + g_Vars.players[g_Menus[g_MpPlayerNum].playernum]->viewwidth) / g_ScaleX;
 		*bottomptr = g_Vars.players[g_Menus[g_MpPlayerNum].playernum]->viewtop + g_Vars.players[g_Menus[g_MpPlayerNum].playernum]->viewheight;
 
 		if (PLAYERCOUNT() > 2) {
@@ -3302,9 +3455,9 @@ void menu_find_available_size(s32 *leftptr, s32 *topptr, s32 *rightptr, s32 *bot
 		}
 
 #if VERSION >= VERSION_NTSC_1_0
-		if (PLAYERCOUNT() == 2 && (options_get_screen_split() == SCREENSPLIT_VERTICAL || IS4MB()))
+		if (PLAYERCOUNT() == 2 && (optionsGetScreenSplit() == SCREENSPLIT_VERTICAL || IS4MB()))
 #else
-		if (PLAYERCOUNT() == 2 && options_get_screen_split() == SCREENSPLIT_VERTICAL)
+		if (PLAYERCOUNT() == 2 && optionsGetScreenSplit() == SCREENSPLIT_VERTICAL)
 #endif
 		{
 			if (g_Menus[g_MpPlayerNum].playernum == 0) {
@@ -3323,7 +3476,7 @@ void menu_find_available_size(s32 *leftptr, s32 *topptr, s32 *rightptr, s32 *bot
 	}
 }
 
-void dialog_calculate_position(struct menudialog *dialog)
+void dialogCalculatePosition(struct menudialog *dialog)
 {
 	s32 xmin;
 	s32 xmax;
@@ -3335,9 +3488,9 @@ void dialog_calculate_position(struct menudialog *dialog)
 	s32 hdir;
 
 #if VERSION >= VERSION_JPN_FINAL
-	menu_find_available_size(&xmin, &ymin, &xmax, &ymax, dialog);
+	menuFindAvailableSize(&xmin, &ymin, &xmax, &ymax, dialog);
 #else
-	menu_find_available_size(&xmin, &ymin, &xmax, &ymax);
+	menuFindAvailableSize(&xmin, &ymin, &xmax, &ymax);
 #endif
 
 	height = ymax - ymin - 6;
@@ -3357,14 +3510,14 @@ void dialog_calculate_position(struct menudialog *dialog)
 	dialog->dstheight = height;
 
 	if (dialog->swipedir != 0) {
-		menu_calculate_swipe_direction(dialog->swipedir, &vdir, &hdir);
+		func0f0f7594(dialog->swipedir, &vdir, &hdir);
 
 		if (hdir < 0) {
 			dialog->dstx = -4 - dialog->dstwidth;
 		}
 
 		if (hdir > 0) {
-			dialog->dstx = (vi_get_view_left() + vi_get_view_width()) / g_UiScaleX + 4;
+			dialog->dstx = (viGetViewLeft() + viGetViewWidth()) / g_ScaleX + 4;
 		}
 
 		if (vdir < 0) {
@@ -3372,12 +3525,12 @@ void dialog_calculate_position(struct menudialog *dialog)
 		}
 
 		if (vdir > 0) {
-			dialog->dsty = vi_get_view_top() + vi_get_view_height() + 4;
+			dialog->dsty = viGetViewTop() + viGetViewHeight() + 4;
 		}
 	}
 }
 
-void menu_close(void)
+void menuClose(void)
 {
 	g_Menus[g_MpPlayerNum].depth = 0;
 	g_Menus[g_MpPlayerNum].numdialogs = 0;
@@ -3386,6 +3539,10 @@ void menu_close(void)
 	g_Menus[g_MpPlayerNum].blockend = 0;
 	g_Menus[g_MpPlayerNum].curdialog = NULL;
 	g_Menus[g_MpPlayerNum].openinhibit = 10;
+
+#ifndef PLATFORM_N64
+	inputAutoLockMouse(true);
+#endif
 
 	if (g_MenuData.root == MENUROOT_MPPAUSE) {
 		g_PlayersWithControl[g_Menus[g_MpPlayerNum].playernum] = true;
@@ -3398,39 +3555,46 @@ void menu_close(void)
 	}
 
 	if (g_MenuData.root == MENUROOT_BOOTPAKMGR) {
-		main_change_to_stage(STAGE_TITLE);
+		mainChangeToStage(STAGE_TITLE);
 	}
 }
 
-void menu_save_and_close_all(void)
+void func0f0f8120(void)
 {
+#ifdef AVOID_UB
+	u32 mpindex = g_MpPlayerNum % MAX_PLAYERS;
+	struct menudialog *prev = g_Menus[mpindex].curdialog;
+	s32 i;
+#else
 	struct menudialog *prev = g_Menus[g_MpPlayerNum].curdialog;
 	s32 i;
+#endif
 
-	if (g_MenuData.numpendingsaves > 0) {
-		for (i = g_MenuData.numpendingsaves; i >= 0; i--) {
-			menu_save_file(i);
+	if (g_MenuData.unk66e > 0) {
+		for (i = g_MenuData.unk66e; i >= 0; i--) {
+			func0f0f3220(i);
 		}
 	}
 
-	// menu_save_file will set an error dialog if any save fails.
-	// If the dialog was unchanged then the save worked and the dialogs can be closed.
+#ifdef AVOID_UB
+	mpindex = g_MpPlayerNum;
+	if (mpindex >= MAX_PLAYERS)
+		mpindex -= MAX_PLAYERS;
+	if (g_Menus[mpindex].curdialog == prev) {
+		while (g_Menus[mpindex].depth > 0) {
+			menuPopDialog();
+		}
+	}
+#else
 	if (g_Menus[g_MpPlayerNum].curdialog == prev) {
 		while (g_Menus[g_MpPlayerNum].depth > 0) {
-			menu_pop_dialog();
+			menuPopDialog();
 		}
 	}
+#endif
 }
 
-/**
- * If there are any pending saves to mplayer files or the game file then go ahead
- * and save them, then replace the current player's menu hierarchy with the given
- * dialog.
- *
- * If a save fails then pak error dialogs are shown instead, and the next root
- * is stored so it can be pushed once the pak dialogs are closed.
- */
-void menu_save_and_push_root_dialog(struct menudialogdef *dialogdef, s32 root)
+void func0f0f820c(struct menudialogdef *dialogdef, s32 root)
 {
 	s32 i;
 	s32 prevplayernum = g_MpPlayerNum;
@@ -3438,17 +3602,17 @@ void menu_save_and_push_root_dialog(struct menudialogdef *dialogdef, s32 root)
 	for (i = 0; i < ARRAYCOUNT(g_Menus); i++) {
 		if (g_Menus[i].curdialog) {
 			g_MpPlayerNum = i;
-			menu_save_and_close_all();
+			func0f0f8120();
 		}
 	}
 
 	g_MpPlayerNum = prevplayernum;
 
-	g_MenuData.nextroot = root;
-	g_MenuData.nextdialog = dialogdef;
+	g_MenuData.prevmenuroot = root;
+	g_MenuData.prevmenudialog = dialogdef;
 }
 
-void menu_set_background(s32 bg)
+void menuSetBackground(s32 bg)
 {
 	// Can only screenshot if there is no background already,
 	// because we want a clean screenshot
@@ -3469,7 +3633,7 @@ void menu_set_background(s32 bg)
 	}
 }
 
-void menu_hide_pressstart_labels(void)
+void func0f0f8300(void)
 {
 	s32 i;
 
@@ -3480,17 +3644,21 @@ void menu_hide_pressstart_labels(void)
 	}
 }
 
-void menu_push_root_dialog(struct menudialogdef *dialogdef, s32 root)
+void menuPushRootDialog(struct menudialogdef *dialogdef, s32 root)
 {
 	g_Menus[g_MpPlayerNum].numdialogs = 0;
 	g_Menus[g_MpPlayerNum].depth = 0;
 
-	g_MenuData.ininventorymenu = false;
-	g_MenuData.openedfrompc = false;
+	g_MenuData.unk5d5_01 = false;
+	g_MenuData.unk5d5_04 = false;
 
 	g_PlayersWithControl[g_Menus[g_MpPlayerNum].playernum] = false;
 
-	menu_remove_all_item_redraw_info();
+#ifndef PLATFORM_N64
+	inputAutoLockMouse(false);
+#endif
+
+	func0f0f1494();
 
 	g_MenuData.count++;
 
@@ -3515,28 +3683,28 @@ void menu_push_root_dialog(struct menudialogdef *dialogdef, s32 root)
 	g_Menus[g_MpPlayerNum].unk820 = 1;
 
 	g_MenuData.root = root;
-	g_MenuData.nextroot = -1;
-	g_MenuData.unk5d5_unused = false;
+	g_MenuData.prevmenuroot = -1;
+	g_MenuData.unk5d5_02 = false;
 
 	if (root == MENUROOT_MAINMENU
 			|| root == MENUROOT_MPSETUP
 			|| root == MENUROOT_TRAINING
 			|| root == MENUROOT_FILEMGR) {
-		if (IS8MB() && (g_MenuData.hudpieceactive == false || g_MenuData.hudpiece.reverseanim)) {
-			if (!g_MenuData.openedfrompc) {
-				g_MenuData.triggerhudpiece = true;
+		if (IS8MB() && (g_MenuData.unk5d4 == 0 || g_MenuData.hudpiece.reverseanim)) {
+			if (!g_MenuData.unk5d5_04) {
+				g_MenuData.unk5d5_05 = true;
 			}
 		}
 	}
 
-	menu_push_dialog(dialogdef);
+	menuPushDialog(dialogdef);
 
 	switch (root) {
 	case MENUROOT_MPSETUP:
-		menu_set_background(MENUBG_CONEALPHA);
+		menuSetBackground(MENUBG_CONEALPHA);
 		break;
 	case MENUROOT_4MBFILEMGR:
-		music_start_menu();
+		musicStartMenu();
 		g_MenuData.bg = MENUBG_CONEOPAQUE;
 		break;
 	case MENUROOT_4MBMAINMENU:
@@ -3544,7 +3712,7 @@ void menu_push_root_dialog(struct menudialogdef *dialogdef, s32 root)
 		break;
 	case MENUROOT_ENDSCREEN:
 		if (dialogdef->type == MENUDIALOGTYPE_DANGER) {
-			g_MenuData.hudpieceactive = false;
+			g_MenuData.unk5d4 = 0;
 			g_MenuData.nextbg = MENUBG_FAILURE;
 			break;
 		}
@@ -3554,41 +3722,41 @@ void menu_push_root_dialog(struct menudialogdef *dialogdef, s32 root)
 	case MENUROOT_FILEMGR:
 	case MENUROOT_COOPCONTINUE:
 	case MENUROOT_TRAINING:
-		menu_set_background(MENUBG_BLUR);
+		menuSetBackground(MENUBG_BLUR);
 		break;
 	case MENUROOT_BOOTPAKMGR:
-		music_start_menu();
+		musicStartMenu();
 		g_MenuData.bg = MENUBG_GRADIENT;
 		break;
 	}
 
-	if (menu_is_solo_mission_or_mp()) {
-		player_display_health();
+	if (menuIsSoloMissionOrMp()) {
+		playerDisplayHealth();
 	}
 }
 
-void menu_push_root_dialog_and_pause(struct menudialogdef *dialogdef, s32 root)
+void func0f0f85e0(struct menudialogdef *dialogdef, s32 root)
 {
 	if (dialogdef == &g_CiMenuViaPcMenuDialog) {
-		music_start_menu();
+		musicStartMenu();
 	}
 
-	menu_push_root_dialog(dialogdef, root);
-	lv_set_paused(true);
+	menuPushRootDialog(dialogdef, root);
+	lvSetPaused(true);
 	g_Vars.currentplayer->pausemode = PAUSEMODE_PAUSED;
 }
 
 u32 g_MenuCThresh = 120;
 
-Gfx *menu_render_dialog(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool lightweight)
+Gfx *menuRenderDialog(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool lightweight)
 {
-	main_override_variable("cthresh", &g_MenuCThresh);
+	mainOverrideVariable("cthresh", &g_MenuCThresh);
 
-	text_set_wave_blend(dialog->unk54, dialog->unk58, g_MenuCThresh);
+	textSetWaveBlend(dialog->unk54, dialog->unk58, g_MenuCThresh);
 
-	gdl = dialog_render(gdl, dialog, menu, lightweight);
+	gdl = dialogRender(gdl, dialog, menu, lightweight);
 
-	text_reset_blends();
+	textResetBlends();
 
 	return gdl;
 }
@@ -3606,16 +3774,16 @@ const char var7f1b2768[] = "StartSelects\n";
  * transitioning between dialogs. This happens when swiping left or right beteen
  * dialogs on the same layer, or when opening or closing dialogs.
  */
-Gfx *menu_render_dialogs(Gfx *gdl)
+Gfx *menuRenderDialogs(Gfx *gdl)
 {
 	if (g_Menus[g_MpPlayerNum].curdialog) {
 		if (g_MenuData.root == MENUROOT_MPPAUSE
 				|| g_MenuData.root == MENUROOT_PICKTARGET
 				|| g_MenuData.root == MENUROOT_MPENDSCREEN) {
-			g_HolorayProjectFromX = g_Menus[g_MpPlayerNum].curdialog->x + g_Menus[g_MpPlayerNum].curdialog->width / 2 - vi_get_width() / (g_UiScaleX * 2);
-			g_HolorayProjectFromY = g_Menus[g_MpPlayerNum].curdialog->y + g_Menus[g_MpPlayerNum].curdialog->height / 2 - vi_get_height() / 2;
+			g_MenuProjectFromX = g_Menus[g_MpPlayerNum].curdialog->x + g_Menus[g_MpPlayerNum].curdialog->width / 2 - viGetWidth() / (g_ScaleX * 2);
+			g_MenuProjectFromY = g_Menus[g_MpPlayerNum].curdialog->y + g_Menus[g_MpPlayerNum].curdialog->height / 2 - viGetHeight() / 2;
 
-			gdl = menu_render_dialog(gdl, g_Menus[g_MpPlayerNum].curdialog, &g_Menus[g_MpPlayerNum], 0);
+			gdl = menuRenderDialog(gdl, g_Menus[g_MpPlayerNum].curdialog, &g_Menus[g_MpPlayerNum], 0);
 		} else {
 			s32 i;
 			s32 j;
@@ -3640,12 +3808,12 @@ Gfx *menu_render_dialogs(Gfx *gdl)
 
 			// Render the other dialog if any
 			if (dialogs[0]) {
-				gdl = menu_render_dialog(gdl, dialogs[0], &g_Menus[g_MpPlayerNum], 0);
+				gdl = menuRenderDialog(gdl, dialogs[0], &g_Menus[g_MpPlayerNum], 0);
 			}
 
 			// Render the current dialog
 			if (g_Menus[g_MpPlayerNum].curdialog) {
-				gdl = menu_render_dialog(gdl, g_Menus[g_MpPlayerNum].curdialog, &g_Menus[g_MpPlayerNum], 0);
+				gdl = menuRenderDialog(gdl, g_Menus[g_MpPlayerNum].curdialog, &g_Menus[g_MpPlayerNum], 0);
 			}
 #else
 			// NTSC beta renders all dialogs all the time, and in their natural order
@@ -3653,7 +3821,7 @@ Gfx *menu_render_dialogs(Gfx *gdl)
 				struct menulayer *layer = &g_Menus[g_MpPlayerNum].layers[i];
 
 				for (j = 0; j < layer->numsiblings; j++) {
-					gdl = menu_render_dialog(gdl, layer->siblings[j], &g_Menus[g_MpPlayerNum], 0);
+					gdl = menuRenderDialog(gdl, layer->siblings[j], &g_Menus[g_MpPlayerNum], 0);
 				}
 			}
 #endif
@@ -3669,26 +3837,26 @@ Gfx *menu_render_dialogs(Gfx *gdl)
 				s32 ymax;
 
 #if VERSION >= VERSION_JPN_FINAL
-				menu_find_available_size(&xmin, &ymin, &xmax, &ymax, NULL);
+				menuFindAvailableSize(&xmin, &ymin, &xmax, &ymax, NULL);
 #else
-				menu_find_available_size(&xmin, &ymin, &xmax, &ymax);
+				menuFindAvailableSize(&xmin, &ymin, &xmax, &ymax);
 #endif
 
 #if VERSION >= VERSION_NTSC_1_0
-				gdl = menu_render_banner(gdl, xmin, ymin, xmax, ymax, false, g_Menus[g_MpPlayerNum].bannernum, 0, 0);
+				gdl = menuRenderBanner(gdl, xmin, ymin, xmax, ymax, false, g_Menus[g_MpPlayerNum].bannernum, 0, 0);
 #else
-				gdl = menu_render_banner(gdl, xmin, ymin, xmax, ymax, false, g_Menus[g_MpPlayerNum].bannernum);
+				gdl = menuRenderBanner(gdl, xmin, ymin, xmax, ymax, false, g_Menus[g_MpPlayerNum].bannernum);
 #endif
 			} else {
-				s32 xmin = vi_get_view_left() / g_UiScaleX;
-				s32 ymin = vi_get_view_top();
-				s32 xmax = (vi_get_view_left() + vi_get_view_width()) / g_UiScaleX;
-				s32 ymax = vi_get_view_top() + vi_get_view_height();
+				s32 xmin = viGetViewLeft() / g_ScaleX;
+				s32 ymin = viGetViewTop();
+				s32 xmax = (viGetViewLeft() + viGetViewWidth()) / g_ScaleX;
+				s32 ymax = viGetViewTop() + viGetViewHeight();
 
 #if VERSION >= VERSION_NTSC_1_0
-				gdl = menu_render_banner(gdl, xmin, ymin, xmax, ymax, true, g_Menus[g_MpPlayerNum].bannernum, 0, 0);
+				gdl = menuRenderBanner(gdl, xmin, ymin, xmax, ymax, true, g_Menus[g_MpPlayerNum].bannernum, 0, 0);
 #else
-				gdl = menu_render_banner(gdl, xmin, ymin, xmax, ymax, true, g_Menus[g_MpPlayerNum].bannernum);
+				gdl = menuRenderBanner(gdl, xmin, ymin, xmax, ymax, true, g_Menus[g_MpPlayerNum].bannernum);
 #endif
 			}
 		}
@@ -3699,10 +3867,10 @@ Gfx *menu_render_dialogs(Gfx *gdl)
 
 u32 var800714e8 = 0;
 
-void menu_reset_model(struct menumodel *menumodel, u32 allocationlen, bool allocate)
+void menuResetModel(struct menumodel *menumodel, u32 allocationlen, bool allocate)
 {
 	menumodel->alloclen = allocationlen;
-	menumodel->allocstart = allocate ? memp_alloc(allocationlen, MEMPOOL_STAGE) : NULL;
+	menumodel->allocstart = allocate ? mempAlloc(allocationlen, MEMPOOL_STAGE) : NULL;
 	menumodel->loaddelay = 0;
 	menumodel->newparams = MENUMODELPARAMS_SET_FILENUM(0xffff);
 	menumodel->bodymodeldef = NULL;
@@ -3731,7 +3899,7 @@ void menu_reset_model(struct menumodel *menumodel, u32 allocationlen, bool alloc
 	menumodel->bodynum = -1;
 }
 
-void menu_reset(void)
+void menuReset(void)
 {
 	s32 i;
 
@@ -3740,31 +3908,31 @@ void menu_reset(void)
 	var8009dfc0 = 0;
 
 	if (IS8MB()) {
-		g_BlurBuffer = memp_alloc(0x4b00, MEMPOOL_STAGE);
+		g_BlurBuffer = mempAlloc(0x4b00, MEMPOOL_STAGE);
 	}
 
-	g_MenuData.ininventorymenu = false;
+	g_MenuData.unk5d5_01 = false;
 
-	tex_load_from_config(&g_TexGeneralConfigs[TEX_GENERAL_1PXWHITE]);
-	tex_load_from_config(&g_TexGeneralConfigs[TEX_GENERAL_MENURAY0]);
-	tex_load_from_config(&g_TexGeneralConfigs[TEX_GENERAL_CONTROLLER_TL]);
-	tex_load_from_config(&g_TexGeneralConfigs[TEX_GENERAL_CONTROLLER_TR]);
-	tex_load_from_config(&g_TexGeneralConfigs[TEX_GENERAL_CONTROLLER_BL]);
-	tex_load_from_config(&g_TexGeneralConfigs[TEX_GENERAL_CONTROLLER_BR]);
-	tex_load_from_config(&g_TexGeneralConfigs[TEX_GENERAL_CONTROLLER_LINE]);
+	texLoadFromConfig(&g_TexGeneralConfigs[1]);
+	texLoadFromConfig(&g_TexGeneralConfigs[6]);
+	texLoadFromConfig(&g_TexGeneralConfigs[51]);
+	texLoadFromConfig(&g_TexGeneralConfigs[52]);
+	texLoadFromConfig(&g_TexGeneralConfigs[53]);
+	texLoadFromConfig(&g_TexGeneralConfigs[54]);
+	texLoadFromConfig(&g_TexGeneralConfigs[55]);
 
 	if (g_Vars.stagenum == STAGE_CITRAINING) {
-		for (i = TEX_GENERAL_NEWAGENT; i <= TEX_GENERAL_DUEL; i++) {
-			tex_load_from_config(&g_TexGeneralConfigs[i]);
+		for (i = 12; i < 34; i++) {
+			texLoadFromConfig(&g_TexGeneralConfigs[i]);
 		}
 
-		tex_load_from_config(&g_TexGeneralConfigs[TEX_GENERAL_GOLDSTAR]);
-		tex_load_from_config(&g_TexGeneralConfigs[TEX_GENERAL_SILVERSTAR]);
-		tex_load_from_config(&g_TexGeneralConfigs[TEX_GENERAL_ENVSTAR]);
+		texLoadFromConfig(&g_TexGeneralConfigs[34]);
+		texLoadFromConfig(&g_TexGeneralConfigs[36]);
+		texLoadFromConfig(&g_TexGeneralConfigs[35]);
 	}
 
 	if (g_Vars.mplayerisrunning) {
-		tex_load_from_config(&g_TexGeneralConfigs[TEX_GENERAL_ENVSTAR]);
+		texLoadFromConfig(&g_TexGeneralConfigs[35]);
 	}
 
 	for (i = 0; i < ARRAYCOUNT(g_Menus); i++) {
@@ -3791,15 +3959,23 @@ void menu_reset(void)
 		}
 
 		for (i = 0; i < max; i++) {
-			menu_reset_model(&g_Menus[i].menumodel, IS4MB() ? 0xb400 : 0x25800, true);
+#ifdef PLATFORM_64BIT
+			menuResetModel(&g_Menus[i].menumodel, IS4MB() ? 0xb400 : 0x38400, true); // 50% more
+#else
+			menuResetModel(&g_Menus[i].menumodel, IS4MB() ? 0xb400 : 0x25800, true);
+#endif
 		}
 
 		if (IS8MB()) {
-			menu_reset_model(&g_MenuData.hudpiece, 0xc800, true);
+#ifdef PLATFORM_64BIT
+			menuResetModel(&g_MenuData.hudpiece, 0x12c00, true); // 50% more
+#else
+			menuResetModel(&g_MenuData.hudpiece, 0xc800, true);
+#endif
 		}
 
 		g_MenuData.hudpiece.newparams = MENUMODELPARAMS_SET_FILENUM(FILE_GHUDPIECE);
-		g_MenuData.hudpiece.curroty = g_MenuData.hudpiece.newroty = DTOR(-180);
+		g_MenuData.hudpiece.curroty = g_MenuData.hudpiece.newroty = -M_PI;
 		g_MenuData.hudpiece.currotx = g_MenuData.hudpiece.newrotx = 0;
 		g_MenuData.hudpiece.currotz = g_MenuData.hudpiece.newrotz = 0;
 		g_MenuData.hudpiece.curposx = g_MenuData.hudpiece.newposx = -205.5f;
@@ -3811,8 +3987,8 @@ void menu_reset(void)
 		g_MenuData.hudpiece.removingpiece = false;
 	}
 
-	g_MenuData.hudpieceactive = false;
-	g_MenuData.triggerhudpiece = false;
+	g_MenuData.unk5d4 = 0;
+	g_MenuData.unk5d5_05 = false;
 
 	for (i = 0; i < ARRAYCOUNT(g_Menus); i++) {
 		g_Menus[i].curdialog = NULL;
@@ -3828,26 +4004,26 @@ void menu_reset(void)
 		g_Menus[i].fm.headtextures = NULL;
 	}
 
-	g_MenuData.lastperfectheadfile = -1;
-	g_MenuData.nextdialog = NULL;
-	g_MenuData.nextroot = -1;
+	g_MenuData.unk668 = -1;
+	g_MenuData.prevmenudialog = 0;
+	g_MenuData.prevmenuroot = -1;
 	g_MenuData.count = 0;
 	g_MenuData.root = 0;
-	g_MenuData.bgopacityfrac = 0;
+	g_MenuData.unk010 = 0;
 	g_MenuData.bg = 0;
-	g_MenuData.checkroots = false;
+	g_MenuData.isdialogopen = false;
 	g_MenuData.nextbg = 255;
 	g_MenuData.bannernum = -1;
 
-	for (i = 0; i < ARRAYCOUNT(g_MenuData.pendingsaves); i++) {
-		g_MenuData.pendingsaves[i] = 0xff;
+	for (i = 0; i < ARRAYCOUNT(g_MenuData.unk669); i++) {
+		g_MenuData.unk669[i] = 0xff;
 	}
 
-	g_MenuData.numpendingsaves = 0;
-	g_MenuData.savetimer = 0;
+	g_MenuData.unk66e = 0;
+	g_MenuData.unk66f = 0;
 }
 
-void menu_swipe(s32 direction)
+void menuSwipe(s32 direction)
 {
 	struct menulayer *layer = &g_Menus[g_MpPlayerNum].layers[g_Menus[g_MpPlayerNum].depth - 1];
 	struct menuitem *item;
@@ -3870,9 +4046,9 @@ void menu_swipe(s32 direction)
 		g_Menus[g_MpPlayerNum].curdialog = layer->siblings[layer->cursibling];
 
 		if (direction == 1) {
-			g_Menus[g_MpPlayerNum].curdialog->focuseditem = dialog_find_first_item(g_Menus[g_MpPlayerNum].curdialog);
+			g_Menus[g_MpPlayerNum].curdialog->focuseditem = dialogFindFirstItem(g_Menus[g_MpPlayerNum].curdialog);
 		} else {
-			g_Menus[g_MpPlayerNum].curdialog->focuseditem = dialog_find_first_item_right(g_Menus[g_MpPlayerNum].curdialog);
+			g_Menus[g_MpPlayerNum].curdialog->focuseditem = dialogFindFirstItemRight(g_Menus[g_MpPlayerNum].curdialog);
 		}
 
 		item = g_Menus[g_MpPlayerNum].curdialog->definition->items;
@@ -3880,7 +4056,7 @@ void menu_swipe(s32 direction)
 		while (item->type != MENUITEMTYPE_END) {
 			if (item->handler
 					&& (item->flags & MENUITEMFLAG_SELECTABLE_OPENSDIALOG) == 0
-					&& item->handler(MENUOP_IS_PREFOCUSED, item, &sp50)) {
+					&& item->handler(MENUOP_CHECKPREFOCUSED, item, &sp50)) {
 				g_Menus[g_MpPlayerNum].curdialog->focuseditem = item;
 			}
 
@@ -3890,12 +4066,12 @@ void menu_swipe(s32 direction)
 		if (g_Menus[g_MpPlayerNum].curdialog->focuseditem != 0
 				&& g_Menus[g_MpPlayerNum].curdialog->focuseditem->handler
 				&& ((g_Menus[g_MpPlayerNum].curdialog->focuseditem->flags & MENUITEMFLAG_SELECTABLE_OPENSDIALOG) == 0)) {
-			g_Menus[g_MpPlayerNum].curdialog->focuseditem->handler(MENUOP_ON_FOCUS, g_Menus[g_MpPlayerNum].curdialog->focuseditem, &sp40);
+			g_Menus[g_MpPlayerNum].curdialog->focuseditem->handler(MENUOP_FOCUS, g_Menus[g_MpPlayerNum].curdialog->focuseditem, &sp40);
 		}
 
 		g_Menus[g_MpPlayerNum].curdialog->swipedir = direction;
 
-		dialog_calculate_position(g_Menus[g_MpPlayerNum].curdialog);
+		dialogCalculatePosition(g_Menus[g_MpPlayerNum].curdialog);
 
 		g_Menus[g_MpPlayerNum].curdialog->x = g_Menus[g_MpPlayerNum].curdialog->dstx;
 		g_Menus[g_MpPlayerNum].curdialog->y = g_Menus[g_MpPlayerNum].curdialog->dsty;
@@ -3903,15 +4079,15 @@ void menu_swipe(s32 direction)
 		g_Menus[g_MpPlayerNum].curdialog->state = MENUDIALOGSTATE_PREOPEN;
 		g_Menus[g_MpPlayerNum].curdialog->statefrac = 0.0f;
 
-		menu_unset_model(&g_Menus[g_MpPlayerNum].menumodel);
+		menuUnsetModel(&g_Menus[g_MpPlayerNum].menumodel);
 
-		menu_play_sound(MENUSOUND_SWIPE);
+		menuPlaySound(MENUSOUND_SWIPE);
 	}
 }
 
 extern struct menudialogdef g_MpDropOut4MbMenuDialog;
 
-void dialog_tick(struct menudialog *dialog, struct menuinputs *inputs, u32 tickflags)
+void dialogTick(struct menudialog *dialog, struct menuinputs *inputs, u32 tickflags)
 {
 	bool usedefaultbehaviour;
 	struct menudialogdef *definition;
@@ -3967,7 +4143,7 @@ void dialog_tick(struct menudialog *dialog, struct menuinputs *inputs, u32 tickf
 		if (dialog == g_Menus[g_MpPlayerNum].curdialog) {
 			transitiontotype = definition->type;
 
-			if (mp_is_player_locked_out(g_MpPlayerNum) && (dialog->definition->flags & MENUDIALOGFLAG_MPLOCKABLE)) {
+			if (mpIsPlayerLockedOut(g_MpPlayerNum) && (dialog->definition->flags & MENUDIALOGFLAG_MPLOCKABLE)) {
 				transitiontotype = MENUDIALOGTYPE_DANGER;
 			}
 
@@ -3976,7 +4152,7 @@ void dialog_tick(struct menudialog *dialog, struct menuinputs *inputs, u32 tickf
 					transitiontotype = MENUDIALOGTYPE_DEFAULT;
 				}
 
-				if ((g_StageIndex == STAGEINDEX_AIRFORCEONE || g_StageIndex == STAGEINDEX_DEFENSE)
+				if (g_StageIndex == STAGEINDEX_DEFENSE
 						&& g_MenuData.bg != MENUBG_FAILURE
 						&& g_MenuData.nextbg != MENUBG_FAILURE) {
 					transitiontotype = MENUDIALOGTYPE_WHITE;
@@ -3997,7 +4173,7 @@ void dialog_tick(struct menudialog *dialog, struct menuinputs *inputs, u32 tickf
 	} else {
 		// Mid-transition
 		if (g_MenuData.root == MENUROOT_ENDSCREEN
-				&& (g_StageIndex == STAGEINDEX_AIRFORCEONE || g_StageIndex == STAGEINDEX_DEFENSE)
+				&& g_StageIndex == STAGEINDEX_DEFENSE
 				&& g_MenuData.bg != MENUBG_FAILURE
 				&& g_MenuData.nextbg != MENUBG_FAILURE
 				&& dialog->type2 != 0) {
@@ -4105,7 +4281,7 @@ void dialog_tick(struct menudialog *dialog, struct menuinputs *inputs, u32 tickf
 				dialog->redrawtimer = 0.0f;
 				dialog->statefrac = 0.5f;
 			}
-		} else if ((g_Vars.coopplayernum >= 0 || g_Vars.antiplayernum >= 0) && menu_get_root() == MENUROOT_MPENDSCREEN) {
+		} else if ((g_Vars.coopplayernum >= 0 || g_Vars.antiplayernum >= 0) && menuGetRoot() == MENUROOT_MPENDSCREEN) {
 			if (var8009dfc0) {
 #if VERSION >= VERSION_PAL_BETA
 				dialog->statefrac += g_Vars.diffframe240freal / 60.0f;
@@ -4162,11 +4338,11 @@ void dialog_tick(struct menudialog *dialog, struct menuinputs *inputs, u32 tickf
 	}
 
 	if ((dialog->definition->flags & MENUDIALOGFLAG_DISABLERESIZE) == 0) {
-		dialog_calculate_content_size(dialog->definition, dialog, menu);
+		dialogCalculateContentSize(dialog->definition, dialog, menu);
 	}
 
-	dialog_calculate_position(dialog);
-	dialog_tick_height(dialog);
+	dialogCalculatePosition(dialog);
+	dialog0f0f1ef4(dialog);
 
 	// Update slide
 	if (g_MenuData.root == MENUROOT_MPPAUSE
@@ -4278,7 +4454,7 @@ void dialog_tick(struct menudialog *dialog, struct menuinputs *inputs, u32 tickf
 	data.dialog2.inputs = inputs;
 
 	if (definition->handler != NULL) {
-		definition->handler(MENUOP_ON_TICK, definition, &data);
+		definition->handler(MENUOP_TICK, definition, &data);
 	}
 
 	if (dialog->dimmed) {
@@ -4300,9 +4476,9 @@ void dialog_tick(struct menudialog *dialog, struct menuinputs *inputs, u32 tickf
 				union menuitemdata *handlerdata = NULL;
 				struct menuinputs *inputsptr = inputs;
 
-				if (mp_is_player_locked_out(g_MpPlayerNum) && (item->flags & MENUITEMFLAG_LOCKABLEMINOR)) {
+				if (mpIsPlayerLockedOut(g_MpPlayerNum) && (item->flags & MENUITEMFLAG_LOCKABLEMINOR)) {
 					inputsptr = &spd8;
-				} else if ((item->flags & MENUITEMFLAG_MPWEAPONSLOT) && mp_get_weaponset_slotnum() != mp_get_custom_weaponset_slot()) {
+				} else if ((item->flags & MENUITEMFLAG_MPWEAPONSLOT) && mpGetWeaponSet() != func0f189088()) {
 					inputsptr = &spd8;
 				} else if (g_MenuData.root == MENUROOT_12) {
 					inputsptr = &spd8;
@@ -4319,12 +4495,12 @@ void dialog_tick(struct menudialog *dialog, struct menuinputs *inputs, u32 tickf
 						u32 itemtickflags = tickflags | MENUTICKFLAG_ITEMISFOCUSED;
 
 						if (dialog->dimmed) {
-							usedefaultbehaviour = menuitem_tick(item, dialog, inputsptr, itemtickflags | MENUTICKFLAG_DIALOGISDIMMED, handlerdata);
+							usedefaultbehaviour = menuitemTick(item, dialog, inputsptr, itemtickflags | MENUTICKFLAG_DIALOGISDIMMED, handlerdata);
 						} else {
-							usedefaultbehaviour = menuitem_tick(item, dialog, inputsptr, itemtickflags, handlerdata);
+							usedefaultbehaviour = menuitemTick(item, dialog, inputsptr, itemtickflags, handlerdata);
 						}
 					} else {
-						menuitem_tick(item, dialog, inputsptr, tickflags, handlerdata);
+						menuitemTick(item, dialog, inputsptr, tickflags, handlerdata);
 					}
 				}
 			}
@@ -4333,7 +4509,7 @@ void dialog_tick(struct menudialog *dialog, struct menuinputs *inputs, u32 tickf
 
 	// If the focused item is disabled somehow, automatically jump to the next
 	if (dialog->focuseditem
-			&& menu_is_item_disabled(dialog->focuseditem, dialog)
+			&& menuIsItemDisabled(dialog->focuseditem, dialog)
 			&& (tickflags & MENUTICKFLAG_DIALOGISCURRENT)) {
 		usedefaultbehaviour = true;
 		inputs->updown = 1;
@@ -4341,42 +4517,46 @@ void dialog_tick(struct menudialog *dialog, struct menuinputs *inputs, u32 tickf
 	}
 
 	// Apply default navigational behaviour if requested
+#ifdef AVOID_UB
+	if (usedefaultbehaviour && (tickflags & MENUTICKFLAG_DIALOGISCURRENT) && !dialog->dimmed && g_Menus[g_MpPlayerNum].depth >= 1) {
+#else
 	if (usedefaultbehaviour && (tickflags & MENUTICKFLAG_DIALOGISCURRENT) && !dialog->dimmed) {
+#endif
 		struct menulayer *layer = &g_Menus[g_MpPlayerNum].layers[g_Menus[g_MpPlayerNum].depth - 1];
 
 		if (layer->numsiblings <= 1) {
 			struct menuitem *prevfocuseditem = dialog->focuseditem;
 
-			dialog_change_item_focus(dialog, inputs->leftright, inputs->updown);
+			dialogChangeItemFocus(dialog, inputs);
 
 			if (dialog->focuseditem != prevfocuseditem) {
-				menu_play_sound(MENUSOUND_FOCUS);
+				menuPlaySound(MENUSOUND_FOCUS);
 			}
 		} else {
 			struct menuitem *prevfocuseditem = dialog->focuseditem;
-			s32 swipedir = dialog_change_item_focus(dialog, inputs->leftright, inputs->updown);
+			s32 swipedir = dialogChangeItemFocus(dialog, inputs);
 
 			if (swipedir != 0) {
-				menu_swipe(swipedir);
+				menuSwipe(swipedir);
 			} else if (prevfocuseditem != dialog->focuseditem) {
-				menu_play_sound(MENUSOUND_FOCUS);
+				menuPlaySound(MENUSOUND_FOCUS);
 			}
 		}
 
 		if (inputs->back) {
 			if ((dialog->definition->flags & MENUDIALOGFLAG_DROPOUTONCLOSE) && g_Vars.unk000498) {
 				if (IS4MB()) {
-					menu_push_dialog(&g_MpDropOut4MbMenuDialog);
+					menuPushDialog(&g_MpDropOut4MbMenuDialog);
 				} else {
-					menu_push_dialog(&g_MpDropOutMenuDialog);
+					menuPushDialog(&g_MpDropOutMenuDialog);
 				}
 			} else if ((dialog->definition->flags & MENUDIALOGFLAG_IGNOREBACK) == 0) {
-				menu_pop_dialog();
+				menuPopDialog();
 			}
 		} else if (dialog->definition->flags & MENUDIALOGFLAG_CLOSEONSELECT) {
 			if (dialog->state > MENUDIALOGSTATE_PREOPEN) {
 				if ((inputs->select & 1) == 1 || (inputs->back & 1) == 1) {
-					menu_pop_dialog();
+					menuPopDialog();
 				}
 			}
 		}
@@ -4396,11 +4576,18 @@ void dialog_tick(struct menudialog *dialog, struct menuinputs *inputs, u32 tickf
 		s32 itemy;
 #endif
 
-		s32 y = dialog_find_item(dialog, dialog->focuseditem, &rowindex, &colindex);
+		s32 y = dialogFindItem(dialog, dialog->focuseditem, &rowindex, &colindex);
 
-		if ((dialog->focuseditem->flags & MENUITEMFLAG_DISABLESCROLL) == 0) {
-			itemy = y + menu->rows[rowindex].height / 2;
-			dstscroll = (dialog->height - LINEHEIGHT - 1) / 2 - itemy;
+		if ((dialog->focuseditem->flags & MENUITEMFLAG_00010000) == 0) {
+#ifndef PLATFORM_N64
+			if (g_MenuUsingMouse && !dialog->dimmed) {
+				dstscroll = dialog->dstscroll - inputs->mousescroll * LINEHEIGHT;
+			} else
+#endif
+			{
+				itemy = y + menu->rows[rowindex].height / 2;
+				dstscroll = (dialog->height - LINEHEIGHT - 1) / 2 - itemy;
+			}
 
 			if (dstscroll > 0) {
 				dstscroll = 0;
@@ -4465,7 +4652,7 @@ void dialog_tick(struct menudialog *dialog, struct menuinputs *inputs, u32 tickf
 	}
 }
 
-void dialog_init_items(struct menudialog *dialog)
+void dialogInitItems(struct menudialog *dialog)
 {
 	struct menu *menu = &g_Menus[g_MpPlayerNum];
 	s32 i;
@@ -4483,12 +4670,12 @@ void dialog_init_items(struct menudialog *dialog)
 				data = (union menuitemdata *)&menu->blocks[menu->rows[rowindex].blockindex];
 			}
 
-			menuitem_init(item, data);
+			menuitemInit(item, data);
 		}
 	}
 }
 
-void menu_consider_unpause(void)
+void func0f0fa6ac(void)
 {
 	switch (g_MenuData.root) {
 	case MENUROOT_MAINMENU:
@@ -4496,12 +4683,12 @@ void menu_consider_unpause(void)
 	case MENUROOT_FILEMGR:
 	case MENUROOT_4MBMAINMENU:
 	case MENUROOT_TRAINING:
-		player_unpause();
+		playerUnpause();
 		g_PlayersWithControl[0] = true;
 	}
 }
 
-void menu_process_input(void)
+void menuProcessInput(void)
 {
 	s32 yhelddir;
 	s32 xhelddir;
@@ -4541,12 +4728,51 @@ void menu_process_input(void)
 		g_AmIndex = g_Vars.currentplayernum;
 	}
 
-	menu_increment_item_redraw_timers();
+	func0f0f1418();
 
 	inputs.select = 0;
 	inputs.back = 0;
 	inputs.shoulder = 0;
 	inputs.back2 = 0;
+
+#ifndef PLATFORM_N64
+	inputs.mouseheld = false;
+	inputs.mousemoved = false;
+	inputs.mousescroll = 0;
+	inputs.mousex = 0;
+	inputs.mousey = 0;
+	// only allow mouse controls for player 1 menus
+	if (menu->playernum == 0) {
+		// ESC always acts as back
+		inputs.back = inputKeyJustPressed(VK_ESCAPE);
+		if (inputMouseIsEnabled() && !inputMouseIsLocked() && g_MenuMouseControl) {
+			inputs.mouseheld = inputKeyPressed(VK_MOUSE_LEFT);
+			if (!inputs.mouseheld) {
+				g_AllowMouseHeld = true;
+				if (g_MouseDimmedMode) {
+					g_MouseDimmedMode = false;
+					g_MouseEndDeferredSlider = true;
+				}
+			}
+			inputs.mousescroll = inputKeyPressed(VK_MOUSE_WHEEL_DN) - inputKeyPressed(VK_MOUSE_WHEEL_UP);
+			inputs.mousemoved = inputMouseGetPosition(&inputs.mousex, &inputs.mousey) || inputs.mousescroll;
+			// aspect correct the X
+			const f32 cx = ((f32)inputs.mousex - (f32)(SCREEN_WIDTH_LO / 2)) * (videoGetAspect() / SCREEN_ASPECT);
+			inputs.mousex = (f32)(SCREEN_WIDTH_LO / 2) + cx;
+		}
+		if (dialog && inputs.mousemoved) {
+			g_MenuUsingMouse = true;
+		}
+		if (inputs.back && g_MenuKeyboardPlayer != -1) {
+			// eat the back input so that other menus don't quit when we hit ESC
+			inputs.back = false;
+			if (g_MenuKeyboardPlayer == menu->playernum) {
+				g_MenuKeyboardPlayer = -1;
+				inputStopTextInput();
+			}
+		}
+	}
+#endif
 
 	if (g_Menus[g_MpPlayerNum].curdialog) {
 		stickx = 0;
@@ -4562,7 +4788,7 @@ void menu_process_input(void)
 			contpadnums[3] = 3;
 			numcontpads = 4;
 		} else {
-			menu_get_cont_pads(&contpadnum1, &contpadnum2);
+			menuGetContPads(&contpadnum1, &contpadnum2);
 
 			if (contpadnum1 >= 0) {
 				contpadnums[numcontpads] = contpadnum1;
@@ -4583,7 +4809,7 @@ void menu_process_input(void)
 				guid.fileid = g_Menus[g_MpPlayerNum].fm.fileid;
 				guid.deviceserial = g_Menus[g_MpPlayerNum].fm.deviceserial;
 
-				filemgr_save_or_load(&guid, -1, 0);
+				filemgrSaveOrLoad(&guid, -1, 0);
 			} else {
 				g_Menus[g_MpPlayerNum].fm.unke40_00 = true;
 			}
@@ -4592,14 +4818,27 @@ void menu_process_input(void)
 		// Iterate controllers and figure out which buttons are being pressed.
 		// For the control stick input, take whichever stick is pressed the most.
 		for (i = 0; i < numcontpads; i++) {
-			s8 thisstickx = joy_get_stick_x(contpadnums[i]);
-			s8 thissticky = joy_get_stick_y(contpadnums[i]);
-			u16 buttons = joy_get_buttons(contpadnums[i], 0xffff);
-			u16 buttonsnow = joy_get_buttons_pressed_this_frame(contpadnums[i], 0xffff);
+			s8 thisstickx = joyGetStickX(contpadnums[i]);
+			s8 thissticky = joyGetStickY(contpadnums[i]);
+			s8 thisrstickx = joyGetRStickX(contpadnums[i]);
+			s8 thisrsticky = joyGetRStickY(contpadnums[i]);
+			u32 buttons = joyGetButtons(contpadnums[i], 0xffffffff);
+			u32 buttonsnow = joyGetButtonsPressedThisFrame(contpadnums[i], 0xffffffff);
 
 			if (buttonsnow & A_BUTTON) {
 				inputs.select = 1;
 			}
+
+#ifndef PLATFORM_N64
+			// separate buttons for UI accept/cancel
+			if (buttonsnow & BUTTON_UI_ACCEPT) {
+				inputs.select = 1;
+			}
+
+			if (buttonsnow & BUTTON_UI_CANCEL) {
+				inputs.back = 1;
+			}
+#endif
 
 			if (buttonsnow & B_BUTTON) {
 				inputs.back = 1;
@@ -4617,17 +4856,25 @@ void menu_process_input(void)
 				inputs.shoulder = 1;
 			}
 
-			if (buttons & L_TRIG) {
-				inputs.shoulder = 1;
-			}
-
 			if ((stickx < 0 ? -stickx : stickx) < (thisstickx < 0 ? -thisstickx : thisstickx)) {
 				stickx = thisstickx;
 			}
 
+#ifndef PLATFORM_N64
+			if ((stickx < 0 ? -stickx : stickx) < (thisrstickx < 0 ? -thisrstickx : thisrstickx)) {
+				stickx = thisrstickx;
+			}
+#endif
+
 			if ((sticky < 0 ? -sticky : sticky) < (thissticky < 0 ? -thissticky : thissticky)) {
 				sticky = thissticky;
 			}
+
+#ifndef PLATFORM_N64
+			if ((sticky < 0 ? -sticky : sticky) < (thisrsticky < 0 ? -thisrsticky : thisrsticky)) {
+				sticky = thisrsticky;
+			}
+#endif
 
 			if (buttons & U_CBUTTONS) {
 				yhelddir = -1;
@@ -4661,37 +4908,6 @@ void menu_process_input(void)
 				xtapdir = 1;
 			}
 
-			if (buttons & U_JPAD) {
-				yhelddir = -1;
-			}
-
-			if (buttonsnow & U_JPAD) {
-				ytapdir = -1;
-			}
-
-			if (buttons & D_JPAD) {
-				yhelddir = 1;
-			}
-
-			if (buttonsnow & D_JPAD) {
-				ytapdir = 1;
-			}
-
-			if (buttons & L_JPAD) {
-				xhelddir = -1;
-			}
-
-			if (buttonsnow & L_JPAD) {
-				xtapdir = -1;
-			}
-
-			if (buttons & R_JPAD) {
-				xhelddir = 1;
-			}
-
-			if (buttonsnow & R_JPAD) {
-				xtapdir = 1;
-			}
 		}
 
 		// Prevent select and going back on the same frame
@@ -4963,6 +5179,25 @@ void menu_process_input(void)
 		inputs.unk14 = 0;
 		inputs.start = starttap ? true : false;
 
+#ifndef PLATFORM_N64
+		// if we haven't been using the mouse but we have been keyboard scrolling disable the mouse
+		if (!inputs.mousemoved && (inputs.leftright || inputs.updown || inputs.leftrightheld || inputs.updownheld)) {
+			g_MenuUsingMouse = false;
+		}
+		// otherwise rotate left/right by clicking on the side of the menu
+		if (g_MenuUsingMouse && inputs.select && !inputs.leftright && !inputs.leftrightheld) {
+			if (inputs.mousey > dialog->y && inputs.mousey < dialog->y + dialog->height) {
+				if (inputs.mousex < dialog->x) {
+					inputs.leftright = -1;
+					inputs.select = 0;
+				} else if (inputs.mousex > dialog->x + dialog->width) {
+					inputs.leftright = 1;
+					inputs.select = 0;
+				}
+			}
+		}
+#endif
+
 		// Handle dialogs that allow pressing start to select,
 		// and handle pressing start on a list item.
 		if (g_Menus[g_MpPlayerNum].curdialog && starttap) {
@@ -4997,7 +5232,7 @@ void menu_process_input(void)
 						foundcurrent = true;
 					}
 
-					dialog_tick(layer->siblings[j], &inputs, tickflags);
+					dialogTick(layer->siblings[j], &inputs, tickflags);
 				}
 			}
 		}
@@ -5012,15 +5247,15 @@ void menu_process_input(void)
 
 				if (g_Vars.mpsetupmenu != MPSETUPMENU_GENERAL
 						&& g_Menus[g_MpPlayerNum].curdialog->definition != &g_MpReadyMenuDialog) {
-					menu_push_dialog(&g_MpReadyMenuDialog);
+					menuPushDialog(&g_MpReadyMenuDialog);
 				} else if (g_Menus[g_MpPlayerNum].curdialog->definition == &g_MpQuickTeamGameSetupMenuDialog) {
-					mp_apply_quickstart();
+					func0f17f428();
 				}
 			}
 			break;
 		case MENUROOT_MPPAUSE:
 			if (g_InCutscene) {
-				menu_save_and_close_all();
+				func0f0f8120();
 			}
 			g_Menus[g_MpPlayerNum].openinhibit = 10;
 			// fall-through
@@ -5030,7 +5265,7 @@ void menu_process_input(void)
 		case MENUROOT_TRAINING:
 			if (inputs.start && !starttoselect && g_Menus[g_MpPlayerNum].curdialog
 					&& (dialog->definition->flags & MENUDIALOGFLAG_IGNOREBACK) == 0) {
-				menu_save_and_close_all();
+				func0f0f8120();
 			}
 			break;
 		}
@@ -5047,7 +5282,7 @@ Gfx *menugfxRenderBgFailureAlt(Gfx *gdl);
  * frac is used when transitioning between two backgrounds.
  * A value of 1 means draw this background with full alpha.
  */
-Gfx *menu_render_background_layer1(Gfx *gdl, u8 bg, f32 frac)
+Gfx *menuRenderBackgroundLayer1(Gfx *gdl, u8 bg, f32 frac)
 {
 	static u32 bblur = 1;
 
@@ -5057,11 +5292,11 @@ Gfx *menu_render_background_layer1(Gfx *gdl, u8 bg, f32 frac)
 			u32 alpha = 255 * frac;
 
 			// Render the blurred background texture with full alpha
-			gdl = menugfx_render_bg_blur(gdl, 0xffffff00 | alpha, 0, 0);
+			gdl = menugfxRenderBgBlur(gdl, 0xffffff00 | alpha, 0, 0);
 
 			// Render it twice more with half alpha and offset
-			gdl = menugfx_render_bg_blur(gdl, 0xffffff00 | alpha >> 1, -30, -30);
-			gdl = menugfx_render_bg_blur(gdl, 0xffffff00 | alpha >> 1, 30, 30);
+			gdl = menugfxRenderBgBlur(gdl, 0xffffff00 | alpha >> 1, -BLUR_OFS, -BLUR_OFS);
+			gdl = menugfxRenderBgBlur(gdl, 0xffffff00 | alpha >> 1, BLUR_OFS, BLUR_OFS);
 		}
 		break;
 	case MENUBG_BLACK:
@@ -5069,21 +5304,21 @@ Gfx *menu_render_background_layer1(Gfx *gdl, u8 bg, f32 frac)
 		{
 			u32 colour = 255 * frac;
 			gSPDisplayList(gdl++, var800613a0);
-			gdl = text_begin_boxmode(gdl, colour);
-			gDPFillRectangle(gdl++, 0, 0, vi_get_width(), vi_get_height());
-			gdl = text_end_boxmode(gdl);
+			gdl = textSetPrimColour(gdl, colour);
+			gDPFillRectangle(gdl++, 0, 0, viGetWidth(), viGetHeight());
+			gdl = text0f153838(gdl);
 		}
 		break;
 	case MENUBG_SUCCESS:
 		{
 			// Fill with black
 			gSPDisplayList(gdl++, var800613a0);
-			gdl = text_begin_boxmode(gdl, 0x000000ff);
-			gDPFillRectangle(gdl++, 0, 0, vi_get_width(), vi_get_height());
-			gdl = text_end_boxmode(gdl);
+			gdl = textSetPrimColour(gdl, 0x000000ff);
+			gDPFillRectangle(gdl++, 0, 0, viGetWidth(), viGetHeight());
+			gdl = text0f153838(gdl);
 
 			// Render the success BG
-			gdl = menugfx_render_bg_success(gdl);
+			gdl = menugfxRenderBgSuccess(gdl);
 
 			// Render alpha black if fading in
 			{
@@ -5091,9 +5326,9 @@ Gfx *menu_render_background_layer1(Gfx *gdl, u8 bg, f32 frac)
 
 				if (alpha) {
 					gSPDisplayList(gdl++, var800613a0);
-					gdl = text_begin_boxmode(gdl, alpha);
-					gDPFillRectangle(gdl++, 0, 0, vi_get_width(), vi_get_height());
-					gdl = text_end_boxmode(gdl);
+					gdl = textSetPrimColour(gdl, alpha);
+					gDPFillRectangle(gdl++, 0, 0, viGetWidth(), viGetHeight());
+					gdl = text0f153838(gdl);
 				}
 			}
 		}
@@ -5104,16 +5339,16 @@ Gfx *menu_render_background_layer1(Gfx *gdl, u8 bg, f32 frac)
 			u32 stack;
 			u32 channel = (1.0f - frac) * 255;
 			gSPDisplayList(gdl++, var800613a0);
-			gdl = text_begin_boxmode(gdl, channel << 24 | channel << 16 | channel << 8 | 0xff);
-			gDPFillRectangle(gdl++, 0, 0, vi_get_width(), vi_get_height());
-			gdl = text_end_boxmode(gdl);
+			gdl = textSetPrimColour(gdl, channel << 24 | channel << 16 | channel << 8 | 0xff);
+			gDPFillRectangle(gdl++, 0, 0, viGetWidth(), viGetHeight());
+			gdl = text0f153838(gdl);
 
 			// Render the failure BG
-			gdl = menugfx_render_bg_failure(gdl);
+			gdl = menugfxRenderBgFailure(gdl);
 		}
 		break;
 	case MENUBG_CONEALPHA:
-		main_override_variable("bblur", &bblur);
+		mainOverrideVariable("bblur", &bblur);
 
 		if (g_MenuData.screenshottimer) {
 			return gdl;
@@ -5121,7 +5356,7 @@ Gfx *menu_render_background_layer1(Gfx *gdl, u8 bg, f32 frac)
 
 		if (bblur) {
 			// Render the blurred background
-			gdl = menugfx_render_bg_blur(gdl, 0xffffffff, 0, 0);
+			gdl = menugfxRenderBgBlur(gdl, 0xffffffff, 0, 0);
 
 			// While fading, render red
 			if (frac < 1.0f) {
@@ -5130,19 +5365,19 @@ Gfx *menu_render_background_layer1(Gfx *gdl, u8 bg, f32 frac)
 
 				gSPDisplayList(gdl++, var800613a0);
 				alpha = (1.0f - frac) * 255;
-				gdl = text_begin_boxmode(gdl, 0xff000000 | alpha);
-				gDPFillRectangle(gdl++, 0, 0, vi_get_width(), vi_get_height());
-				gdl = text_end_boxmode(gdl);
+				gdl = textSetPrimColour(gdl, 0xff000000 | alpha);
+				gDPFillRectangle(gdl++, 0, 0, viGetWidth(), viGetHeight());
+				gdl = text0f153838(gdl);
 			}
 		}
 		break;
 	case MENUBG_GRADIENT:
 		// Blue to red
-		gdl = menugfx_render_gradient(gdl, 0, 0, vi_get_width(), vi_get_height(), 0x00007f7f, 0x000000ff, 0x8f0000ff);
+		gdl = menugfxRenderGradient(gdl, 0, 0, viGetWidth(), viGetHeight(), 0x00007f7f, 0x000000ff, 0x8f0000ff);
 		break;
 	case MENUBG_CONEOPAQUE:
 		// Yellow to yellow (ie. not a gradient)
-		gdl = menugfx_render_gradient(gdl, 0, 0, vi_get_width(), vi_get_height(), 0x3f3f00ff, 0x7f0000ff, 0x3f3f00ff);
+		gdl = menugfxRenderGradient(gdl, 0, 0, viGetWidth(), viGetHeight(), 0x3f3f00ff, 0x7f0000ff, 0x3f3f00ff);
 		break;
 	}
 
@@ -5151,59 +5386,63 @@ Gfx *menu_render_background_layer1(Gfx *gdl, u8 bg, f32 frac)
 
 u32 var800714f0 = 1;
 
-Gfx *menu_render_background_layer2(Gfx *gdl, u8 bg, f32 frac)
+Gfx *menuRenderBackgroundLayer2(Gfx *gdl, u8 bg, f32 frac)
 {
 	if (bg == MENUBG_CONEALPHA || bg == MENUBG_CONEOPAQUE) {
-		main_override_variable("cone", &var800714f0);
+		mainOverrideVariable("cone", &var800714f0);
 
 		if (var800714f0
 				&& (g_MenuData.nextbg == MENUBG_CONEALPHA || g_MenuData.nextbg == 0 || g_MenuData.nextbg == 255)) {
-			gdl = menugfx_render_bg_cone(gdl);
+			gdl = menugfxRenderBgCone(gdl);
 		}
 	}
 
 	return gdl;
 }
 
-Gfx *menu_render(Gfx *gdl)
+Gfx *menuRender(Gfx *gdl)
 {
 	static u32 usepiece = 1;
 
 	g_MpPlayerNum = 0;
 
 #if PAL
-	g_UiScaleX = 1;
+	g_ScaleX = 1;
 #else
-	g_UiScaleX = g_ViRes == VIRES_HI ? 2 : 1;
+	g_ScaleX = g_ViRes == VIRES_HI ? 2 : 1;
 #endif
 
-	gdl = ortho_begin(gdl);
+	gdl = func0f0d479c(gdl);
 
 	gSPDisplayList(gdl++, var800613a0);
 
 	// Render the background
 	if (g_MenuData.nextbg != 255) {
 		if (g_MenuData.nextbg == 0) {
-			gdl = menu_render_background_layer1(gdl, g_MenuData.bg, 1.0f - g_MenuData.bgopacityfrac);
+			gdl = menuRenderBackgroundLayer1(gdl, g_MenuData.bg, 1.0f - g_MenuData.unk010);
 		} else {
-			gdl = menu_render_background_layer1(gdl, g_MenuData.bg, 1.0f);
-			gdl = menu_render_background_layer1(gdl, g_MenuData.nextbg, g_MenuData.bgopacityfrac);
+			gdl = menuRenderBackgroundLayer1(gdl, g_MenuData.bg, 1.0f);
+			gdl = menuRenderBackgroundLayer1(gdl, g_MenuData.nextbg, g_MenuData.unk010);
 		}
 	} else {
-		gdl = menu_render_background_layer1(gdl, g_MenuData.bg, 1.0f);
+		gdl = menuRenderBackgroundLayer1(gdl, g_MenuData.bg, 1.0f);
 	}
 
+#ifndef PLATFORM_N64
+	gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+#endif
+
 	// Calculate hudpiece things then render it
-	if (g_MenuData.triggerhudpiece) {
+	if (g_MenuData.unk5d5_05) {
 		g_MenuData.hudpiece.curanimnum = 0;
 		g_MenuData.hudpiece.newanimnum = ANIM_040D;
 		g_MenuData.hudpiece.removingpiece = false;
 		g_MenuData.hudpiece.reverseanim = false;
-		g_MenuData.hudpieceactive = true;
-		g_MenuData.triggerhudpiece = false;
+		g_MenuData.unk5d4 = 1;
+		g_MenuData.unk5d5_05 = false;
 	}
 
-	if (IS8MB() && g_MenuData.hudpieceactive) {
+	if (IS8MB() && g_MenuData.unk5d4) {
 		bool removepiece = false;
 
 		gSPSetGeometryMode(gdl++, G_ZBUFFER);
@@ -5215,7 +5454,7 @@ Gfx *menu_render(Gfx *gdl)
 			g_MenuData.hudpiece.newposy = RANDOMFRAC() * 80.0f + 244.7f - 40.0f;
 		}
 
-		g_HolorayProjectFromX = g_HolorayProjectFromY = 0;
+		g_MenuProjectFromX = g_MenuProjectFromY = 0;
 
 		if (g_MenuData.root == MENUROOT_MPSETUP) {
 			if (g_MenuData.count <= 0) {
@@ -5250,81 +5489,87 @@ Gfx *menu_render(Gfx *gdl)
 				g_MenuData.hudpiece.removingpiece = true;
 			} else if (g_MenuData.hudpiece.curanimnum == 0) {
 				g_MenuData.hudpiece.removingpiece = false;
-				g_MenuData.hudpieceactive = false;
+				g_MenuData.unk5d4 = 0;
 			}
 		}
 
-		main_override_variable("usePiece", &usepiece);
+		mainOverrideVariable("usePiece", &usepiece);
 
 		if (usepiece) {
 			g_MenuData.usezbuf = false;
 
-			gdl = menu_render_model(gdl, &g_MenuData.hudpiece, MENUMODELTYPE_HUDPIECE);
+			gdl = menuRenderModel(gdl, &g_MenuData.hudpiece, MENUMODELTYPE_HUDPIECE);
 			gSPClearGeometryMode(gdl++, G_ZBUFFER);
 
 			g_MenuData.usezbuf = true;
 		}
 	} else {
-		g_HolorayProjectFromX = g_HolorayProjectFromY = 0;
+		g_MenuProjectFromX = g_MenuProjectFromY = 0;
 	}
 
-	if (g_MenuData.openedfrompc) {
-		g_HolorayProjectFromX = g_MenuData.projectfromx;
-		g_HolorayProjectFromY = g_MenuData.projectfromy;
+	if (g_MenuData.unk5d5_04) {
+		g_MenuProjectFromX = g_MenuData.unk670;
+		g_MenuProjectFromY = g_MenuData.unk674;
 	}
 
 	// Render the second layer of the background (for the combat simulator cone,
 	// which draws over the top of the hud piece)
 	if (g_MenuData.nextbg != 255) {
 		if (g_MenuData.nextbg == 0) {
-			gdl = menu_render_background_layer2(gdl, g_MenuData.bg, 1.0f - g_MenuData.bgopacityfrac);
+			gdl = menuRenderBackgroundLayer2(gdl, g_MenuData.bg, 1.0f - g_MenuData.unk010);
 		} else {
-			gdl = menu_render_background_layer2(gdl, g_MenuData.bg, 1.0f);
-			gdl = menu_render_background_layer2(gdl, g_MenuData.nextbg, g_MenuData.bgopacityfrac);
+			gdl = menuRenderBackgroundLayer2(gdl, g_MenuData.bg, 1.0f);
+			gdl = menuRenderBackgroundLayer2(gdl, g_MenuData.nextbg, g_MenuData.unk010);
 		}
 	} else {
-		gdl = menu_render_background_layer2(gdl, g_MenuData.bg, 1.0f);
+		gdl = menuRenderBackgroundLayer2(gdl, g_MenuData.bg, 1.0f);
 	}
 
-	// Render the health bar (player_render_health_bar may choose not to render)
+	// Render the health bar (playerRenderHealthBar may choose not to render)
 	if ((g_MenuData.bg || g_MenuData.nextbg != 255)
 			&& (!g_Vars.currentplayer->eyespy || !g_Vars.currentplayer->eyespy->active)) {
-		gdl = ortho_end(gdl);
-		gdl = player_render_health_bar(gdl);
-		gdl = ortho_begin(gdl);
+		gdl = func0f0d49c8(gdl);
+#ifndef PLATFORM_N64
+		gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+#endif
+		gdl = playerRenderHealthBar(gdl);
+#ifndef PLATFORM_N64
+		gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+#endif
+		gdl = func0f0d479c(gdl);
 	}
 
 	if (g_MenuData.count > 0) {
 		// Render dialogs
-		gdl = text_enable_holo_ray(gdl);
+		gdl = text0f153ab0(gdl);
 
 		if (g_MenuData.root == MENUROOT_MPPAUSE || g_MenuData.root == MENUROOT_MPENDSCREEN) {
 			g_MpPlayerNum = g_Vars.currentplayerstats->mpindex;
-			gdl = menu_render_dialogs(gdl);
+			gdl = menuRenderDialogs(gdl);
 		} else {
 			s32 i;
 
 			for (i = 0; i < MAX_PLAYERS; i++) {
 				g_MpPlayerNum = i;
-				gdl = menu_render_dialogs(gdl);
+				gdl = menuRenderDialogs(gdl);
 			}
 		}
 
 		g_MpPlayerNum = 0;
 
-		gSPMatrix(gdl++, osVirtualToPhysical(cam_get_perspective_mtxl()), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+		gSPMatrix(gdl++, osVirtualToPhysical(camGetPerspectiveMtxL()), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
 		gSPDisplayList(gdl++, var800613a0);
 
-		text_disable_holo_ray();
+		text0f153b40();
 
 		// Render corner texts in combat simulator
 		if (g_MenuData.root == MENUROOT_MPSETUP || g_MenuData.root == MENUROOT_4MBMAINMENU) {
 			s32 i;
 			s32 j;
-			s32 viewleft = vi_get_view_left() / g_UiScaleX + 20;
-			s32 viewtop = vi_get_view_top() + 4;
-			s32 viewright = (vi_get_view_left() + vi_get_view_width()) / g_UiScaleX - 20;
-			s32 viewbottom = vi_get_view_top() + vi_get_view_height() - 4;
+			s32 viewleft = viGetViewLeft() / g_ScaleX + 20;
+			s32 viewtop = viGetViewTop() + 4;
+			s32 viewright = (viGetViewLeft() + viGetViewWidth()) / g_ScaleX - 20;
+			s32 viewbottom = viGetViewTop() + viGetViewHeight() - 4;
 			s32 textheight;
 			s32 textwidth;
 			bool renderit;
@@ -5335,7 +5580,7 @@ Gfx *menu_render(Gfx *gdl)
 			s32 y;
 			s32 colour;
 
-			gdl = text_begin(gdl);
+			gdl = text0f153628(gdl);
 
 			for (i = 0; i < MAX_PLAYERS; i++) {
 				// Figure out what text will be displayed. The text calculated
@@ -5348,7 +5593,7 @@ Gfx *menu_render(Gfx *gdl)
 					// or similar. Show "Ready" in their corner.
 					renderit = true;
 					// "Player %d: " and "Ready!"
-					sprintf(text, "%s%s", lang_get(L_MPMENU_482), lang_get(L_MISC_461));
+					sprintf(text, "%s%s", langGet(L_MPMENU_482), langGet(L_MISC_461));
 				} else {
 					if (g_MenuData.root == MENUROOT_4MBMAINMENU) {
 						if (g_Vars.mpsetupmenu == MPSETUPMENU_GENERAL) {
@@ -5367,15 +5612,15 @@ Gfx *menu_render(Gfx *gdl)
 					}
 
 					// "Player %d: " and "Press START!"
-					sprintf(text, "%s%s", lang_get(L_MPMENU_482), lang_get(L_MPMENU_483));
+					sprintf(text, "%s%s", langGet(L_MPMENU_482), langGet(L_MPMENU_483));
 				}
 
 				if (renderit) {
-					text_measure(&textheight, &textwidth, text, g_CharsHandelGothicSm, g_FontHandelGothicSm, 0);
+					textMeasure(&textheight, &textwidth, text, g_CharsHandelGothicSm, g_FontHandelGothicSm, 0);
 
 					// Check which controllers are connected
 					// and update the alpha of the label
-					if (((g_MpSetup.chrslots | ~joy_get_connected_controllers()) & (1 << i)) == 0) {
+					if (((g_MpSetup.chrslots | ~joyGetConnectedControllers()) & (1 << i)) == 0) {
 #if VERSION >= VERSION_PAL_BETA
 						tmp1 = g_Vars.diffframe60freal * 3;
 #else
@@ -5406,10 +5651,10 @@ Gfx *menu_render(Gfx *gdl)
 					}
 
 					if (g_MenuData.playerjoinalpha[i] > 0) {
-						u32 weight = menu_get_sin_osc_frac(20) * 255.0f;
+						u32 weight = menuGetSinOscFrac(20) * 255.0f;
 
 						// "Player %d: "
-						sprintf(text, lang_get(L_MPMENU_482), i + 1);
+						sprintf(text, langGet(L_MPMENU_482), i + 1);
 
 						if (i < 2) {
 							y = viewtop + 2;
@@ -5423,30 +5668,30 @@ Gfx *menu_render(Gfx *gdl)
 							x = viewleft + 2;
 						}
 
-						gdl = text_render_v2(gdl, &x, &y, text, g_CharsHandelGothicSm, g_FontHandelGothicSm, g_MenuData.playerjoinalpha[i] | 0x5070ff00, vi_get_width(), vi_get_height(), 0, 0);
+						gdl = textRenderProjected(gdl, &x, &y, text, g_CharsHandelGothicSm, g_FontHandelGothicSm, g_MenuData.playerjoinalpha[i] | 0x5070ff00, viGetWidth(), viGetHeight(), 0, 0);
 
 						if (g_Vars.mpsetupmenu == MPSETUPMENU_GENERAL && g_Vars.waitingtojoin[i]) {
 							// "Ready!"
 #if VERSION >= VERSION_JPN_FINAL
 							colour = L_MISC_461;
-							strcpy(text, lang_get(colour));
+							strcpy(text, langGet(colour));
 							colour = 0xffffffff;
 #else
-							strcpy(text, lang_get(L_MISC_461));
+							strcpy(text, langGet(L_MISC_461));
 							colour = g_MenuData.playerjoinalpha[i] | 0xd00020ff;
 #endif
 						} else {
 							// "Press START!"
-							strcpy(text, lang_get(L_MPMENU_483));
-							colour = colour_blend(0x00ffff00, 0xffffff00, weight) | g_MenuData.playerjoinalpha[i];
+							strcpy(text, langGet(L_MPMENU_483));
+							colour = colourBlend(0x00ffff00, 0xffffff00, weight) | g_MenuData.playerjoinalpha[i];
 						}
 
-						gdl = text_render_v2(gdl, &x, &y, text, g_CharsHandelGothicSm, g_FontHandelGothicSm, colour, vi_get_width(), vi_get_height(), 0, 0);
+						gdl = textRenderProjected(gdl, &x, &y, text, g_CharsHandelGothicSm, g_FontHandelGothicSm, colour, viGetWidth(), viGetHeight(), 0, 0);
 					}
 				}
 			}
 
-			gdl = text_end(gdl);
+			gdl = text0f153780(gdl);
 		}
 
 		gSPSetGeometryMode(gdl++, G_ZBUFFER);
@@ -5455,10 +5700,10 @@ Gfx *menu_render(Gfx *gdl)
 	// Render banner messages, such as "Please Wait...",
 	// "Checking Controller Pak" and some unused game boy camera texts.
 	if (g_MenuData.bannernum != -1) {
-		s32 x1 = vi_get_view_left() / g_UiScaleX;
-		s32 y1 = vi_get_view_top();
-		s32 x2 = (vi_get_view_left() + vi_get_view_width()) / g_UiScaleX;
-		s32 y2 = vi_get_view_top() + vi_get_view_height();
+		s32 x1 = viGetViewLeft() / g_ScaleX;
+		s32 y1 = viGetViewTop();
+		s32 x2 = (viGetViewLeft() + viGetViewWidth()) / g_ScaleX;
+		s32 y2 = viGetViewTop() + viGetViewHeight();
 
 #if VERSION >= VERSION_NTSC_1_0
 		s32 left = 0;
@@ -5472,7 +5717,7 @@ Gfx *menu_render(Gfx *gdl)
 			}
 		}
 
-		if (PLAYERCOUNT() == 2 && (options_get_screen_split() == SCREENSPLIT_VERTICAL || IS4MB())) {
+		if (PLAYERCOUNT() == 2 && (optionsGetScreenSplit() == SCREENSPLIT_VERTICAL || IS4MB())) {
 			if (g_Vars.currentplayernum == 1) {
 				right = 15;
 			} else {
@@ -5480,7 +5725,7 @@ Gfx *menu_render(Gfx *gdl)
 			}
 		}
 
-		gdl = menu_render_banner(gdl, x1, y1, x2, y2, PLAYERCOUNT() < 2, g_MenuData.bannernum, left, right);
+		gdl = menuRenderBanner(gdl, x1, y1, x2, y2, PLAYERCOUNT() < 2, g_MenuData.bannernum, left, right);
 #else
 		if (PLAYERCOUNT() >= 3) {
 			if (g_Vars.currentplayernum == 1 || g_Vars.currentplayernum == 3) {
@@ -5490,7 +5735,7 @@ Gfx *menu_render(Gfx *gdl)
 			}
 		}
 
-		if (PLAYERCOUNT() == 2 && (options_get_screen_split() == SCREENSPLIT_VERTICAL || IS4MB())) {
+		if (PLAYERCOUNT() == 2 && (optionsGetScreenSplit() == SCREENSPLIT_VERTICAL || IS4MB())) {
 			if (g_Vars.currentplayernum == 1) {
 				x2 -= 10;
 			} else {
@@ -5498,29 +5743,33 @@ Gfx *menu_render(Gfx *gdl)
 			}
 		}
 
-		gdl = menu_render_banner(gdl, x1, y1, x2, y2, PLAYERCOUNT() < 2, g_MenuData.bannernum);
+		gdl = menuRenderBanner(gdl, x1, y1, x2, y2, PLAYERCOUNT() < 2, g_MenuData.bannernum);
 #endif
 	}
 
-	gdl = ortho_end(gdl);
+#ifndef PLATFORM_N64
+	gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT);
+#endif
 
-	g_UiScaleX = 1;
+	gdl = func0f0d49c8(gdl);
+
+	g_ScaleX = 1;
 
 	return gdl;
 }
 
 const char var7f1b27a4[] = "Tune Selector - mode %d\n";
 
-u32 menu_choose_music(void)
+u32 menuChooseMusic(void)
 {
 	s32 missionsuccess = MUSIC_MISSION_SUCCESS;
 
-	if (g_StageIndex == STAGEINDEX_AIRFORCEONE || g_StageIndex == STAGEINDEX_DEFENSE) {
+	if (g_StageIndex == STAGEINDEX_DEFENSE) {
 		missionsuccess = MUSIC_MISSION_UNKNOWN;
 	}
 
 	if (g_MenuData.root == MENUROOT_ENDSCREEN) {
-		if (g_Vars.bond->isdead || g_Vars.bond->aborted || !objective_is_all_complete()) {
+		if (g_Vars.bond->isdead || g_Vars.bond->aborted || !objectiveIsAllComplete()) {
 			return MUSIC_MISSION_FAILED;
 		}
 
@@ -5532,7 +5781,7 @@ u32 menu_choose_music(void)
 			if ((g_Vars.bond->isdead && g_Vars.coop->isdead)
 					|| g_Vars.bond->aborted
 					|| g_Vars.coop->aborted
-					|| !objective_is_all_complete()) {
+					|| !objectiveIsAllComplete()) {
 				return MUSIC_MISSION_FAILED;
 			}
 
@@ -5540,7 +5789,7 @@ u32 menu_choose_music(void)
 		}
 
 		if (g_Vars.antiplayernum >= 0) {
-			if (g_Vars.bond->isdead || g_Vars.bond->aborted || !objective_is_all_complete()) {
+			if (g_Vars.bond->isdead || g_Vars.bond->aborted || !objectiveIsAllComplete()) {
 				return MUSIC_MISSION_FAILED;
 			}
 
@@ -5575,7 +5824,7 @@ u32 menu_choose_music(void)
 	return MUSIC_PAUSEMENU;
 }
 
-bool menu_is_file_not_yet_selected(void)
+bool func0f0fcbcc(void)
 {
 	if (g_FileState == FILESTATE_UNSELECTED && g_Vars.stagenum == STAGE_CITRAINING) {
 		return true;
@@ -5584,15 +5833,12 @@ bool menu_is_file_not_yet_selected(void)
 	return false;
 }
 
-/**
- * Unused.
- */
-bool menu_0f0fcc04(void)
+bool func0f0fcc04(void)
 {
 	return false;
 }
 
-u32 menu_get_root(void)
+u32 menuGetRoot(void)
 {
 	if (g_MenuData.count == 0) {
 		return 0;
@@ -5604,12 +5850,11 @@ u32 menu_get_root(void)
 #if VERSION >= VERSION_NTSC_1_0
 struct menudialogdef g_PakAttemptRepairMenuDialog;
 
-MenuItemHandlerResult menuhandler_pak_acknowledge(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandler000fcc34(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	bool done = false;
 
-	if (operation == MENUOP_CONFIRM) {
-		// Close all pak success/error dialogs
+	if (operation == MENUOP_SET) {
 		while (!done) {
 			done = true;
 
@@ -5621,7 +5866,7 @@ MenuItemHandlerResult menuhandler_pak_acknowledge(s32 operation, struct menuitem
 						|| g_Menus[g_MpPlayerNum].curdialog->definition == &g_PakDamagedMenuDialog
 						|| g_Menus[g_MpPlayerNum].curdialog->definition == &g_PakFullMenuDialog) {
 					done = false;
-					menu_pop_dialog();
+					menuPopDialog();
 				}
 			}
 		}
@@ -5631,17 +5876,13 @@ MenuItemHandlerResult menuhandler_pak_acknowledge(s32 operation, struct menuitem
 }
 #endif
 
-/**
- * While the dialog is open, check if the pak has been removed
- * and replace the dialog if so.
- */
-MenuDialogHandlerResult menudialog_pak(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
+MenuDialogHandlerResult menudialog000fcd48(s32 operation, struct menudialogdef *dialogdef, union handlerdata *data)
 {
-	if (operation == MENUOP_ON_TICK) {
+	if (operation == MENUOP_TICK) {
 		if (g_Menus[g_MpPlayerNum].curdialog
 				&& g_Menus[g_MpPlayerNum].curdialog->definition == dialogdef
-				&& joy_get_pak_state(g_Menus[g_MpPlayerNum].fm.device3) == PAKSTATE_NOPAK) {
-			menu_replace_current_dialog(&g_PakRemovedMenuDialog);
+				&& joyGetPakState(g_Menus[g_MpPlayerNum].fm.device3) == PAKSTATE_NOPAK) {
+			func0f0f3704(&g_PakRemovedMenuDialog);
 		}
 	}
 
@@ -5649,36 +5890,30 @@ MenuDialogHandlerResult menudialog_pak(s32 operation, struct menudialogdef *dial
 }
 
 #if VERSION >= VERSION_NTSC_1_0
-/**
- * Not used.
- *
- * When some menu item is selected, replaces the dialog with the pak damaged one.
- * Maybe used for testing, to test the repair process?
- */
-MenuItemHandlerResult menuhandler_pak_setdamaged(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult func0f0fcdd0(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		menu_replace_current_dialog(&g_PakDamagedMenuDialog);
+	if (operation == MENUOP_SET) {
+		func0f0f3704(&g_PakDamagedMenuDialog);
 	}
 
 	return 0;
 }
 #endif
 
-MenuItemHandlerResult menuhandler_repair_pak(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerRepairPak(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		if (pak_repair(g_Menus[g_MpPlayerNum].fm.device3)) {
-			menu_replace_current_dialog(&g_PakRepairSuccessMenuDialog);
+	if (operation == MENUOP_SET) {
+		if (pakRepair(g_Menus[g_MpPlayerNum].fm.device3)) {
+			func0f0f3704(&g_PakRepairSuccessMenuDialog);
 		} else {
-			menu_replace_current_dialog(&g_PakRepairFailedMenuDialog);
+			func0f0f3704(&g_PakRepairFailedMenuDialog);
 		}
 	}
 
 	return 0;
 }
 
-void menu_push_pak_dialog_for_player(struct menudialogdef *dialogdef, s32 playernum, s32 paknum)
+void menuPushPakDialogForPlayer(struct menudialogdef *dialogdef, s32 playernum, s32 paknum)
 {
 	s32 prevplayernum = g_MpPlayerNum;
 
@@ -5687,14 +5922,14 @@ void menu_push_pak_dialog_for_player(struct menudialogdef *dialogdef, s32 player
 
 	if (g_Menus[g_MpPlayerNum].curdialog == NULL) {
 		if (PLAYERCOUNT() == 1) {
-			menu_push_root_dialog(dialogdef, MENUROOT_MAINMENU);
-			lv_set_paused(true);
+			menuPushRootDialog(dialogdef, MENUROOT_MAINMENU);
+			lvSetPaused(true);
 			g_Vars.currentplayer->pausemode = PAUSEMODE_PAUSED;
 		} else {
-			menu_push_root_dialog(dialogdef, MENUROOT_MPPAUSE);
+			menuPushRootDialog(dialogdef, MENUROOT_MPPAUSE);
 		}
 	} else {
-		menu_push_dialog(dialogdef);
+		menuPushDialog(dialogdef);
 	}
 
 	g_MpPlayerNum = prevplayernum;
@@ -5724,7 +5959,7 @@ struct menuitem g_PakRemovedMenuItems[] = {
 		MENUITEMFLAG_SELECTABLE_CENTRE,
 		L_MPWEAPONS_073, // "OK"
 		0,
-		menuhandler_pak_acknowledge,
+		menuhandler000fcc34,
 #else
 		MENUITEMFLAG_SELECTABLE_CLOSESDIALOG | MENUITEMFLAG_SELECTABLE_CENTRE,
 		L_MPWEAPONS_073, // "OK"
@@ -5768,7 +6003,7 @@ struct menuitem g_PakRepairSuccessMenuItems[] = {
 		MENUITEMFLAG_SELECTABLE_CENTRE,
 		L_MPWEAPONS_073, // "OK"
 		0,
-		menuhandler_pak_acknowledge,
+		menuhandler000fcc34,
 #else
 		MENUITEMFLAG_SELECTABLE_CLOSESDIALOG | MENUITEMFLAG_SELECTABLE_CENTRE,
 		L_MPWEAPONS_073, // "OK"
@@ -5783,7 +6018,7 @@ struct menudialogdef g_PakRepairSuccessMenuDialog = {
 	MENUDIALOGTYPE_SUCCESS,
 	L_MPWEAPONS_180, // "Repair Successful"
 	g_PakRepairSuccessMenuItems,
-	menudialog_pak,
+	menudialog000fcd48,
 	0,
 	NULL,
 };
@@ -5820,7 +6055,7 @@ struct menudialogdef g_PakRepairFailedMenuDialog = {
 	MENUDIALOGTYPE_DANGER,
 	L_MPWEAPONS_182, // "Repair Failed"
 	g_PakRepairFailedMenuItems,
-	menudialog_pak,
+	menudialog000fcd48,
 	0,
 	NULL,
 };
@@ -5864,7 +6099,7 @@ struct menuitem g_PakAttemptRepairMenuItems[] = {
 		MENUITEMFLAG_SELECTABLE_CENTRE,
 		L_MPWEAPONS_179, // "Repair"
 		0,
-		menuhandler_repair_pak,
+		menuhandlerRepairPak,
 	},
 	{ MENUITEMTYPE_END },
 };
@@ -5873,12 +6108,12 @@ struct menudialogdef g_PakAttemptRepairMenuDialog = {
 	MENUDIALOGTYPE_DANGER,
 	L_MPWEAPONS_175, // "Attempt Repair"
 	g_PakAttemptRepairMenuItems,
-	menudialog_pak,
+	menudialog000fcd48,
 	0,
 	NULL,
 };
 
-char *menu_text_save_device_name(struct menuitem *item)
+char *menuTextSaveDeviceName(struct menuitem *item)
 {
 	u16 devices[] = {
 		L_OPTIONS_112, // "Controller Pak 1"
@@ -5891,16 +6126,16 @@ char *menu_text_save_device_name(struct menuitem *item)
 	};
 
 	if ((u8)g_Menus[g_MpPlayerNum].fm.device3 < ARRAYCOUNT(devices)) {
-		return lang_get(devices[(u8)g_Menus[g_MpPlayerNum].fm.device3]);
+		return langGet(devices[(u8)g_Menus[g_MpPlayerNum].fm.device3]);
 	}
 
 	return NULL;
 }
 
-MenuItemHandlerResult menuhandler_retry_save_pak(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerRetrySavePak(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
-		menu_pop_dialog();
+	if (operation == MENUOP_SET) {
+		menuPopDialog();
 
 #if VERSION >= VERSION_NTSC_1_0
 		g_Vars.pakstocheck &= 0xfff0;
@@ -5914,20 +6149,20 @@ MenuItemHandlerResult menuhandler_retry_save_pak(s32 operation, struct menuitem 
 	return 0;
 }
 
-MenuItemHandlerResult menuhandler_warn_repair_pak(s32 operation, struct menuitem *item, union handlerdata *data)
+MenuItemHandlerResult menuhandlerWarnRepairPak(s32 operation, struct menuitem *item, union handlerdata *data)
 {
-	if (operation == MENUOP_CONFIRM) {
+	if (operation == MENUOP_SET) {
 #if VERSION >= VERSION_NTSC_1_0
-		menu_push_dialog(&g_PakAttemptRepairMenuDialog);
+		menuPushDialog(&g_PakAttemptRepairMenuDialog);
 #else
-		menu_replace_current_dialog(&g_PakAttemptRepairMenuDialog);
+		func0f0f3704(&g_PakAttemptRepairMenuDialog);
 #endif
 	}
 
 	return 0;
 }
 
-s32 menu_pak_num_to_player_num(s32 paknum)
+s32 menuPakNumToPlayerNum(s32 paknum)
 {
 	u32 result = 0;
 
@@ -5946,9 +6181,9 @@ s32 menu_pak_num_to_player_num(s32 paknum)
 	return result;
 }
 
-bool menu_is_ready_for_pak_error(s32 paknum, s32 pakerrordialog)
+bool menuIsReadyForPakError(s32 paknum, s32 pakerrordialog)
 {
-	s32 playernum = menu_pak_num_to_player_num(paknum);
+	s32 playernum = menuPakNumToPlayerNum(paknum);
 	bool result = true;
 
 	if (g_Vars.lvframenum < 20) {
@@ -5976,17 +6211,17 @@ bool menu_is_ready_for_pak_error(s32 paknum, s32 pakerrordialog)
 				|| g_Menus[playernum].curdialog->definition == &g_PakRepairFailedMenuDialog) {
 			result = false;
 		}
-	} else if (g_MenuData.nextbg != 255 || g_MenuData.bg || g_MenuData.hudpieceactive) {
+	} else if (g_MenuData.nextbg != 255 || g_MenuData.bg || g_MenuData.unk5d4) {
 		result = false;
 	}
 
 	return result;
 }
 
-void menu_push_pak_error_dialog(s32 paknum, s32 pakerrordialog)
+void menuPushPakErrorDialog(s32 paknum, s32 pakerrordialog)
 {
 	s32 prevplayernum = g_MpPlayerNum;
-	s32 playernum = menu_pak_num_to_player_num(paknum);
+	s32 playernum = menuPakNumToPlayerNum(paknum);
 	bool found;
 	s32 i;
 
@@ -5995,7 +6230,7 @@ void menu_push_pak_error_dialog(s32 paknum, s32 pakerrordialog)
 	switch (pakerrordialog) {
 	case PAKERRORDIALOG_CORRUPT:
 	case PAKERRORDIALOG_DEVICEERROR:
-		menu_push_pak_dialog_for_player(&g_PakDamagedMenuDialog, playernum, paknum);
+		menuPushPakDialogForPlayer(&g_PakDamagedMenuDialog, playernum, paknum);
 		break;
 	case PAKERRORDIALOG_FULL:
 		found = false;
@@ -6008,15 +6243,15 @@ void menu_push_pak_error_dialog(s32 paknum, s32 pakerrordialog)
 		}
 
 		if (!found) {
-			menu_push_pak_dialog_for_player(&g_PakFullMenuDialog, playernum, paknum);
+			menuPushPakDialogForPlayer(&g_PakFullMenuDialog, playernum, paknum);
 		}
 		break;
 #if VERSION >= VERSION_NTSC_1_0
 	case PAKERRORDIALOG_GB_UNREADABLE:
-		menu_push_pak_dialog_for_player(&g_PakCannotReadGameBoyMenuDialog, playernum, paknum);
+		menuPushPakDialogForPlayer(&g_PakCannotReadGameBoyMenuDialog, playernum, paknum);
 		break;
 	case PAKERRORDIALOG_DATALOST:
-		menu_push_pak_dialog_for_player(&g_PakDataLostMenuDialog, playernum, paknum);
+		menuPushPakDialogForPlayer(&g_PakDataLostMenuDialog, playernum, paknum);
 		break;
 #endif
 	}
@@ -6024,32 +6259,32 @@ void menu_push_pak_error_dialog(s32 paknum, s32 pakerrordialog)
 	g_MpPlayerNum = prevplayernum;
 }
 
-void menu_set_source_pos(struct coord *pos)
+void func0f0fd494(struct coord *pos)
 {
 	f32 xy[2];
 	struct coord coord;
 	Mtxf *matrix;
 
-	g_MenuData.openedfrompc = true;
+	g_MenuData.unk5d5_04 = true;
 
-	matrix = cam_get_world_to_screen_mtxf();
+	matrix = camGetWorldToScreenMtxf();
 
-	mtx4_transform_vec(matrix, pos, &coord);
+	mtx4TransformVec(matrix, pos, &coord);
 	cam0f0b4d04(&coord, xy);
 
-	g_MenuData.projectfromx = (s32)xy[0] - vi_get_width() / 2;
-	g_MenuData.projectfromy = (s32)xy[1] - vi_get_height() / 2;
+	g_MenuData.unk670 = (s32)xy[0] - viGetWidth() / 2;
+	g_MenuData.unk674 = (s32)xy[1] - viGetHeight() / 2;
 
-	g_MenuData.triggerhudpiece = false;
+	g_MenuData.unk5d5_05 = false;
 }
 
-void menu_queue_save(s32 playernum)
+void func0f0fd548(s32 arg0)
 {
-	g_MenuData.pendingsaves[g_MenuData.numpendingsaves++] = playernum;
-	g_MenuData.savetimer = 0;
+	g_MenuData.unk669[g_MenuData.unk66e++] = arg0;
+	g_MenuData.unk66f = 0;
 }
 
-struct menudialog *menu_is_dialog_open(struct menudialogdef *dialogdef)
+struct menudialog *menuIsDialogOpen(struct menudialogdef *dialogdef)
 {
 	s32 i;
 	s32 j;
@@ -6073,7 +6308,7 @@ struct menuitem g_PakDamagedMenuItems[] = {
 		MENUITEMTYPE_LABEL,
 		0,
 		MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_SELECTABLE_CENTRE,
-		(uintptr_t)&menu_text_save_device_name,
+		(uintptr_t)&menuTextSaveDeviceName,
 		0,
 		NULL,
 	},
@@ -6107,7 +6342,7 @@ struct menuitem g_PakDamagedMenuItems[] = {
 		0,
 		L_MPWEAPONS_067, // "Attempt Repair"
 		0,
-		menuhandler_warn_repair_pak,
+		menuhandlerWarnRepairPak,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -6115,7 +6350,7 @@ struct menuitem g_PakDamagedMenuItems[] = {
 		0,
 		L_MPWEAPONS_068, // "Retry"
 		0,
-		menuhandler_retry_save_pak,
+		menuhandlerRetrySavePak,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
@@ -6132,9 +6367,9 @@ struct menudialogdef g_PakDamagedMenuDialog = {
 	MENUDIALOGTYPE_DANGER,
 	L_MPWEAPONS_064, // "Damaged Controller Pak"
 	g_PakDamagedMenuItems,
-	menudialog_pak,
+	menudialog000fcd48,
 #if VERSION >= VERSION_NTSC_1_0
-	MENUDIALOGFLAG_IGNOREBACK,
+	0x00000020,
 #else
 	0,
 #endif
@@ -6146,7 +6381,7 @@ struct menuitem g_PakFullMenuItems[] = {
 		MENUITEMTYPE_LABEL,
 		0,
 		MENUITEMFLAG_SELECTABLE_CENTRE,
-		(uintptr_t)&menu_text_save_device_name,
+		(uintptr_t)&menuTextSaveDeviceName,
 		0,
 		NULL,
 	},
@@ -6199,9 +6434,9 @@ struct menudialogdef g_PakFullMenuDialog = {
 	MENUDIALOGTYPE_DANGER,
 	L_MPWEAPONS_070, // "Full Controller Pak"
 	g_PakFullMenuItems,
-	menudialog_pak,
+	menudialog000fcd48,
 #if VERSION >= VERSION_NTSC_1_0
-	MENUDIALOGFLAG_IGNOREBACK,
+	0x00000020,
 #else
 	0,
 #endif
@@ -6251,7 +6486,7 @@ struct menuitem g_PakDataLostMenuItems[] = {
 		MENUITEMTYPE_LABEL,
 		0,
 		MENUITEMFLAG_LESSLEFTPADDING | MENUITEMFLAG_SELECTABLE_CENTRE,
-		(uintptr_t)&menu_text_save_device_name,
+		(uintptr_t)&menuTextSaveDeviceName,
 		0,
 		NULL,
 	},
