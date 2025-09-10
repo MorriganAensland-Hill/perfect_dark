@@ -796,13 +796,15 @@
 #define DIFF_A  0x00
 #define DIFF_SA 0x01
 #define DIFF_PA 0x02
-#define DIFF_PD 0x03
+#define DIFF_DA 0x03
+#define DIFF_PD 0x04
 
 // These difficulties are for briefings, which can be bitwise ORed
 #define DIFFBIT_A  0x01
 #define DIFFBIT_SA 0x02
 #define DIFFBIT_PA 0x04
-#define DIFFBIT_PD 0x08
+#define DIFFBIT_DA 0x08
+#define DIFFBIT_PD 0x10
 
 #define DOORFLAG_EXTENDEDY       0x0001 // GE bunker flexi door
 #define DOORFLAG_WINDOWED        0x0002
@@ -3099,7 +3101,7 @@
 #define OBJFLAG2_EXCLUDE_A              0x00000010
 #define OBJFLAG2_EXCLUDE_SA             0x00000020
 #define OBJFLAG2_EXCLUDE_PA             0x00000040
-#define OBJFLAG2_EXCLUDE_PD             0x00000080
+#define OBJFLAG2_EXCLUDE_DA             0x00000080
 #define OBJFLAG2_NOFALL                 0x00000100
 #define OBJFLAG2_FALLWITHOUTROTATION    0x00000200
 #define OBJFLAG2_LINKEDTOSAFE           0x00000400 // Applied to safe door and item
@@ -3886,11 +3888,12 @@
 
 #define SPAWNFLAG_FORCESUNGLASSES     0x00000001 // 100% chance of wearing sunglasses if head model supports it
 #define SPAWNFLAG_MAYBESUNGLASSES     0x00000002 // 50% chance of wearing sunglasses if head model supports it
-#define SPAWNFLAG_INVINCIBLE          0x00000008
-#define SPAWNFLAG_ALLOWONSCREEN       0x00000010
-#define SPAWNFLAG_ONLYONA             0x00000020
-#define SPAWNFLAG_ONLYONSA            0x00000040
-#define SPAWNFLAG_ONLYONPA            0x00000080
+#define SPAWNFLAG_INVINCIBLE          0x00000004
+#define SPAWNFLAG_ALLOWONSCREEN       0x00000008
+#define SPAWNFLAG_ONLYONA             0x00000010
+#define SPAWNFLAG_ONLYONSA            0x00000020
+#define SPAWNFLAG_ONLYONPA            0x00000040
+#define SPAWNFLAG_ONLYONDA            0x00000080
 #define SPAWNFLAG_IGNORECOLLISION     0x00000100 // For initial chr placement only
 #define SPAWNFLAG_BASICGUARD          0x00000200 // Can be used for anti, have movement stopped during high lag, and warped out of lift doorways
 #define SPAWNFLAG_ANTINONINTERACTABLE 0x00000400

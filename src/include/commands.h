@@ -1171,7 +1171,7 @@
 /**
  * Checks if the difficulty is less than the given value.
  *
- * Diff is expected to be one of DIFF_A, DIFF_SA, DIFF_PA or DIFF_PD.
+ * Diff is expected to be one of DIFF_A, DIFF_SA, DIFF_PA, DIFF_DA or DIFF_PD.
  */
 #define if_difficulty_lt(diff, label) \
 	mkshort(0x0077), \
@@ -1181,7 +1181,7 @@
 /**
  * Checks if the difficulty is greater than the given value.
  *
- * Diff is expected to be one of DIFF_A, DIFF_SA, DIFF_PA or DIFF_PD.
+ * Diff is expected to be one of DIFF_A, DIFF_SA, DIFF_PA, DIFF_DA or DIFF_PD.
  */
 #define if_difficulty_gt(diff, label) \
 	mkshort(0x0078), \
