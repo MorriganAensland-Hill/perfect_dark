@@ -60,6 +60,8 @@ char *solo_menu_text_difficulty(struct menuitem *item)
 		return lang_get(L_OPTIONS_252);
 	case DIFF_PA:
 		return lang_get(L_OPTIONS_253);
+	case DIFF_DA:
+		return lang_get(L_OPTIONS_494);
 	case DIFF_A:
 	default:
 		return lang_get(L_OPTIONS_251);
@@ -995,7 +997,7 @@ bool is_stage_difficulty_unlocked(s32 stageindex, s32 difficulty)
 	}
 
 	// Handle normal missions
-	if (stageindex <= SOLOSTAGEINDEX_SKEDARRUINS && difficulty <= DIFF_PA) {
+	if (stageindex <= SOLOSTAGEINDEX_SKEDARRUINS && difficulty <= DIFF_DA) {
 		// Defection is always unlocked on all difficulties
 		if (g_SoloStages[stageindex].stagenum == STAGE_DEFECTION) {
 			return true;
@@ -1004,7 +1006,7 @@ bool is_stage_difficulty_unlocked(s32 stageindex, s32 difficulty)
 		// If the stage has already been completed on the queried difficulty
 		// or higher then the queried difficulty is made available.
 		// For coop and anti, coop completions are also checked.
-		for (d = difficulty; d <= DIFF_PA; d++) {
+		for (d = difficulty; d <= DIFF_DA; d++) {
 			if (g_GameFile.besttimes[stageindex][d] != 0) {
 				return true;
 			}
@@ -1019,7 +1021,7 @@ bool is_stage_difficulty_unlocked(s32 stageindex, s32 difficulty)
 			if (g_SoloStages[stageindex].stagenum != STAGE_SKEDARRUINS) {
 				// For normal stages prior to Skedar Ruins, test if the
 				// prior stage is complete on the same difficulty or higher.
-				for (d = difficulty; d <= DIFF_PA; d++) {
+				for (d = difficulty; d <= DIFF_DA; d++) {
 					if (g_GameFile.besttimes[stageindex - 1][d] != 0) {
 						return true;
 					}
@@ -1033,7 +1035,7 @@ bool is_stage_difficulty_unlocked(s32 stageindex, s32 difficulty)
 				// For Skedar Ruins, check that all prior stages are complete
 				// on the queried difficulty or higher.
 				for (s = 0; s < stageindex; s++) {
-					for (d = difficulty; d <= DIFF_PA; d++) {
+					for (d = difficulty; d <= DIFF_DA; d++) {
 						if (g_GameFile.besttimes[s][d] != 0) {
 							break;
 						}
@@ -1063,7 +1065,7 @@ bool is_stage_difficulty_unlocked(s32 stageindex, s32 difficulty)
 			if (g_SoloStages[stageindex].stagenum != STAGE_SKEDARRUINS) {
 				// Check if all normal stages are complete on any difficulty
 				for (s = 0; s <= SOLOSTAGEINDEX_SKEDARRUINS; s++) {
-					for (d = DIFF_A; d <= DIFF_PA; d++) {
+					for (d = DIFF_A; d <= DIFF_DA; d++) {
 						if (g_GameFile.besttimes[s][d] != 0) {
 							break;
 						}
@@ -1074,14 +1076,14 @@ bool is_stage_difficulty_unlocked(s32 stageindex, s32 difficulty)
 						}
 					}
 
-					if (d > DIFF_PA) {
+					if (d > DIFF_DA) {
 						// A stage was not complete
 						break;
 					}
 				}
 
 				if (s >= SOLOSTAGEINDEX_MBR) {
-					for (d = difficulty - 1; d <= DIFF_PA; d++) {
+					for (d = difficulty - 1; d <= DIFF_DA; d++) {
 						if (g_GameFile.besttimes[stageindex][d] != 0) {
 							return true;
 						}
@@ -1206,6 +1208,14 @@ struct menuitem g_SoloMissionDifficultyMenuItems[] = {
 		2,
 		0,
 		L_OPTIONS_253, // "Perfect Agent"
+		(uintptr_t)&solo_menu_text_best_time,
+		menuhandler_solo_difficulty,
+	},
+	{
+		MENUITEMTYPE_SELECTABLE,
+		3,
+		0,
+		L_OPTIONS_494, // "Dark Agent"
 		(uintptr_t)&solo_menu_text_best_time,
 		menuhandler_solo_difficulty,
 	},
@@ -1644,6 +1654,14 @@ struct menuitem g_CoopMissionDifficultyMenuItems[] = {
 		menuhandler_coop_difficulty,
 	},
 	{
+		MENUITEMTYPE_SELECTABLE,
+		3,
+		0,
+		L_OPTIONS_494, // "Dark Agent"
+		0,
+		menuhandler_coop_difficulty,
+	},
+	{
 		MENUITEMTYPE_SEPARATOR,
 		0,
 		0,
@@ -1707,6 +1725,14 @@ struct menuitem g_AntiMissionDifficultyMenuItems[] = {
 		2,
 		0,
 		L_OPTIONS_253, // "Perfect Agent"
+		0,
+		menuhandler_anti_difficulty,
+	},
+	{
+		MENUITEMTYPE_SELECTABLE,
+		3,
+		0,
+		L_OPTIONS_494, // "Dark Agent"
 		0,
 		menuhandler_anti_difficulty,
 	},
@@ -2011,7 +2037,7 @@ MenuItemHandlerResult menuhandler_mission_list(s32 operation, struct menuitem *i
 			gDPSetCycleType(gdl++, G_CYC_1CYCLE);
 			gDPSetTextureFilter(gdl++, G_TF_POINT);
 
-			for (k = 0; k < 3; k++) {
+			for (k = 0; k < 4; k++) {
 				s32 relx = 63 + k * 17;
 
 				if ((g_GameFile.coopcompletions[k] & (1 << stageindex)) == 0) {
@@ -2050,13 +2076,13 @@ MenuItemHandlerResult menuhandler_mission_list(s32 operation, struct menuitem *i
 			gDPSetEnvColorViaWord(gdl++, 0xffffffaf);
 #endif
 
-			for (k = 0; k < 3; k++) {
+			for (k = 0; k < 4; k++) {
 				if (g_GameFile.besttimes[stageindex][k] != 0) {
 					incompleteindex = k + 1;
 				}
 			}
 
-			for (k = 0; k < 3; k++) {
+			for (k = 0; k < 4; k++) {
 				s32 relx = 63 + k * 17;
 
 				if (k == incompleteindex) {
@@ -3929,7 +3955,7 @@ char *inv_menu_text_weapon_description(struct menuitem *item)
 
 		if (g_InventoryWeapon == WEAPON_NECKLACE
 				&& g_Vars.stagenum == (VERSION >= VERSION_NTSC_1_0 ? STAGE_ATTACKSHIP : STAGE_SKEDARRUINS)
-				&& lv_get_difficulty() >= DIFF_PA) {
+				&& lv_get_difficulty() >= DIFF_PA | DIFF_DA) {
 #if VERSION >= VERSION_NTSC_1_0
 			// Phrases included here to assist people searching the code for them:
 			// CDV780322

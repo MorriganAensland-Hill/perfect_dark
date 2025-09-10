@@ -367,14 +367,15 @@ void body_instantiate_chr(s32 stagenum, struct packedchr *packed, s32 cmdindex)
 		return;
 	}
 
-	if (packed->spawnflags & (SPAWNFLAG_ONLYONA | SPAWNFLAG_ONLYONSA | SPAWNFLAG_ONLYONPA)) {
-		if ((packed->spawnflags & (SPAWNFLAG_ONLYONA | SPAWNFLAG_ONLYONSA | SPAWNFLAG_ONLYONPA)) == 0) {
+	if (packed->spawnflags & (SPAWNFLAG_ONLYONA | SPAWNFLAG_ONLYONSA | SPAWNFLAG_ONLYONPA | SPAWNFLAG_ONLYONDA)) {
+		if ((packed->spawnflags & (SPAWNFLAG_ONLYONA | SPAWNFLAG_ONLYONSA | SPAWNFLAG_ONLYONPA | SPAWNFLAG_ONLYONDA)) == 0) {
 			return;
 		}
 
 		if (((packed->spawnflags & SPAWNFLAG_ONLYONA) && lv_get_difficulty() == DIFF_A)
 				|| ((packed->spawnflags & SPAWNFLAG_ONLYONSA) && lv_get_difficulty() == DIFF_SA)
-				|| ((packed->spawnflags & SPAWNFLAG_ONLYONPA) && lv_get_difficulty() == DIFF_PA)) {
+				|| ((packed->spawnflags & SPAWNFLAG_ONLYONPA) && lv_get_difficulty() == DIFF_PA)
+				|| ((packed->spawnflags & SPAWNFLAG_ONLYONDA) && lv_get_difficulty() == DIFF_DA)) {
 			// ok
 		} else {
 			return;

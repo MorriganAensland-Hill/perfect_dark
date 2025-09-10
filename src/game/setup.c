@@ -1427,7 +1427,11 @@ void setup_create_props(s32 stagenum)
 			u32 diffflag = 0;
 			s32 index;
 
-			diffflag |= 1 << (lv_get_difficulty() + 4);
+			if (lv_get_difficulty() == DIFF_DA) {
+				diffflag |= 1 << (DIFF_PD + 4);
+			} else {
+				diffflag |= 1 << (lv_get_difficulty() + 4);
+			}
 
 			if (g_Vars.mplayerisrunning) {
 				if (PLAYERCOUNT() == 2) {
