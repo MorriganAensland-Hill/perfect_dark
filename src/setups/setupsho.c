@@ -123,26 +123,26 @@ u32 props[] = {
 	briefing(BRIEFINGTYPE_TEXT_SA,  L_SHO_002)
 	briefing(BRIEFINGTYPE_TEXT_A,   L_SHO_003)
 
-	beginobjective(0, L_SHO_005, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Identify temple targets"
+	beginobjective(0, L_SHO_005, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Identify temple targets"
 		complete_flags(STAGEFLAG_PILLAR1_MARKED)
 		complete_flags(STAGEFLAG_PILLAR2_MARKED)
 		complete_flags(STAGEFLAG_PILLAR3_MARKED)
 		fail_flags(STAGEFLAG_BUG_WASTED)
 	endobjective
 
-	beginobjective(1, L_SHO_006, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Activate bridge"
+	beginobjective(1, L_SHO_006, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Activate bridge"
 		complete_flags(STAGEFLAG_BRIDGE_EXTENDED)
 	endobjective
 
-	beginobjective(2, L_SHO_007, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Gain access to Inner Sanctum"
+	beginobjective(2, L_SHO_007, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Gain access to Inner Sanctum"
 		complete_flags(STAGEFLAG_ACCESSED_SANCTUM)
 	endobjective
 
-	beginobjective(3, L_SHO_008, (DIFFBIT_PA | DIFFBIT_PD)) // "Destroy secret Skedar army"
+	beginobjective(3, L_SHO_008, (DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Destroy secret Skedar army"
 		complete_flags(STAGEFLAG_ARMY_DEFEATED)
 	endobjective
 
-	beginobjective(4, L_SHO_009, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Assassinate Skedar leader"
+	beginobjective(4, L_SHO_009, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Assassinate Skedar leader"
 		complete_flags(STAGEFLAG_SPIKE1_DESTROYED)
 		complete_flags(STAGEFLAG_SPIKE2_DESTROYED)
 		complete_flags(STAGEFLAG_SPIKE3_DESTROYED)

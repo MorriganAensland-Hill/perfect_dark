@@ -65,17 +65,17 @@ u32 props[] = {
 	briefing(BRIEFINGTYPE_TEXT_SA,  L_WAX_002)
 	briefing(BRIEFINGTYPE_TEXT_A,   L_WAX_003)
 
-	beginobjective(0, L_WAX_005, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Plant explosive device in lab lift"
+	beginobjective(0, L_WAX_005, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Plant explosive device in lab lift"
 		complete_flags(STAGEFLAG_BOMB_PLANTED)
 		fail_flags(STAGEFLAG_BOMB_EXPIRED)
 		fail_flags(STAGEFLAG_BOMB_UNPLANTABLE)
 	endobjective
 
-	beginobjective(1, L_WAX_006, (DIFFBIT_PA | DIFFBIT_PD)) // "Eliminate dataDyne Captain"
+	beginobjective(1, L_WAX_006, (DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Eliminate dataDyne Captain"
 		complete_flags(STAGEFLAG_CHIEF_DEAD)
 	endobjective
 
-	beginobjective(2, L_WAX_004, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Locate and escort Cassandra to helipad"
+	beginobjective(2, L_WAX_004, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Locate and escort Cassandra to helipad"
 		complete_flags(STAGEFLAG_CASS_CAPTURED)
 		fail_flags(STAGEFLAG_CASS_DEAD)
 	endobjective

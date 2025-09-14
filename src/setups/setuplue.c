@@ -98,28 +98,28 @@ u32 props[] = {
 	briefing(BRIEFINGTYPE_TEXT_SA,  L_LUE_002)
 	briefing(BRIEFINGTYPE_TEXT_A,   L_LUE_003)
 
-	beginobjective(0, L_LUE_009, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Shut down air intercept radar"
+	beginobjective(0, L_LUE_009, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Shut down air intercept radar"
 		complete_flags(STAGEFLAG_RADAR_SHUT_DOWN)
 	endobjective
 
-	beginobjective(1, L_LUE_010, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Plant comms device on antenna"
+	beginobjective(1, L_LUE_010, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Plant comms device on antenna"
 		complete_flags(STAGEFLAG_COMMSBUG_PLACED)
 		fail_flags(STAGEFLAG_COMMSBUG_MISPLACED)
 		fail_flags(STAGEFLAG_ANTENNA_DESTROYED)
 	endobjective
 
-	beginobjective(2, L_LUE_011, (DIFFBIT_PA | DIFFBIT_PD)) // "Disable all robot interceptors"
+	beginobjective(2, L_LUE_011, (DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Disable all robot interceptors"
 		complete_flags(STAGEFLAG_INTERCEPTOR1_DESTROYED)
 		complete_flags(STAGEFLAG_INTERCEPTOR2_DESTROYED)
 		complete_flags(STAGEFLAG_INTERCEPTOR3_DESTROYED)
 	endobjective
 
-	beginobjective(3, L_LUE_012, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Gain access to hangar lift"
+	beginobjective(3, L_LUE_012, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Gain access to hangar lift"
 		complete_flags(STAGEFLAG_HANGAR_ACCESSED)
 		fail_flags(STAGEFLAG_LIFT_SWITCHES_DESTROYED)
 	endobjective
 
-	beginobjective(4, L_LUE_013, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Make contact with CI spy"
+	beginobjective(4, L_LUE_013, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Make contact with CI spy"
 		complete_flags(STAGEFLAG_MET_JON)
 	endobjective
 

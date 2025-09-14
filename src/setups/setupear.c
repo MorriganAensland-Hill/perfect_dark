@@ -111,18 +111,18 @@ u32 props[] = {
 	briefing(BRIEFINGTYPE_TEXT_SA,  L_EAR_002)
 	briefing(BRIEFINGTYPE_TEXT_A,   L_EAR_003)
 
-	beginobjective(0, L_EAR_013, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Holograph radioactive isotope"
+	beginobjective(0, L_EAR_013, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Holograph radioactive isotope"
 		require_object_holographed(0x39)
 		fail_flags(STAGEFLAG_CAMSPY_DESTROYED)
 	endobjective
 
-	beginobjective(1, L_EAR_011, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Start security maintenance cycle"
+	beginobjective(1, L_EAR_011, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Start security maintenance cycle"
 		complete_flags(STAGEFLAG_BOT_ACTIVE_MAINTENANCE)
 		fail_flags(STAGEFLAG_BOT_ACTIVATION_TERMINAL_DESTROYED)
 		fail_flags(STAGEFLAG_BOT_PROGRAMMING_TERMINAL_DESTROYED)
 	endobjective
 
-	beginobjective(2, L_EAR_010, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Shut down experiments"
+	beginobjective(2, L_EAR_010, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Shut down experiments"
 		complete_flags(STAGEFLAG_SHUT_DOWN_EXPERIMENT1)
 		complete_flags(STAGEFLAG_SHUT_DOWN_EXPERIMENT2)
 		complete_flags(STAGEFLAG_SHUT_DOWN_EXPERIMENT3)
@@ -131,14 +131,14 @@ u32 props[] = {
 		fail_flags(STAGEFLAG_00000008)
 	endobjective
 
-	beginobjective(3, L_EAR_012, (DIFFBIT_PA | DIFFBIT_PD)) // "Obtain experimental technologies"
+	beginobjective(3, L_EAR_012, (DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Obtain experimental technologies"
 		complete_flags(STAGEFLAG_ALL_ITEMS_COLLECTED)
 		require_object_collected(OBJ_K7AVENGER)
 		require_object_collected(OBJ_NIGHTVISION)
 		require_object_collected(OBJ_SHIELD)
 	endobjective
 
-	beginobjective(4, L_EAR_009, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Locate Dr. Caroll"
+	beginobjective(4, L_EAR_009, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Locate Dr. Caroll"
 		complete_flags(STAGEFLAG_DRCAROLL_LOCATED)
 		fail_flags(STAGEFLAG_UPLINKPC_DESTROYED)
 	endobjective

@@ -120,12 +120,12 @@ u32 props[] = {
 	briefing(BRIEFINGTYPE_TEXT_SA,  L_DEPO_002)
 	briefing(BRIEFINGTYPE_TEXT_A,   L_DEPO_003)
 
-	beginobjective(0, L_DEPO_009, (DIFFBIT_PA | DIFFBIT_PD)) // "Disable damping field generator"
+	beginobjective(0, L_DEPO_009, (DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Disable damping field generator"
 		complete_flags(STAGEFLAG_GENERATOR_SHUT_DOWN)
 		fail_flags(STAGEFLAG_GENERATOR_DESTROYED)
 	endobjective
 
-	beginobjective(1, L_DEPO_010, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Deactivate laser grid systems"
+	beginobjective(1, L_DEPO_010, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Deactivate laser grid systems"
 		complete_flags(STAGEFLAG_ALL_LASERS_DISABLED)
 		complete_flags(STAGEFLAG_LASERSET1_DISABLED)
 		complete_flags(STAGEFLAG_LASERSET2_DISABLED)
@@ -137,19 +137,19 @@ u32 props[] = {
 		fail_flags(STAGEFLAG_LASERSWITCH4_DESTROYED)
 	endobjective
 
-	beginobjective(2, L_DEPO_011, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Holograph meeting conspirators"
+	beginobjective(2, L_DEPO_011, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Holograph meeting conspirators"
 		complete_flags(STAGEFLAG_MEETING_HOLOGRAPHED)
 		fail_flags(STAGEFLAG_20000000)
 		fail_flags(STAGEFLAG_CONSPIRATORS_ALERTED)
 		fail_flags(STAGEFLAG_00002000)
 	endobjective
 
-	beginobjective(3, L_DEPO_012, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Retrieve Dr. Caroll backup from safe"
+	beginobjective(3, L_DEPO_012, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Retrieve Dr. Caroll backup from safe"
 		complete_flags(STAGEFLAG_BACKUP_COLLECTED)
 		fail_flags(STAGEFLAG_SAFEKEYPAD_DESTROYED)
 	endobjective
 
-	beginobjective(4, L_DEPO_013, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Exit building"
+	beginobjective(4, L_DEPO_013, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Exit building"
 		complete_flags(STAGEFLAG_EXITED_BUILDING)
 	endobjective
 

@@ -47,15 +47,15 @@ u32 props[] = {
 	briefing(BRIEFINGTYPE_TEXT_SA,  L_ATE_002)
 	briefing(BRIEFINGTYPE_TEXT_A,   L_ATE_003)
 
-	beginobjective(0, L_ATE_004, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Defeat dataDyne guard"
+	beginobjective(0, L_ATE_004, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Defeat dataDyne guard"
 		complete_flags(STAGEFLAG_GUARD_DEAD)
 	endobjective
 
-	beginobjective(1, L_ATE_005, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Defeat Jonathan Dark"
+	beginobjective(1, L_ATE_005, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Defeat Jonathan Dark"
 		complete_flags(STAGEFLAG_JONATHAN_DEAD)
 	endobjective
 
-	beginobjective(2, L_ATE_006, (DIFFBIT_PA | DIFFBIT_PD)) // "Defeat Trent Easton"
+	beginobjective(2, L_ATE_006, (DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Defeat Trent Easton"
 		complete_flags(STAGEFLAG_TRENT_DEAD)
 	endobjective
 

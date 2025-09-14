@@ -108,17 +108,17 @@ u32 props[] = {
 	briefing(BRIEFINGTYPE_TEXT_SA,  L_DAM_002)
 	briefing(BRIEFINGTYPE_TEXT_A,   L_DAM_003)
 
-	beginobjective(0, L_DAM_006, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Disable primary power source"
+	beginobjective(0, L_DAM_006, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Disable primary power source"
 		complete_flags(STAGEFLAG_REACTOR_SHUT_DOWN)
 		fail_flags(STAGEFLAG_REACTOR_SWITCH_DESTROYED)
 	endobjective
 
-	beginobjective(1, L_DAM_007, (DIFFBIT_PA | DIFFBIT_PD)) // "Secure laboratories and research data"
+	beginobjective(1, L_DAM_007, (DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Secure laboratories and research data"
 		complete_flags(STAGEFLAG_COLLECTED_RESEARCH_DATA)
 		fail_flags(STAGEFLAG_LABTECH_DEAD)
 	endobjective
 
-	beginobjective(2, L_DAM_005, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Deactivate GPS and autopilot"
+	beginobjective(2, L_DAM_005, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Deactivate GPS and autopilot"
 		complete_flags(STAGEFLAG_GPS_DISABLED)
 		complete_flags(STAGEFLAG_AUTOPILOT_DISABLED)
 		fail_flags(STAGEFLAG_00000400)
@@ -126,12 +126,12 @@ u32 props[] = {
 		fail_flags(STAGEFLAG_JO_KILLED_A_PILOT)
 	endobjective
 
-	beginobjective(3, L_DAM_008, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Activate Moon Pool lift"
+	beginobjective(3, L_DAM_008, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Activate Moon Pool lift"
 		complete_flags(STAGEFLAG_MOONPOOL_ACTIVATED)
 		fail_flags(STAGEFLAG_MOONPOOL_SWITCH_DESTROYED)
 	endobjective
 
-	beginobjective(4, L_DAM_009, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Rendezvous and escape with Elvis"
+	beginobjective(4, L_DAM_009, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Rendezvous and escape with Elvis"
 		complete_flags(STAGEFLAG_LOCATED_DIVING_AREA)
 		fail_flags(STAGEFLAG_ELVIS_DEAD)
 	endobjective

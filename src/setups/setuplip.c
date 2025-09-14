@@ -343,29 +343,29 @@ u32 props[] = {
 	briefing(BRIEFINGTYPE_TEXT_SA,  L_LIP_002)
 	briefing(BRIEFINGTYPE_TEXT_A,   L_LIP_003)
 
-	beginobjective(0, L_LIP_010, (DIFFBIT_PA | DIFFBIT_PD)) // "Destroy computer records"
+	beginobjective(0, L_LIP_010, (DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Destroy computer records"
 		complete_flags(STAGEFLAG_RECORDS_DESTROYED)
 		fail_flags(STAGEFLAG_UPLINK_TERMINAL_DESTROYED)
 	endobjective
 
-	beginobjective(1, L_LIP_011, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Locate conspiracy evidence"
+	beginobjective(1, L_LIP_011, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Locate conspiracy evidence"
 		complete_flags(STAGEFLAG_XRAY_DONE)
 		fail_flags(STAGEFLAG_CHAMBER_SWITCH_DESTROYED)
 	endobjective
 
-	beginobjective(2, L_LIP_009, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Obtain and use lab technician disguise"
+	beginobjective(2, L_LIP_009, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Obtain and use lab technician disguise"
 		complete_flags(STAGEFLAG_USED_DISGUISE)
 		fail_flags(STAGEFLAG_DISGUISE_UNCOVERED)
 	endobjective
 
-	beginobjective(3, L_LIP_012, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Gain access to autopsy lab"
+	beginobjective(3, L_LIP_012, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Gain access to autopsy lab"
 		complete_flags(STAGEFLAG_ENTERED_LAB)
 		require_object_collected(OBJ_KEYCARD)
 		fail_flags(STAGEFLAG_DOORMAN_REJECTED)
 		fail_flags(STAGEFLAG_DOORMAN_DEAD)
 	endobjective
 
-	beginobjective(4, L_LIP_013, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Rescue the crash Survivor"
+	beginobjective(4, L_LIP_013, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Rescue the crash Survivor"
 		complete_flags(STAGEFLAG_RESCUED_ELVIS)
 		fail_flags(STAGEFLAG_ELVIS_DEAD)
 		fail_flags(STAGEFLAG_CRATE_DESTROYED)

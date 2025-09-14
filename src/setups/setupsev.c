@@ -62,15 +62,15 @@ u32 props[] = {
 	briefing(BRIEFINGTYPE_TEXT_SA,  L_SEV_002)
 	briefing(BRIEFINGTYPE_TEXT_A,   L_SEV_003)
 
-	beginobjective(0, L_SEV_004, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Sabotage enemy medical experiment"
+	beginobjective(0, L_SEV_004, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Sabotage enemy medical experiment"
 		complete_flags(STAGEFLAG_EXPERIMENT_DESTROYED)
 	endobjective
 
-	beginobjective(1, L_SEV_005, (DIFFBIT_PA | DIFFBIT_PD)) // "Destroy captured Maian saucer"
+	beginobjective(1, L_SEV_005, (DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Destroy captured Maian saucer"
 		complete_flags(STAGEFLAG_SAUCER_DESTROYED)
 	endobjective
 
-	beginobjective(2, L_SEV_006, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Activate distress signal"
+	beginobjective(2, L_SEV_006, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Activate distress signal"
 		complete_flags(STAGEFLAG_CONSOLE_ACTIVATED)
 		fail_flags(STAGEFLAG_CONSOLE_DESTROYED)
 		fail_flags(STAGEFLAG_TRAPPED_AT_START)

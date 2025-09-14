@@ -99,24 +99,24 @@ u32 props[] = {
 	briefing(BRIEFINGTYPE_TEXT_SA,  L_ARK_002)
 	briefing(BRIEFINGTYPE_TEXT_A,   L_ARK_003)
 
-	beginobjective(0, L_ARK_009, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Access foyer elevator"
+	beginobjective(0, L_ARK_009, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Access foyer elevator"
 		complete_flags(STAGEFLAG_ACCESSED_FOYER_ELEVATOR)
 	endobjective
 
-	beginobjective(1, L_ARK_010, (DIFFBIT_PA | DIFFBIT_PD)) // "Reactivate office elevator"
+	beginobjective(1, L_ARK_010, (DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Reactivate office elevator"
 		complete_flags(STAGEFLAG_ELEVATOR_UNLOCKED)
 		fail_flags(STAGEFLAG_ELEVATOR_PC_DESTROYED)
 	endobjective
 
-	beginobjective(2, L_ARK_011, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Destroy dataDyne hovercopter"
+	beginobjective(2, L_ARK_011, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Destroy dataDyne hovercopter"
 		complete_flags(STAGEFLAG_HOVERCOPTER_DESTROYED)
 	endobjective
 
-	beginobjective(3, L_ARK_012, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Defeat Cassandra's bodyguards"
+	beginobjective(3, L_ARK_012, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Defeat Cassandra's bodyguards"
 		complete_flags(STAGEFLAG_OBJECTIVE_BODYGUARDS_DEAD)
 	endobjective
 
-	beginobjective(4, L_ARK_013, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Rendezvous at helipad"
+	beginobjective(4, L_ARK_013, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Rendezvous at helipad"
 		complete_flags(STAGEFLAG_REACHED_HELIPAD)
 		fail_flags(STAGEFLAG_DRCAROLL_DEAD)
 	endobjective

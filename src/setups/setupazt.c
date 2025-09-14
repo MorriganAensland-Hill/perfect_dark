@@ -128,24 +128,24 @@ u32 props[] = {
 	briefing(BRIEFINGTYPE_TEXT_SA,  L_AZT_002)
 	briefing(BRIEFINGTYPE_TEXT_A,   L_AZT_003)
 
-	beginobjective(0, L_AZT_005, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Retrieve Presidential medical scanner"
+	beginobjective(0, L_AZT_005, (DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Retrieve Presidential medical scanner"
 		require_object_collected(OBJ_MEDICALSCANNER)
 	endobjective
 
-	beginobjective(1, L_AZT_006, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Activate distress beacon"
+	beginobjective(1, L_AZT_006, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Activate distress beacon"
 		complete_flags(STAGEFLAG_BEACON_ACTIVATED)
 		fail_flags(STAGEFLAG_ESCAPEPOD_DESTROYED)
 	endobjective
 
-	beginobjective(2, L_AZT_007, (DIFFBIT_PA | DIFFBIT_PD)) // "Shut down enemy jamming device"
+	beginobjective(2, L_AZT_007, (DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Shut down enemy jamming device"
 		complete_flags(STAGEFLAG_SKEDAR_SHUTTLE_DESTROYED)
 	endobjective
 
-	beginobjective(3, L_AZT_008, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Retire Presidential clone"
+	beginobjective(3, L_AZT_008, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Retire Presidential clone"
 		complete_flags(STAGEFLAG_CLONE_DEAD)
 	endobjective
 
-	beginobjective(4, L_AZT_009, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_PD)) // "Locate and rescue President"
+	beginobjective(4, L_AZT_009, (DIFFBIT_A | DIFFBIT_SA | DIFFBIT_PA | DIFFBIT_DA | DIFFBIT_PD)) // "Locate and rescue President"
 		complete_flags(STAGEFLAG_PRESIDENT_RESCUED)
 		fail_flags(STAGEFLAG_PRESIDENT_DEAD)
 	endobjective
