@@ -57,7 +57,7 @@ PAL = 0
 
 ROMALLOCATION_DATA = 0x015000
 ROMALLOCATION_LIB  = 0x038800
-ROMALLOCATION_GAME = 0x144ee0
+ROMALLOCATION_GAME = 0x140000
 
 # ROM_SIZE - The desired ROM size in megabytes.
 #
@@ -138,7 +138,7 @@ endif
 ifeq ($(ROMID), ntsc-final)
     PAL = 0
     PIRACYCHECKS = 1
-    ROMALLOCATION_GAME = 0x144ee0
+    ROMALLOCATION_GAME = 0x140000
     ZIPMAGIC = 0xffff
 endif
 ifeq ($(ROMID), pal-beta)
