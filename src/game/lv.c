@@ -1785,7 +1785,7 @@ void lv_update_solo_handicaps(void)
 			g_AutogunDamageRxScale = 0.5f;
 			g_EnemyAccuracyScale = 0.8f;
 			g_PlayerDamageRxScale = 0.8f;
-			g_PlayerDamageTxScale = 1;
+			g_PlayerDamageTxScale = 0.75f;
 			g_ExplosionDamageTxScale = 0.25f;
 			g_AutoAimScale = 0.4f;
 			g_AmmoQuantityScale = 1.5f;
@@ -1836,14 +1836,14 @@ void lv_update_solo_handicaps(void)
 			g_AmmoQuantityScale = 1.5f;
 			g_AttackWalkDurationScale = 0.5f;
 		} else if (g_Difficulty == DIFF_DA) {
-			g_CctvWaitScale = 1;
-			g_CctvDamageRxScale = 1;
+			g_CctvWaitScale = 0.75f;
+			g_CctvDamageRxScale = 0.75f;
 			g_AutogunAccuracyScale = 1.25f;
 			g_AutogunDamageTxScale = 1.75f;
-			g_AutogunDamageRxScale = 0.75f;
-			g_EnemyAccuracyScale = 2;
+			g_AutogunDamageRxScale = 0.5f;
+			g_EnemyAccuracyScale = 1.75f;
 			g_PlayerDamageRxScale = 2;
-			g_PlayerDamageTxScale = 1;
+			g_PlayerDamageTxScale = 0.75f;
 			g_ExplosionDamageTxScale = 2;
 			g_AutoAimScale = 0;
 			g_AmmoQuantityScale = 0.5f;
@@ -1928,14 +1928,14 @@ void lv_update_solo_handicaps(void)
 			g_AmmoQuantityScale = 1;
 			g_AttackWalkDurationScale = 1;
 		} else if (g_Difficulty == DIFF_DA) {
-			g_CctvWaitScale = 1;
-			g_CctvDamageRxScale = 1;
+			g_CctvWaitScale = 0.75f;
+			g_CctvDamageRxScale = 0.75f;
 			g_AutogunAccuracyScale = 1.25f;
 			g_AutogunDamageTxScale = 1.25f;
 			g_AutogunDamageRxScale = 0.5f;
-			g_EnemyAccuracyScale = 1.25f;
-			g_PlayerDamageRxScale = 1.1f;
-			g_PlayerDamageTxScale = 1;
+			g_EnemyAccuracyScale = 1.3f;
+			g_PlayerDamageRxScale = 1.2f;
+			g_PlayerDamageTxScale = 0.75f;
 			g_ExplosionDamageTxScale = 2;
 			g_AutoAimScale = 0;
 			g_AmmoQuantityScale = 0.5f;
