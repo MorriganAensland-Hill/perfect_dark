@@ -1427,8 +1427,8 @@ void setup_create_props(s32 stagenum)
 			u32 diffflag = 0;
 			s32 index;
 
-			if (lv_get_difficulty() == DIFF_DA) {
-				diffflag |= 1 << (DIFF_PD + 4);
+			if (lv_get_difficulty() == DIFF_PD) {
+				diffflag |= 1 << (DIFF_DA + 4);
 			} else {
 				diffflag |= 1 << (lv_get_difficulty() + 4);
 			}
